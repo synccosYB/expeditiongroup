@@ -1,7 +1,7 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { ZodError } from "zod";
 import {
   insertClientSchema,
@@ -21,11 +21,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  await setupAuth(app);
+  setupAuth(app);
 
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req: Request, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -34,9 +34,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
+  app.get("/api/dashboard/stats", isAuthenticated, async (req: Request, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -50,7 +50,7 @@ export async function registerRoutes(
 
   app.get("/api/clients", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -64,7 +64,7 @@ export async function registerRoutes(
 
   app.get("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -81,7 +81,7 @@ export async function registerRoutes(
 
   app.post("/api/clients", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -99,7 +99,7 @@ export async function registerRoutes(
 
   app.patch("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -120,7 +120,7 @@ export async function registerRoutes(
 
   app.delete("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -137,7 +137,7 @@ export async function registerRoutes(
 
   app.get("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -151,7 +151,7 @@ export async function registerRoutes(
 
   app.get("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       const project = await storage.getProject(parseInt(req.params.id));
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
@@ -168,7 +168,7 @@ export async function registerRoutes(
 
   app.post("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -186,7 +186,7 @@ export async function registerRoutes(
 
   app.patch("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -207,7 +207,7 @@ export async function registerRoutes(
 
   app.delete("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -224,7 +224,7 @@ export async function registerRoutes(
 
   app.get("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -238,7 +238,7 @@ export async function registerRoutes(
 
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -256,7 +256,7 @@ export async function registerRoutes(
 
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -277,7 +277,7 @@ export async function registerRoutes(
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -294,7 +294,7 @@ export async function registerRoutes(
 
   app.post("/api/notes", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!;
       const parsed = insertNoteSchema.parse({ ...req.body, userId });
       const note = await storage.createNote(parsed);
       res.status(201).json(note);
@@ -309,7 +309,7 @@ export async function registerRoutes(
 
   app.get("/api/time-logs", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -323,11 +323,11 @@ export async function registerRoutes(
 
   app.post("/api/time-logs", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId!;
       const parsed = insertTimeLogSchema.parse({ ...req.body, userId });
       const timeLog = await storage.createTimeLog(parsed);
       res.status(201).json(timeLog);
@@ -342,7 +342,7 @@ export async function registerRoutes(
 
   app.get("/api/associates", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -356,7 +356,7 @@ export async function registerRoutes(
 
   app.get("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -373,7 +373,7 @@ export async function registerRoutes(
 
   app.post("/api/associates", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -391,7 +391,7 @@ export async function registerRoutes(
 
   app.patch("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -412,7 +412,7 @@ export async function registerRoutes(
 
   app.delete("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
@@ -429,7 +429,7 @@ export async function registerRoutes(
 
   app.get("/api/client/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
@@ -443,7 +443,7 @@ export async function registerRoutes(
 
   app.get("/api/client/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.userId!);
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
