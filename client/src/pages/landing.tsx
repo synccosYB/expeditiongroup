@@ -116,7 +116,7 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-24 lg:py-32">
+        <section className="relative overflow-hidden py-16 lg:py-24">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-background" />
           <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -172,7 +172,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-24 bg-gradient-to-b from-primary/10 to-muted/30">
+        <section id="services" className="py-16 bg-gradient-to-b from-primary/10 to-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-4">
@@ -203,7 +203,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-24">
+        <section id="how-it-works" className="py-16">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-4">
@@ -239,7 +239,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-24 bg-gradient-to-b from-muted/30 to-primary/10">
+        <section id="who-we-serve" className="py-16 bg-gradient-to-b from-muted/30 to-primary/10">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div>
@@ -297,7 +297,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="contact" className="py-24">
+        <section id="contact" className="py-16">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-4">
