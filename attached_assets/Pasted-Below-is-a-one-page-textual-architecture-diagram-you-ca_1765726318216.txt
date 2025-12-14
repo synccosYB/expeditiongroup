@@ -1,0 +1,322 @@
+Below is a **one-page textual architecture diagram** you can hand to your developer.
+It shows **what exists**, **how it connects**, and **where each “Expedition Group” thread lands in the system**.
+
+You can paste this into a doc or email titled:
+
+> **“Expedition Plus – Phase 1 Architecture Diagram (Textual)”**
+
+---
+
+# Expedition Plus – 1-Page Architecture Diagram (Textual)
+
+## SYSTEM OVERVIEW
+
+**Expedition Plus** is a single web application with three layers:
+
+```
+[ Public Website ]
+        ↓
+[ Authentication & Roles ]
+        ↓
+[ Internal CRM + Client Portal ]
+```
+
+All operational data revolves around **Projects**.
+
+---
+
+## 1. ENTRY LAYER – PUBLIC WEBSITE (No Login)
+
+```
+/ (Public Marketing Page)
+│
+├─ Hero (Permit Expediting)
+│   └─ Service Area: Orange, Rockland & Sullivan Counties, NY
+│
+├─ Services
+├─ How It Works
+├─ Who We Serve
+├─ Contact (Google Form)
+│
+└─ Footer (Company + Service Area)
+```
+
+Purpose:
+
+* Explain what Expedition Plus does
+* Capture leads
+* SEO for local permit expediting
+
+---
+
+## 2. ACCESS LAYER – AUTHENTICATION & ROLES
+
+```
+/login
+│
+├─ Admin User
+│   └─ Full CRM access
+│
+└─ Client User
+    └─ Read-only access to own projects
+```
+
+**User Roles:**
+
+* `admin`
+* `client`
+
+**Security Rules:**
+
+* Admin can access everything
+* Client can only access data linked to their own Client record
+* Public pages require no login
+
+---
+
+## 3. CORE DOMAIN MODEL – CRM FOUNDATION
+
+```
+User
+ ├─ role: admin | client
+ └─ creates / views data
+```
+
+```
+Client
+ └─ has many → Projects
+```
+
+```
+Project (CENTRAL OBJECT)
+ ├─ belongs to → Client
+ ├─ has many → Tasks
+ ├─ has many → Notes
+ ├─ has many → Time Logs
+ ├─ has many → Documents
+ ├─ has many → Checklists
+ └─ linked to many → Associates
+```
+
+Everything below **must attach to a Project**.
+
+---
+
+## 4. OPERATIONAL MODULES (Extracted from Project Threads)
+
+### 4.1 Tasks (from SOPs)
+
+```
+Task
+ ├─ belongs to → Project
+ ├─ type: road | office
+ ├─ status: pending | in_progress | waiting_on_client | done
+ ├─ optional → Associate
+ └─ timestamps
+```
+
+**Task Templates (from SOP documents):**
+
+```
+SOP / Process Docs
+ └─ become → Task Templates
+     └─ applied to → Project
+```
+
+---
+
+### 4.2 Notes (Internal History)
+
+```
+Note
+ ├─ belongs to → Project
+ ├─ written by → User
+ └─ timestamped
+```
+
+Purpose:
+
+* Communication log
+* Internal context
+* Audit trail
+
+---
+
+### 4.3 Time Logs (from Project Work Summary)
+
+```
+Time Log
+ ├─ belongs to → Project
+ ├─ date
+ ├─ task description
+ ├─ start / end time
+ ├─ total hours
+ ├─ type: road | office
+ └─ notes
+```
+
+Purpose:
+
+* Replace Excel time sheets
+* Track real work performed
+* Support billing / reporting
+
+---
+
+### 4.4 Associates (External Professionals)
+
+```
+Associate
+ ├─ engineer
+ ├─ architect
+ ├─ surveyor
+ ├─ village contact
+ └─ consultant
+```
+
+```
+Associate
+ ├─ linked to → Projects
+ └─ optionally assigned to → Tasks
+```
+
+Purpose:
+
+* See everything tied to a specific engineer / architect
+* Track dependencies and delays
+
+---
+
+### 4.5 Checklists (from Folder Checklists)
+
+```
+Checklist Template
+ ├─ name (e.g. "Final Survey – New Dwelling")
+ └─ items (line-by-line)
+```
+
+```
+Checklist Template Item
+ └─ one line from document
+```
+
+```
+Project Checklist
+ ├─ belongs to → Project
+ └─ created from → Checklist Template
+```
+
+```
+Project Checklist Item
+ ├─ status: ok | required | n/a | pending
+ ├─ note
+ └─ belongs to → Project Checklist
+```
+
+Purpose:
+
+* Turn static PDFs into live tracking tools
+* Track inspection readiness and close-out progress
+
+---
+
+### 4.6 Documents (Uploaded Files)
+
+```
+Document
+ ├─ belongs to → Project
+ ├─ type (plans, VE letter, survey, form, etc.)
+ ├─ filename / URL
+ └─ notes
+```
+
+Purpose:
+
+* Centralize all paperwork
+* Tie documents to tasks and checklists
+
+---
+
+## 5. DASHBOARD VIEWS
+
+### 5.1 Admin Dashboard
+
+```
+Admin Dashboard
+ ├─ Clients List
+ ├─ Projects List
+ │   └─ filter by status / county / client
+ └─ Project Detail
+     ├─ Overview
+     ├─ Associates
+     ├─ Tasks (road / office)
+     ├─ Notes
+     ├─ Time Logs
+     ├─ Checklists
+     └─ Documents
+```
+
+Admin can:
+
+* Create / edit everything
+* Apply templates
+* Update statuses
+
+---
+
+### 5.2 Client Portal (Read-Only Phase 1)
+
+```
+Client Portal
+ └─ My Projects
+     └─ Project View
+         ├─ Project summary
+         ├─ Task progress (read-only)
+         ├─ Checklist summary
+         └─ Notes (read-only)
+```
+
+Purpose:
+
+* Transparency
+* Fewer phone calls
+* Clear expectations
+
+---
+
+## 6. THREAD → SYSTEM MAPPING (SUMMARY)
+
+```
+Phase 1 Proposal
+ └─ Core CRM structure
+
+Project Work Summary
+ └─ Time Logs module
+
+SOP for Pre-Construction
+ └─ Task Templates + Workflows
+
+Automation Workflow Creation
+ └─ Status-driven design (future automation)
+
+Checklists (Final Survey, Blue Roof, etc.)
+ └─ Checklist Templates + Project Checklists
+
+Logo / Define Expedition
+ └─ Branding + Help Content
+```
+
+---
+
+## FINAL PRINCIPLE (IMPORTANT)
+
+> **The CRM is not invented — it is extracted.**
+> Every document, checklist, SOP, and spreadsheet already represents a feature.
+> The system’s job is to make those **structured, searchable, and repeatable**.
+
+---
+
+If you want, next I can:
+
+* Convert this into a **Phase 1 / Phase 2 / Phase 3 roadmap**, or
+* Turn this into a **developer handoff PDF** with acceptance criteria per module.
