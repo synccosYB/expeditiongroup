@@ -1,5 +1,8 @@
+import { useState, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   FileCheck,
   Clock,
@@ -11,11 +14,14 @@ import {
   Building2,
   HardHat,
   Ruler,
+  Mail,
+  Loader2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
 
 const services = [
   {
@@ -135,6 +141,37 @@ function Counter({ value, label }: { value: string; label: string }) {
 }
 
 export default function Landing() {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+
+  const subscribeMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await apiRequest("POST", "/api/newsletter/subscribe", { email });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscribed!",
+        description: "Thank you for subscribing to our newsletter.",
+      });
+      setEmail("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Subscription failed",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      subscribeMutation.mutate(email.trim());
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/50">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -466,6 +503,47 @@ export default function Landing() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </motion.a>
               </Button>
+            </AnimatedSection>
+          </div>
+        </section>
+
+        <section id="newsletter" className="py-10 bg-muted/30">
+          <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
+            <AnimatedSection>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+                Sign Up for Our Newsletter
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Stay updated with the latest permit news, regulatory changes, and industry insights.
+              </p>
+              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="flex-1"
+                  data-testid="input-newsletter-email"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={subscribeMutation.isPending}
+                  data-testid="button-newsletter-subscribe"
+                >
+                  {subscribeMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Subscribe"
+                  )}
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground mt-4">
+                We respect your privacy. Unsubscribe at any time.
+              </p>
             </AnimatedSection>
           </div>
         </section>

@@ -10,6 +10,7 @@ import {
   insertNoteSchema,
   insertTimeLogSchema,
   insertAssociateSchema,
+  insertNewsletterSubscriberSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -455,6 +456,24 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching client project:", error);
       res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
+  // Newsletter subscription (public endpoint)
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    try {
+      const data = insertNewsletterSubscriberSchema.parse(req.body);
+      const subscriber = await storage.addNewsletterSubscriber(data.email);
+      res.status(201).json({ message: "Successfully subscribed!", subscriber });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      if ((error as any)?.code === "23505") {
+        return res.status(400).json({ message: "This email is already subscribed" });
+      }
+      console.error("Error subscribing to newsletter:", error);
+      res.status(500).json({ message: "Failed to subscribe" });
     }
   });
 

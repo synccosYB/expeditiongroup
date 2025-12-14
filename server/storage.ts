@@ -7,6 +7,7 @@ import {
   timeLogs,
   associates,
   projectAssociates,
+  newsletterSubscribers,
   type User,
   type UpsertUser,
   type Client,
@@ -23,6 +24,7 @@ import {
   type InsertAssociate,
   type ProjectAssociate,
   type InsertProjectAssociate,
+  type NewsletterSubscriber,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql } from "drizzle-orm";
@@ -72,6 +74,8 @@ export interface IStorage {
     recentProjects: (Project & { client: Client })[];
     upcomingTasks: (Task & { project: Project })[];
   }>;
+  
+  addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -351,6 +355,11 @@ export class DatabaseStorage implements IStorage {
         project: r.projects!,
       })),
     };
+  }
+
+  async addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber> {
+    const [subscriber] = await db.insert(newsletterSubscribers).values({ email }).returning();
+    return subscriber;
   }
 }
 

@@ -207,7 +207,15 @@ export const projectAssociatesRelations = relations(projectAssociates, ({ one })
   }),
 }));
 
+// Newsletter Subscribers table
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
+export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
@@ -234,3 +242,5 @@ export type InsertAssociate = z.infer<typeof insertAssociateSchema>;
 export type Associate = typeof associates.$inferSelect;
 export type InsertProjectAssociate = z.infer<typeof insertProjectAssociateSchema>;
 export type ProjectAssociate = typeof projectAssociates.$inferSelect;
+export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscriberSchema>;
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
