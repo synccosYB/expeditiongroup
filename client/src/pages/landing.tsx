@@ -298,61 +298,68 @@ export default function Landing() {
 
         <section id="contact" className="py-12">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="text-center mb-8">
+            <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-foreground mb-2">
                 Get In Touch
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Ready to streamline your permit process? Contact us today for a
-                consultation.
+                Ready to streamline your permit process? Contact us today for a consultation.
               </p>
             </div>
-            <div className="max-w-xl mx-auto">
-              <Card>
-                <CardContent className="p-8">
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Phone className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
-                        <a href="tel:845-212-2040" className="font-medium text-foreground hover:text-primary transition-colors" data-testid="link-phone">(845) 212-2040</a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Mail className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Email</p>
-                        <a href="mailto:Info@expeditiongroupny.com" className="font-medium text-foreground hover:text-primary transition-colors" data-testid="link-email">
-                          Info@expeditiongroupny.com
-                        </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <MapPin className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Address</p>
-                        <p className="font-medium text-foreground">
-                          17 Sandybrook Drive<br />Spring Valley, NY 10977
-                        </p>
-                      </div>
-                    </div>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-10">
+              <Card className="text-center hover-elevate">
+                <CardContent className="p-6">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
+                    <Phone className="h-6 w-6 text-primary" />
                   </div>
-                  <div className="mt-8 pt-6 border-t">
-                    <Button className="w-full" size="lg" asChild data-testid="button-sign-in-contact">
-                      <a href="/api/login">
-                        Sign In to Your Account
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">Call Us</h3>
+                  <a 
+                    href="tel:845-212-2040" 
+                    className="text-muted-foreground hover:text-primary transition-colors" 
+                    data-testid="link-phone"
+                  >
+                    (845) 212-2040
+                  </a>
                 </CardContent>
               </Card>
+
+              <Card className="text-center hover-elevate">
+                <CardContent className="p-6">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
+                    <Mail className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">Email Us</h3>
+                  <a 
+                    href="mailto:Info@expeditiongroupny.com" 
+                    className="text-muted-foreground hover:text-primary transition-colors" 
+                    data-testid="link-email"
+                  >
+                    Info@expeditiongroupny.com
+                  </a>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center hover-elevate">
+                <CardContent className="p-6">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
+                    <MapPin className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">Visit Us</h3>
+                  <p className="text-muted-foreground">
+                    17 Sandybrook Drive<br />Spring Valley, NY 10977
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="text-center">
+              <Button size="lg" asChild data-testid="button-sign-in-contact">
+                <a href="/api/login">
+                  Sign In to Your Account
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
             </div>
           </div>
         </section>
