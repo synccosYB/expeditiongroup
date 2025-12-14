@@ -5,25 +5,25 @@ import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
 
 const milestones = [
   {
-    year: "2009",
+    year: "2015",
     title: "The Beginning",
     description: "Expedition Group was founded with a simple mission: to help contractors navigate the complex permit process in the Hudson Valley.",
     icon: Building2
   },
   {
-    year: "2014",
+    year: "2018",
     title: "Expanding Our Reach",
     description: "After establishing strong relationships in Rockland County, we expanded our services to Orange and Sullivan Counties.",
     icon: TrendingUp
   },
   {
-    year: "2019",
+    year: "2022",
     title: "500+ Projects Milestone",
     description: "We celebrated completing our 500th successful permit expedition, serving clients from small contractors to major developers.",
     icon: Award
   },
   {
-    year: "2024",
+    year: "2026",
     title: "Digital Transformation",
     description: "Launch of our client portal, providing real-time project tracking and seamless communication for all clients.",
     icon: Users
