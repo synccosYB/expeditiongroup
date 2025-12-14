@@ -4,7 +4,7 @@
 
 Expedition Plus is a permit expediting CRM platform designed for construction projects in Orange, Rockland, and Sullivan Counties, NY. The application serves two user types: internal administrators who manage clients, projects, tasks, time logs, and associates, and external clients who access a read-only portal to view their project status and updates.
 
-The system follows a three-layer architecture: a public marketing website for lead generation, an authentication layer using Replit Auth, and an internal CRM with a client portal. All operational data revolves around Projects as the central entity.
+The system follows a three-layer architecture: a public marketing website for lead generation, an authentication layer using email/password authentication, and an internal CRM with a client portal. All operational data revolves around Projects as the central entity.
 
 ## User Preferences
 
@@ -24,7 +24,7 @@ Preferred communication style: Simple, everyday language.
 - **Runtime**: Node.js with Express
 - **Language**: TypeScript with ESM modules
 - **API Design**: RESTful JSON API with `/api` prefix
-- **Authentication**: Replit Auth via OpenID Connect with Passport.js
+- **Authentication**: Email/password authentication with bcrypt password hashing
 - **Session Management**: Express sessions stored in PostgreSQL via connect-pg-simple
 
 ### Data Layer
@@ -56,8 +56,11 @@ The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis 
 - Session storage table for authentication persistence
 
 ### Authentication
-- Replit Auth (OpenID Connect) for user authentication
-- Requires REPL_ID, ISSUER_URL, and SESSION_SECRET environment variables
+- Email/password authentication with bcrypt password hashing
+- Sessions stored in PostgreSQL via connect-pg-simple
+- Requires SESSION_SECRET environment variable
+- Auth routes: POST /api/auth/register, /api/auth/login, /api/auth/logout
+- Frontend auth page at /auth with login and registration forms
 
 ### Third-Party Libraries
 - **UI**: Radix UI primitives, Lucide icons, class-variance-authority
