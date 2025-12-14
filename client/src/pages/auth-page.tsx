@@ -330,7 +330,7 @@ export default function AuthPage() {
                   href="https://www.synccos.com" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-primary underline"
                   data-testid="link-synccos"
                 >
                   www.synccos.com
