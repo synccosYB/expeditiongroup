@@ -523,6 +523,18 @@ export default function Landing() {
         <div className="border-t py-6">
           <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
+            <p>
+              Site powered by{" "}
+              <a 
+                href="https://www.synccos.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="font-medium text-primary hover:underline"
+                data-testid="link-synccos-footer"
+              >
+                www.synccos.com
+              </a>
+            </p>
             <a href="/auth" className="hover:text-primary transition-colors" data-testid="link-client-portal">
               Client Portal
             </a>
