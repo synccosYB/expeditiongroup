@@ -111,7 +111,7 @@ export default function OurStory() {
                 expand our expertise to serve you better.
               </p>
               <Button asChild data-testid="button-login-portal">
-                <a href="/auth">Login to Client Portal</a>
+                <a href="/auth" target="_blank" rel="noopener noreferrer">Login to Client Portal</a>
               </Button>
             </CardContent>
           </Card>
