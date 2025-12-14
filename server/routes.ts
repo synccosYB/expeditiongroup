@@ -441,5 +441,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/client/projects/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const project = await storage.getProject(parseInt(req.params.id));
+      if (!project || project.clientId !== user.clientId) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      res.json(project);
+    } catch (error) {
+      console.error("Error fetching client project:", error);
+      res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
   return httpServer;
 }

@@ -28,13 +28,16 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  const { data: recentProjects, isLoading: projectsLoading } = useQuery<(Project & { client: Client })[]>({
-    queryKey: ["/api/projects", "recent"],
+  const { data: allProjects, isLoading: projectsLoading } = useQuery<(Project & { client: Client })[]>({
+    queryKey: ["/api/projects"],
   });
 
-  const { data: pendingTasks, isLoading: tasksLoading } = useQuery<(Task & { project: Project })[]>({
-    queryKey: ["/api/tasks", "pending"],
+  const { data: allTasks, isLoading: tasksLoading } = useQuery<(Task & { project: Project })[]>({
+    queryKey: ["/api/tasks"],
   });
+
+  const recentProjects = allProjects?.slice(0, 5);
+  const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
 
   const isLoading = statsLoading || projectsLoading || tasksLoading;
 

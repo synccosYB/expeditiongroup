@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -131,10 +131,10 @@ export default function ClientPortal() {
 }
 
 export function ClientProjectDetail() {
-  const { id } = window.location.pathname.split("/").pop() ? { id: window.location.pathname.split("/").pop() } : { id: "" };
+  const { id } = useParams<{ id: string }>();
   
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
-    queryKey: ["/api/client/projects", id],
+    queryKey: [`/api/client/projects/${id}`],
     enabled: !!id,
   });
 
