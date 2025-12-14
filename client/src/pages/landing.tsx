@@ -221,7 +221,7 @@ export default function Landing() {
                   )}
                   <Card className="h-full">
                     <CardContent className="p-6">
-                      <div className="text-3xl font-bold text-primary/20 mb-2">
+                      <div className="text-3xl font-bold text-muted-foreground/40 mb-2">
                         {step.number}
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-2">
