@@ -183,7 +183,7 @@ export default function ProjectDetail() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
@@ -214,7 +214,7 @@ export default function ProjectDetail() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
@@ -238,7 +238,7 @@ export default function ProjectDetail() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete task", variant: "destructive" });
@@ -267,7 +267,7 @@ export default function ProjectDetail() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add note", variant: "destructive" });
@@ -298,7 +298,7 @@ export default function ProjectDetail() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add time log", variant: "destructive" });
