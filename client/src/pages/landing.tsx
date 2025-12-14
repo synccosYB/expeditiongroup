@@ -7,8 +7,6 @@ import {
   CheckCircle2,
   MapPin,
   ArrowRight,
-  Phone,
-  Mail,
   Briefcase,
   Building2,
 } from "lucide-react";
@@ -96,13 +94,6 @@ export default function Landing() {
             >
               Who We Serve
             </a>
-            <a
-              href="#contact"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              data-testid="link-contact"
-            >
-              Contact
-            </a>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -136,7 +127,7 @@ export default function Landing() {
                     </a>
                   </Button>
                   <Button size="lg" variant="outline" asChild data-testid="button-contact-us">
-                    <a href="#contact">Contact Us</a>
+                    <a href="#who-we-serve">Learn More</a>
                   </Button>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -296,73 +287,6 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="contact" className="py-12">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-foreground mb-2">
-                Get In Touch
-              </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Ready to streamline your permit process? Contact us today for a consultation.
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 mb-10">
-              <Card className="text-center hover-elevate">
-                <CardContent className="p-6">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-                    <Phone className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1">Call Us</h3>
-                  <a 
-                    href="tel:845-212-2040" 
-                    className="text-muted-foreground hover:text-primary transition-colors" 
-                    data-testid="link-phone"
-                  >
-                    (845) 212-2040
-                  </a>
-                </CardContent>
-              </Card>
-
-              <Card className="text-center hover-elevate">
-                <CardContent className="p-6">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-                    <Mail className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1">Email Us</h3>
-                  <a 
-                    href="mailto:Info@expeditiongroupny.com" 
-                    className="text-muted-foreground hover:text-primary transition-colors" 
-                    data-testid="link-email"
-                  >
-                    Info@expeditiongroupny.com
-                  </a>
-                </CardContent>
-              </Card>
-
-              <Card className="text-center hover-elevate">
-                <CardContent className="p-6">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-                    <MapPin className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1">Visit Us</h3>
-                  <p className="text-muted-foreground">
-                    17 Sandybrook Drive<br />Spring Valley, NY 10977
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="text-center">
-              <Button size="lg" asChild data-testid="button-sign-in-contact">
-                <a href="/api/login">
-                  Sign In to Your Account
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-            </div>
-          </div>
-        </section>
       </main>
 
       <footer className="border-t bg-muted/30">
@@ -374,8 +298,8 @@ export default function Landing() {
                 <p className="text-muted-foreground">Get started with a free consultation today.</p>
               </div>
               <Button size="lg" asChild data-testid="button-footer-cta">
-                <a href="#contact">
-                  Contact Us
+                <a href="/api/login">
+                  Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </a>
               </Button>
@@ -406,9 +330,6 @@ export default function Landing() {
                   </a>
                   <a href="#who-we-serve" className="block text-muted-foreground hover:text-foreground transition-colors">
                     Who We Serve
-                  </a>
-                  <a href="#contact" className="block text-muted-foreground hover:text-foreground transition-colors">
-                    Contact
                   </a>
                 </div>
               </div>
