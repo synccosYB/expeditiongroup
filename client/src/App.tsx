@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
 import Projects from "@/pages/projects";
@@ -90,7 +91,13 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <Landing />;
+    return (
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/dashboard" component={AuthPage} />
+        <Route component={Landing} />
+      </Switch>
+    );
   }
 
   return <AuthenticatedLayout />;

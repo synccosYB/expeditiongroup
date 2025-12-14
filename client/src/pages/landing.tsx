@@ -178,7 +178,7 @@ export default function Landing() {
               transition={{ duration: 0.4, delay: 0.3 }}
             >
               <Button size="sm" asChild data-testid="button-login">
-                <a href="/api/login">Sign In</a>
+                <a href="/auth">Sign In</a>
               </Button>
             </motion.div>
           </div>
@@ -229,7 +229,7 @@ export default function Landing() {
                 >
                   <Button size="lg" asChild data-testid="button-get-started" className="text-base px-8">
                     <motion.a 
-                      href="/api/login"
+                      href="/auth"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -458,7 +458,7 @@ export default function Landing() {
               </p>
               <Button size="lg" asChild data-testid="button-cta-bottom" className="text-base px-10">
                 <motion.a 
-                  href="/api/login"
+                  href="/auth"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -523,7 +523,7 @@ export default function Landing() {
         <div className="border-t py-6">
           <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
-            <a href="/api/login" className="hover:text-primary transition-colors" data-testid="link-client-portal">
+            <a href="/auth" className="hover:text-primary transition-colors" data-testid="link-client-portal">
               Client Portal
             </a>
           </div>
