@@ -105,11 +105,14 @@ export default function OurStory() {
           <Card className="border-border/40 bg-primary/5">
             <CardContent className="p-6 text-center">
               <h2 className="text-xl font-semibold text-foreground mb-3">Looking Forward</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-muted-foreground max-w-2xl mx-auto mb-6">
                 As we look to the future, we remain committed to our mission of simplifying the permit process 
                 for construction professionals in the Hudson Valley. We continue to invest in technology and 
                 expand our expertise to serve you better.
               </p>
+              <Button asChild data-testid="button-login-portal">
+                <a href="/auth">Login to Client Portal</a>
+              </Button>
             </CardContent>
           </Card>
         </div>
