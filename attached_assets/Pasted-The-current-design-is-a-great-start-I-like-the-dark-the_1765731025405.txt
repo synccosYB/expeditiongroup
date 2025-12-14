@@ -1,0 +1,169 @@
+The current design is a great start – I like the dark theme, the layout, and the general structure. Now I want to polish it visually so it feels more high-end and easier to read, especially in the hero.
+
+Here are specific things to improve based on the current page:
+
+1. Hero section – make the main message clearer and more local
+
+Current: “Permit Expediting for New York Construction” with “New York” in green.
+Change:
+
+Emphasize our service area instead of generic “New York”:
+
+Example:
+“Permit Expediting for Orange, Rockland & Sullivan County Projects”
+
+Use a two-line headline with a clear hierarchy:
+
+Line 1: “Permit Expediting for” (smaller)
+
+Line 2: “Orange, Rockland & Sullivan County Construction” (bigger)
+
+Keep only one highlight color in the headline (right now “New York Construction” has split colors which feels a bit random).
+
+Use green only on one key phrase (e.g. “County Construction” or “Expediting”).
+
+2. Improve text contrast & readability
+
+The dark background + slightly dull white type makes reading harder.
+
+Increase contrast:
+
+Make body text closer to #F9FAFB instead of dim gray.
+
+Increase line-height slightly on hero paragraph.
+
+Make the small text under “Our Services” a bit brighter and 1–2px larger.
+
+3. CTAs – make the primary button stand out more
+
+Keep one clear primary CTA: “Get Started”.
+
+Make the primary button:
+
+Slightly larger
+
+Stronger contrast (brighter green, maybe #16A34A or a bit lighter than background)
+
+Hover state: subtle lift + lighter shade.
+
+Secondary button (“Learn More”) should be more subtle:
+
+Outline style with transparent background
+
+Lower visual weight than “Get Started”
+
+Also: put a tiny line of copy under the buttons like:
+
+“Typical response time: within 1 business day.”
+
+This adds trust and makes the hero feel more human.
+
+4. Stats card – reduce the “dashboard” feel
+
+Right now the stats box (15+ years, 500+ projects, etc.) looks very “flat” and technical.
+
+Add a soft border radius + subtle inner glow or lighter background to make it feel less like a slab.
+
+Reduce the amount of text:
+
+Bigger numbers, smaller labels.
+
+Example:
+
+15+ (big)
+Years Experience (small)
+
+Make the card slightly more compact and right-align it with the hero but not as tall.
+
+If these numbers are placeholders for now, consider either hiding the card or filling it with realistic numbers you’re okay to stand behind.
+
+5. Add subtle structure/texture to the background
+
+The flat dark green can feel a bit heavy.
+
+Add a soft gradient (top darker, bottom slightly lighter) or a faint radial gradient behind the hero.
+
+Optionally add a barely-visible grid or pattern to give depth without noise.
+
+Example:
+Top: #020617 → Bottom: #020B10 or a very dark teal.
+
+6. Navigation & header polish
+
+Increase spacing between “Services / How It Works / Who We Serve” and give them a clear hover state (underline or subtle color change).
+
+Make the Sign In button:
+
+Slightly smaller than “Get Started” but consistent style (same border radius, same font weight).
+
+On hover, use a slightly lighter green.
+
+Ensure the logo block + text are vertically centered with the nav.
+
+7. Services cards – improve hierarchy and icons
+
+Each service card should have:
+
+Small icon in a circle or subtle square
+
+Service name
+
+Short 1-2 line description
+
+Add more spacing between cards; they currently feel cramped.
+
+Ensure card borders are consistent and a bit lighter to differentiate from background (border using something like rgba(148, 163, 184, 0.35)).
+
+8. Add one trust section below services
+
+To make the page feel more “real”:
+
+Either add a “Who We Work With” strip with:
+
+placeholder logos (Engineers, Architects, Contractors)
+
+Or a simple testimonial / quote block like:
+
+“Expedition Group helped us get our permits approved weeks faster than usual.” – [Name], [Role]
+
+This makes the site feel less like a generic template and more like a real business.
+
+9. Responsiveness & spacing
+
+On mobile:
+
+Make sure hero headline wraps gracefully and doesn’t feel cramped.
+
+Stack the stats under the hero text with proper spacing.
+
+Globally:
+
+Increase vertical padding between sections (hero → services → how it works) so the page breathes more.
+
+10. Color tokens (so you keep it consistent)
+
+Please centralize these in a theme file / CSS variables:
+
+--primary: #0F766E (brand green)
+
+--primary-soft: lighter green for hovers
+
+--background: very dark teal/black mix
+
+--text-main: near-white
+
+--text-muted: softer gray for body text
+
+--border-subtle: low-opacity gray/green for card borders
+
+In short: keep the layout, but make it:
+
+Cleaner typography
+
+Stronger headline & local message
+
+Higher contrast & spacing
+
+One strong CTA
+
+Slight texture and visual hierarchy

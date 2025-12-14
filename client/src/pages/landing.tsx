@@ -184,21 +184,23 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-16 lg:py-24">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-background" />
+        <section className="relative overflow-hidden py-20 lg:py-28">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-accent/10 to-background" />
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-accent/15 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-gradient-to-tr from-primary/20 to-transparent rounded-full blur-3xl" />
           <motion.div 
-            className="absolute inset-0 opacity-30"
+            className="absolute inset-0 opacity-40"
             animate={{ 
               backgroundPosition: ["0% 0%", "100% 100%"],
             }}
             transition={{ 
-              duration: 20, 
+              duration: 15, 
               repeat: Infinity, 
               repeatType: "reverse",
               ease: "linear"
             }}
             style={{
-              backgroundImage: "radial-gradient(circle at center, hsl(var(--primary) / 0.1) 0%, transparent 50%)",
+              backgroundImage: "radial-gradient(ellipse at 30% 20%, hsl(var(--primary) / 0.2) 0%, transparent 40%), radial-gradient(ellipse at 70% 80%, hsl(var(--accent) / 0.15) 0%, transparent 40%)",
               backgroundSize: "100% 100%",
             }}
           />
@@ -273,9 +275,10 @@ export default function Landing() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl" />
-                <Card className="relative shadow-lg">
-                  <CardContent className="p-8">
+                <div className="absolute -inset-4 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/10 rounded-3xl blur-xl" />
+                <Card className="relative shadow-xl border-2 border-primary/20">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg" />
+                  <CardContent className="relative p-8">
                     <div className="grid grid-cols-2 gap-6">
                       {stats.map((stat, i) => (
                         <Counter key={stat.label} value={stat.value} label={stat.label} />
@@ -288,7 +291,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-16 bg-gradient-to-b from-primary/10 to-muted/30">
+        <section id="services" className="py-20 bg-gradient-to-br from-primary/15 via-accent/5 to-muted/20">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <AnimatedSection className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-3">
@@ -302,19 +305,19 @@ export default function Landing() {
             <div className="grid md:grid-cols-3 gap-6">
               {services.map((service, index) => (
                 <AnimatedCard key={service.title} index={index}>
-                  <Card className="h-full cursor-default">
+                  <Card className="h-full cursor-default border-primary/10 shadow-md">
                     <CardContent className="p-6">
                       <motion.div 
-                        className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 mb-4"
+                        className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 mb-4 shadow-sm"
                         whileHover={{ scale: 1.1, rotate: 5 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <service.icon className="h-6 w-6 text-primary" />
+                        <service.icon className="h-7 w-7 text-primary" />
                       </motion.div>
                       <h3 className="text-xl font-semibold text-foreground mb-2">
                         {service.title}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {service.description}
                       </p>
                     </CardContent>
@@ -325,7 +328,8 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-16">
+        <section id="how-it-works" className="py-20 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-accent/5 to-transparent" />
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <AnimatedSection className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-3">
@@ -361,7 +365,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-16 bg-gradient-to-b from-muted/30 to-primary/10">
+        <section id="who-we-serve" className="py-20 bg-gradient-to-br from-accent/10 via-primary/10 to-muted/20">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <AnimatedSection>
