@@ -358,50 +358,81 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="border-t py-8 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div>
-              <div className="mb-4">
-                <img src={logoFull} alt="Expedition Group" className="h-9" />
+      <footer className="border-t bg-muted/30">
+        <div className="bg-primary/10 py-8">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-foreground">Need permits expedited?</h3>
+                <p className="text-muted-foreground">Get started with a free consultation today.</p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Professional permit expediting services for construction projects
-                in New York.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Quick Links</h4>
-              <div className="space-y-2 text-sm">
-                <a
-                  href="#services"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Services
+              <Button size="lg" asChild data-testid="button-footer-cta">
+                <a href="#contact">
+                  Contact Us
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </a>
-                <a
-                  href="#how-it-works"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  How It Works
-                </a>
-                <a
-                  href="#contact"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Contact
-                </a>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-4">Service Area</h4>
-              <p className="text-sm text-muted-foreground">
-                Orange, Rockland & Sullivan Counties, NY
-              </p>
+              </Button>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
+        </div>
+
+        <div className="py-12">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="col-span-2 md:col-span-1">
+                <div className="mb-4">
+                  <img src={logoFull} alt="Expedition Group" className="h-9" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Professional permit expediting for construction projects in New York.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-foreground mb-4">Quick Links</h4>
+                <div className="space-y-2 text-sm">
+                  <a href="#services" className="block text-muted-foreground hover:text-foreground transition-colors">
+                    Services
+                  </a>
+                  <a href="#how-it-works" className="block text-muted-foreground hover:text-foreground transition-colors">
+                    How It Works
+                  </a>
+                  <a href="#who-we-serve" className="block text-muted-foreground hover:text-foreground transition-colors">
+                    Who We Serve
+                  </a>
+                  <a href="#contact" className="block text-muted-foreground hover:text-foreground transition-colors">
+                    Contact
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-foreground mb-4">Contact</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>(845) 212-2040</p>
+                  <p>Info@expeditiongroupny.com</p>
+                  <p>17 Sandybrook Drive<br />Spring Valley, NY 10977</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-foreground mb-4">Service Area</h4>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>Orange County, NY</p>
+                  <p>Rockland County, NY</p>
+                  <p>Sullivan County, NY</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t py-6">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
+            <a href="/api/login" className="hover:text-foreground transition-colors" data-testid="link-client-portal">
+              Client Portal
+            </a>
           </div>
         </div>
       </footer>
