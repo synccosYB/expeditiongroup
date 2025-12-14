@@ -216,11 +216,11 @@ export default function Landing() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {steps.map((step, index) => (
-                <div key={step.number} className="relative">
+                <div key={step.number} className="relative h-full">
                   {index < steps.length - 1 && (
                     <div className="hidden lg:block absolute top-8 left-full w-full h-px bg-border -translate-x-1/2" />
                   )}
-                  <Card>
+                  <Card className="h-full">
                     <CardContent className="p-6">
                       <div className="text-3xl font-bold text-primary/20 mb-2">
                         {step.number}
