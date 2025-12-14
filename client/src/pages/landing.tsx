@@ -116,7 +116,7 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-16 lg:py-24">
+        <section className="relative overflow-hidden py-12 lg:py-16">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-background" />
           <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -172,10 +172,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-16 bg-gradient-to-b from-primary/10 to-muted/30">
+        <section id="services" className="py-12 bg-gradient-to-b from-primary/10 to-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-2">
                 Our Services
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -203,10 +203,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-16">
+        <section id="how-it-works" className="py-12">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-2">
                 How It Works
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -239,7 +239,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-16 bg-gradient-to-b from-muted/30 to-primary/10">
+        <section id="who-we-serve" className="py-12 bg-gradient-to-b from-muted/30 to-primary/10">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <div>
@@ -297,10 +297,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="contact" className="py-16">
+        <section id="contact" className="py-12">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-foreground mb-4">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-2">
                 Get In Touch
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -359,7 +359,7 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="border-t py-12 bg-muted/30">
+      <footer className="border-t py-8 bg-muted/30">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8">
             <div>
