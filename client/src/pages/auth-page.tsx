@@ -318,10 +318,24 @@ export default function AuthPage() {
               </TabsContent>
             </Tabs>
             
-            <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <span>Login secured by</span>
-              <img src={logoCheckbox} alt="Expedition Group" className="h-4 w-4" />
-              <span className="font-medium text-foreground">Expedition Group</span>
+            <div className="mt-6 pt-4 border-t flex flex-col items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span>Login secured by</span>
+                <img src={logoCheckbox} alt="Expedition Group" className="h-4 w-4" />
+                <span className="font-medium text-foreground">Expedition Group</span>
+              </div>
+              <div>
+                <span>Site powered by </span>
+                <a 
+                  href="https://www.synccos.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="font-medium text-primary hover:underline"
+                  data-testid="link-synccos"
+                >
+                  www.synccos.com
+                </a>
+              </div>
             </div>
           </CardContent>
         </Card>
