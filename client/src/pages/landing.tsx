@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Building2,
   FileCheck,
   Clock,
   Users,
@@ -11,8 +10,11 @@ import {
   Phone,
   Mail,
   Briefcase,
+  Building2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import logoFull from "@/assets/logo.svg";
+import logoIcon from "@/assets/logo-icon.svg";
 
 const services = [
   {
@@ -69,12 +71,9 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-              <Building2 className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-lg font-semibold">Expedition Plus</span>
-          </div>
+          <a href="/" className="flex items-center" data-testid="link-logo-header">
+            <img src={logoFull} alt="Expedition Plus" className="h-9" />
+          </a>
 
           <nav className="hidden md:flex items-center gap-8">
             <a
@@ -364,11 +363,8 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-                  <Building2 className="h-5 w-5 text-primary-foreground" />
-                </div>
-                <span className="text-lg font-semibold">Expedition Plus</span>
+              <div className="mb-4">
+                <img src={logoFull} alt="Expedition Plus" className="h-9" />
               </div>
               <p className="text-sm text-muted-foreground">
                 Professional permit expediting services for construction projects

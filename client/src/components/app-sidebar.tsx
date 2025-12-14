@@ -19,11 +19,11 @@ import {
   Clock,
   UserCog,
   LogOut,
-  Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import logoIcon from "@/assets/logo-icon.svg";
 
 const adminMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -57,9 +57,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary">
-            <Building2 className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={logoIcon} alt="E+" className="h-9 w-9" />
           <div className="flex flex-col">
             <span className="text-base font-semibold text-sidebar-foreground">
               Expedition Plus
