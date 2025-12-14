@@ -319,7 +319,7 @@ export default function Landing() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Phone</p>
-                        <p className="font-medium text-foreground">(845) 555-0123</p>
+                        <a href="tel:845-212-2040" className="font-medium text-foreground hover:text-primary transition-colors" data-testid="link-phone">(845) 212-2040</a>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -328,9 +328,9 @@ export default function Landing() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Email</p>
-                        <p className="font-medium text-foreground">
-                          info@expeditionplus.com
-                        </p>
+                        <a href="mailto:Info@expeditiongroupny.com" className="font-medium text-foreground hover:text-primary transition-colors" data-testid="link-email">
+                          Info@expeditiongroupny.com
+                        </a>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -338,9 +338,9 @@ export default function Landing() {
                         <MapPin className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Location</p>
+                        <p className="text-sm text-muted-foreground">Address</p>
                         <p className="font-medium text-foreground">
-                          Orange County, New York
+                          17 Sandybrook Drive<br />Spring Valley, NY 10977
                         </p>
                       </div>
                     </div>
