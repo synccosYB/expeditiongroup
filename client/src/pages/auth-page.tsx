@@ -113,16 +113,22 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="p-4 border-b">
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      {/* Gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-primary/10" />
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/15 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-primary/5 via-primary/15 to-primary/5 rounded-full blur-3xl rotate-12" />
+      
+      <header className="relative p-4 border-b bg-background/50 backdrop-blur-sm">
         <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Link>
       </header>
       
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="relative flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-border/50 bg-card/95 backdrop-blur-sm">
           <CardHeader className="text-center space-y-4">
             <div className="flex justify-center">
               <img src={logoFull} alt="Expedition Group" className="h-12" />
