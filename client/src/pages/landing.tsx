@@ -72,7 +72,7 @@ export default function Landing() {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <a href="/" className="flex items-center" data-testid="link-logo-header">
-            <img src={logoFull} alt="Expedition Plus Group" className="h-9" />
+            <img src={logoFull} alt="Expedition Group" className="h-9" />
           </a>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -364,7 +364,7 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-8">
             <div>
               <div className="mb-4">
-                <img src={logoFull} alt="Expedition Plus Group" className="h-9" />
+                <img src={logoFull} alt="Expedition Group" className="h-9" />
               </div>
               <p className="text-sm text-muted-foreground">
                 Professional permit expediting services for construction projects
@@ -402,7 +402,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Expedition Plus Group. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
           </div>
         </div>
       </footer>

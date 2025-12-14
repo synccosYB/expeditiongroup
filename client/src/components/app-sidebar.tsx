@@ -60,7 +60,7 @@ export function AppSidebar() {
           <img src={logoIcon} alt="E+" className="h-9 w-9" />
           <div className="flex flex-col">
             <span className="text-base font-semibold text-sidebar-foreground">
-              Expedition Plus Group
+              Expedition Group
             </span>
             <span className="text-xs text-muted-foreground">
               Permit Expediting
