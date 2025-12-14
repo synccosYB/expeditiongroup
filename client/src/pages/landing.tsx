@@ -186,7 +186,7 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-20 lg:py-32">
+        <section className="relative overflow-hidden py-12 lg:py-20">
           <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/10 rounded-full blur-3xl opacity-50" />
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
@@ -284,9 +284,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-24 bg-muted/30">
+        <section id="services" className="py-16 bg-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-16">
+            <AnimatedSection className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 Our Services
               </h2>
@@ -317,7 +317,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-16 border-y border-border/50 bg-background">
+        <section className="py-10 border-y border-border/50 bg-background">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <AnimatedSection>
               <div className="text-center mb-8">
@@ -343,9 +343,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-24">
+        <section id="how-it-works" className="py-16">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-16">
+            <AnimatedSection className="text-center mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 How It Works
               </h2>
@@ -379,9 +379,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-24 bg-muted/30">
+        <section id="who-we-serve" className="py-16 bg-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
               <AnimatedSection>
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
                   Who We Serve
@@ -447,7 +447,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-20 bg-primary/10">
+        <section className="py-12 bg-primary/10">
           <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
             <AnimatedSection>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -472,9 +472,9 @@ export default function Landing() {
       </main>
 
       <footer className="border-t bg-background">
-        <div className="py-16">
+        <div className="py-10">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="col-span-2 md:col-span-1">
                 <div className="mb-4">
                   <img src={logoFull} alt="Expedition Group" className="h-9" />
