@@ -68,10 +68,10 @@ const steps = [
 ];
 
 const clientTypes = [
-  { icon: HardHat, label: "General Contractors" },
-  { icon: Building2, label: "Property Developers" },
-  { icon: Ruler, label: "Architects & Engineers" },
-  { icon: Briefcase, label: "Construction Managers" },
+  { icon: HardHat, label: "General Contractors", href: "/for-general-contractors" },
+  { icon: Building2, label: "Property Developers", href: "/for-property-developers" },
+  { icon: Ruler, label: "Architects & Engineers", href: "/for-architects-engineers" },
+  { icon: Briefcase, label: "Construction Managers", href: "/for-construction-managers" },
 ];
 
 const stats = [
@@ -432,13 +432,16 @@ export default function Landing() {
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   {clientTypes.map((type, index) => (
-                    <motion.div 
-                      key={type.label} 
-                      className="flex items-center gap-3 p-4 rounded-lg bg-background border border-border/40"
+                    <motion.a 
+                      key={type.label}
+                      href={type.href}
+                      className="flex items-center gap-3 p-4 rounded-lg bg-background border border-border/40 cursor-pointer"
                       initial={{ opacity: 0, x: -20 }}
                       whileInView={{ opacity: 1, x: 0 }}
+                      whileHover={{ y: -3, transition: { duration: 0.2 } }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
+                      data-testid={`link-client-type-${type.label.toLowerCase().replace(/\s+/g, "-").replace("&", "and")}`}
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                         <type.icon className="h-5 w-5 text-primary" />
@@ -446,7 +449,7 @@ export default function Landing() {
                       <span className="font-medium text-foreground text-sm">
                         {type.label}
                       </span>
-                    </motion.div>
+                    </motion.a>
                   ))}
                 </div>
               </AnimatedSection>

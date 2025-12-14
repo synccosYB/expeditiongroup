@@ -23,6 +23,10 @@ import Tasks from "@/pages/tasks";
 import TimeLogs from "@/pages/time-logs";
 import Associates from "@/pages/associates";
 import ClientPortal from "@/pages/client-portal";
+import ForGeneralContractors from "@/pages/for-general-contractors";
+import ForPropertyDevelopers from "@/pages/for-property-developers";
+import ForArchitectsEngineers from "@/pages/for-architects-engineers";
+import ForConstructionManagers from "@/pages/for-construction-managers";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -105,6 +109,10 @@ function Router() {
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/about-us" component={AboutUs} />
         <Route path="/our-story" component={OurStory} />
+        <Route path="/for-general-contractors" component={ForGeneralContractors} />
+        <Route path="/for-property-developers" component={ForPropertyDevelopers} />
+        <Route path="/for-architects-engineers" component={ForArchitectsEngineers} />
+        <Route path="/for-construction-managers" component={ForConstructionManagers} />
         <Route component={Landing} />
       </Switch>
     );
