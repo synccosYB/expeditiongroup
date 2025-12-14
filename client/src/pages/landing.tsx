@@ -571,8 +571,11 @@ export default function Landing() {
                   <a href="#how-it-works" className="block text-muted-foreground hover:text-primary transition-colors">
                     How It Works
                   </a>
-                  <a href="#who-we-serve" className="block text-muted-foreground hover:text-primary transition-colors">
-                    Who We Serve
+                  <a href="/about-us" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-about-us">
+                    About Us
+                  </a>
+                  <a href="/our-story" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-our-story">
+                    Our Story
                   </a>
                 </div>
               </div>
@@ -599,9 +602,25 @@ export default function Landing() {
         </div>
 
         <div className="border-t py-6">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
-            <p>
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+              <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <a href="/privacy-policy" className="hover:text-primary transition-colors" data-testid="link-privacy-policy">
+                  Privacy Policy
+                </a>
+                <a href="/terms-of-service" className="hover:text-primary transition-colors" data-testid="link-terms-of-service">
+                  Terms of Service
+                </a>
+                <a href="/cookie-policy" className="hover:text-primary transition-colors" data-testid="link-cookie-policy">
+                  Cookie Policy
+                </a>
+              </div>
+              <a href="/auth" className="hover:text-primary transition-colors" data-testid="link-client-portal">
+                Client Portal
+              </a>
+            </div>
+            <div className="text-center mt-4 text-sm text-muted-foreground">
               Site powered by{" "}
               <a 
                 href="https://www.synccos.com" 
@@ -612,10 +631,7 @@ export default function Landing() {
               >
                 www.synccos.com
               </a>
-            </p>
-            <a href="/auth" className="hover:text-primary transition-colors" data-testid="link-client-portal">
-              Client Portal
-            </a>
+            </div>
           </div>
         </div>
       </footer>

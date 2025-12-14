@@ -10,6 +10,11 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth-page";
+import CookiePolicy from "@/pages/cookie-policy";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
+import AboutUs from "@/pages/about-us";
+import OurStory from "@/pages/our-story";
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
 import Projects from "@/pages/projects";
@@ -95,6 +100,11 @@ function Router() {
       <Switch>
         <Route path="/auth" component={AuthPage} />
         <Route path="/dashboard" component={AuthPage} />
+        <Route path="/cookie-policy" component={CookiePolicy} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/terms-of-service" component={TermsOfService} />
+        <Route path="/about-us" component={AboutUs} />
+        <Route path="/our-story" component={OurStory} />
         <Route component={Landing} />
       </Switch>
     );
