@@ -13,8 +13,7 @@ import {
   Building2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import logoFull from "@/assets/logo.svg";
-import logoIcon from "@/assets/logo-icon.svg";
+import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
 
 const services = [
   {

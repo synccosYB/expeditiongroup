@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import logoIcon from "@/assets/logo-icon.svg";
+import logoIcon from "@/assets/logo-checkbox-icon.svg";
 
 const adminMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
