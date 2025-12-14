@@ -14,6 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
+import logoCheckbox from "@/assets/logo-checkbox-icon.svg";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -310,6 +311,12 @@ export default function AuthPage() {
                 </Form>
               </TabsContent>
             </Tabs>
+            
+            <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <span>Login secured by</span>
+              <img src={logoCheckbox} alt="Expedition Group" className="h-4 w-4" />
+              <span className="font-medium text-foreground">Expedition Group</span>
+            </div>
           </CardContent>
         </Card>
       </div>
