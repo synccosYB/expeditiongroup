@@ -186,7 +186,7 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-12 lg:py-20">
+        <section className="relative overflow-hidden py-8 lg:py-12">
           <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/10 rounded-full blur-3xl opacity-50" />
           <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
@@ -265,13 +265,13 @@ export default function Landing() {
               >
                 <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-2xl blur-lg" />
                 <Card className="relative border-border/50 shadow-lg">
-                  <CardContent className="p-8">
-                    <div className="flex justify-between gap-8">
+                  <CardContent className="p-6">
+                    <div className="flex justify-between gap-6">
                       {stats.map((stat, i) => (
                         <Counter key={stat.label} value={stat.value} label={stat.label} />
                       ))}
                     </div>
-                    <div className="mt-8 pt-6 border-t border-border/50">
+                    <div className="mt-6 pt-4 border-t border-border/50">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
                         <MapPin className="h-4 w-4 text-primary" />
                         <span>Serving NY Hudson Valley Region</span>
@@ -284,10 +284,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-16 bg-muted/30">
+        <section id="services" className="py-10 bg-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <AnimatedSection className="text-center mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
                 Our Services
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -295,15 +295,15 @@ export default function Landing() {
                 projects on schedule and within budget.
               </p>
             </AnimatedSection>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-6">
               {services.map((service, index) => (
                 <AnimatedCard key={service.title} index={index}>
                   <Card className="h-full border-border/40 shadow-sm">
-                    <CardContent className="p-8">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 mb-6">
-                        <service.icon className="h-7 w-7 text-primary" />
+                    <CardContent className="p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-4">
+                        <service.icon className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">
+                      <h3 className="text-lg font-semibold text-foreground mb-2">
                         {service.title}
                       </h3>
                       <p className="text-muted-foreground leading-relaxed">
@@ -317,11 +317,11 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-10 border-y border-border/50 bg-background">
+        <section className="py-6 border-y border-border/50 bg-background">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <AnimatedSection>
-              <div className="text-center mb-8">
-                <p className="text-sm uppercase tracking-wider text-muted-foreground mb-2">Trusted By</p>
+              <div className="text-center mb-4">
+                <p className="text-sm uppercase tracking-wider text-muted-foreground mb-1">Trusted By</p>
                 <h3 className="text-lg font-medium text-foreground">Construction Professionals Across the Hudson Valley</h3>
               </div>
               <div className="flex flex-wrap justify-center gap-12 items-center opacity-70">
@@ -343,10 +343,10 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-16">
+        <section id="how-it-works" className="py-10">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <AnimatedSection className="text-center mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
                 How It Works
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -354,14 +354,14 @@ export default function Landing() {
                 from start to finish.
               </p>
             </AnimatedSection>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {steps.map((step, index) => (
                 <AnimatedCard key={step.number} index={index} className="relative h-full">
                   {index < steps.length - 1 && (
                     <div className="hidden lg:block absolute top-10 left-full w-full h-px bg-border -translate-x-1/2 z-0" />
                   )}
                   <Card className="h-full border-border/40 shadow-sm relative z-10">
-                    <CardContent className="p-6">
+                    <CardContent className="p-5">
                       <div className="text-4xl font-bold text-primary/30 mb-3">
                         {step.number}
                       </div>
@@ -379,9 +379,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-16 bg-muted/30">
+        <section id="who-we-serve" className="py-10 bg-muted/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="grid lg:grid-cols-2 gap-8 items-center">
               <AnimatedSection>
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
                   Who We Serve
@@ -413,18 +413,18 @@ export default function Landing() {
               </AnimatedSection>
               <AnimatedSection delay={0.2}>
                 <Card className="border-border/40 shadow-sm">
-                  <CardContent className="p-10">
+                  <CardContent className="p-6">
                     <div className="text-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mx-auto mb-6">
-                        <MapPin className="h-8 w-8 text-primary" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
+                        <MapPin className="h-6 w-6 text-primary" />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-4">
+                      <h3 className="text-lg font-semibold text-foreground mb-3">
                         Service Area
                       </h3>
-                      <p className="text-muted-foreground mb-6">
+                      <p className="text-muted-foreground mb-4">
                         Proudly serving construction projects throughout
                       </p>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {["Orange County, NY", "Rockland County, NY", "Sullivan County, NY"].map((county, i) => (
                           <motion.div 
                             key={county}
@@ -447,7 +447,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-12 bg-primary/10">
+        <section className="py-8 bg-primary/10">
           <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
             <AnimatedSection>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -472,9 +472,9 @@ export default function Landing() {
       </main>
 
       <footer className="border-t bg-background">
-        <div className="py-10">
+        <div className="py-8">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="col-span-2 md:col-span-1">
                 <div className="mb-4">
                   <img src={logoFull} alt="Expedition Group" className="h-9" />
