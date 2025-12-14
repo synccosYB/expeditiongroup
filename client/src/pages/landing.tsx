@@ -215,7 +215,7 @@ export default function Landing() {
               transition={{ duration: 0.4, delay: 0.3 }}
             >
               <Button size="sm" asChild data-testid="button-login">
-                <a href="/auth">Sign In</a>
+                <a href="/auth" target="_blank" rel="noopener noreferrer">Sign In</a>
               </Button>
             </motion.div>
           </div>
@@ -267,6 +267,8 @@ export default function Landing() {
                   <Button size="lg" asChild data-testid="button-get-started" className="text-base px-8">
                     <motion.a 
                       href="/auth"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -496,6 +498,8 @@ export default function Landing() {
               <Button size="lg" asChild data-testid="button-cta-bottom" className="text-base px-10">
                 <motion.a 
                   href="/auth"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -616,7 +620,7 @@ export default function Landing() {
                   Cookie Policy
                 </a>
               </div>
-              <a href="/auth" className="hover:text-primary transition-colors" data-testid="link-client-portal">
+              <a href="/auth" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" data-testid="link-client-portal">
                 Client Portal
               </a>
             </div>
