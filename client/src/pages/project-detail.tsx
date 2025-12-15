@@ -146,6 +146,7 @@ const folderFormSchema = z.object({
 const documentFormSchema = z.object({
   fileName: z.string().min(1, "File name is required"),
   storagePath: z.string().min(1, "Storage path is required"),
+  fileSize: z.number().optional().nullable(),
   category: z.enum(["plan", "permit", "survey", "dob_letter", "correspondence", "legal", "photo", "inspection", "other"]).default("other"),
   folderId: z.number().optional().nullable(),
   isVisibleToClient: z.boolean().default(true),
@@ -758,6 +759,7 @@ export default function ProjectDetail() {
     defaultValues: {
       fileName: "",
       storagePath: "",
+      fileSize: null,
       category: "other",
       folderId: null,
       isVisibleToClient: true,
@@ -1699,23 +1701,30 @@ export default function ProjectDetail() {
                                 ) : (
                                   <ObjectUploader
                                     maxNumberOfFiles={1}
-                                    onGetUploadParameters={async () => {
+                                    onGetUploadParameters={async (file) => {
                                       const category = documentForm.getValues("category") || "other";
                                       const res = await fetch(`/api/projects/${id}/documents/upload`, {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
                                         credentials: "include",
-                                        body: JSON.stringify({ category }),
+                                        body: JSON.stringify({ category, fileSize: file?.size || 0 }),
                                       });
-                                      if (!res.ok) throw new Error("Failed to get upload URL");
+                                      if (!res.ok) {
+                                        const errorData = await res.json().catch(() => ({}));
+                                        if (errorData.code === "STORAGE_LIMIT_EXCEEDED") {
+                                          const error: any = new Error("Storage limit exceeded");
+                                          error.code = "STORAGE_LIMIT_EXCEEDED";
+                                          throw error;
+                                        }
+                                        throw new Error("Failed to get upload URL");
+                                      }
                                       const data = await res.json();
-                                      // Store the permanent objectPath for later use
                                       setUploadedFilePath(data.objectPath);
                                       field.onChange(data.objectPath);
+                                      documentForm.setValue("fileSize", file?.size || null);
                                       return { method: "PUT" as const, url: data.uploadUrl };
                                     }}
                                     onComplete={(result) => {
-                                      // objectPath already set in onGetUploadParameters
                                     }}
                                   >
                                     <Upload className="h-4 w-4 mr-2" />
