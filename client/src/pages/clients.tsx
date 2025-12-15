@@ -423,6 +423,81 @@ export default function Clients() {
                     </FormItem>
                   )}
                 />
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-medium mb-4">Billing Address</h3>
+                  <div className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="billingAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Billing street address"
+                              {...field}
+                              data-testid="input-client-billing-address"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="billingCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="City"
+                                {...field}
+                                data-testid="input-client-billing-city"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="billingState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="NY"
+                                {...field}
+                                data-testid="input-client-billing-state"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="billingZip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Zip Code</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="12345"
+                                {...field}
+                                data-testid="input-client-billing-zip"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <FormField
                   control={form.control}
                   name="notes"

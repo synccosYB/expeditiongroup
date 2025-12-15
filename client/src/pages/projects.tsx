@@ -72,7 +72,7 @@ const projectFormSchema = z.object({
   description: z.string().optional(),
   address: z.string().optional(),
   county: z.string().optional(),
-  status: z.enum(["active", "on_hold", "completed", "cancelled"]).default("active"),
+  status: z.enum(["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled"]).default("intake"),
   startDate: z.string().optional(),
   targetEndDate: z.string().optional(),
 });
@@ -81,9 +81,12 @@ type ProjectFormData = z.infer<typeof projectFormSchema>;
 
 const counties = ["Orange", "Rockland", "Sullivan"];
 const statusOptions = [
-  { value: "active", label: "Active" },
-  { value: "on_hold", label: "On Hold" },
+  { value: "intake", label: "Intake" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "waiting_on_client", label: "Waiting on Client" },
+  { value: "with_dob", label: "With DOB" },
   { value: "completed", label: "Completed" },
+  { value: "on_hold", label: "On Hold" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
@@ -111,7 +114,7 @@ export default function Projects() {
       description: "",
       address: "",
       county: "",
-      status: "active",
+      status: "intake",
       startDate: "",
       targetEndDate: "",
     },
