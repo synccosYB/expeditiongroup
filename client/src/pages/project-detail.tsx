@@ -85,6 +85,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
 type TaskWithSubtasks = Task & { 
@@ -339,18 +340,23 @@ function ReminderDialog({
                       <Badge variant={getStatusColor(reminder.status) as any} size="sm">
                         {reminder.status}
                       </Badge>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteReminderMutation.mutate(reminder.id);
-                        }}
-                        disabled={deleteReminderMutation.isPending}
-                        data-testid={`button-delete-reminder-${reminder.id}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteReminderMutation.mutate(reminder.id);
+                            }}
+                            disabled={deleteReminderMutation.isPending}
+                            data-testid={`button-delete-reminder-${reminder.id}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Delete reminder</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                   {expandedReminderId === reminder.id && (
@@ -569,14 +575,19 @@ function TaskHierarchyItem({
       >
         <div className="flex items-center gap-2">
           {hasSubtasks && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => toggleExpand(task.id)}
-              data-testid={`button-expand-task-${task.id}`}
-            >
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => toggleExpand(task.id)}
+                  data-testid={`button-expand-task-${task.id}`}
+                >
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isExpanded ? "Collapse subtasks" : "Expand subtasks"}</TooltipContent>
+            </Tooltip>
           )}
           <Checkbox
             checked={task.status === "done"}
@@ -628,27 +639,37 @@ function TaskHierarchyItem({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <div className="relative">
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              onClick={() => onReminder(task)}
-              data-testid={`button-task-reminder-${task.id}`}
-            >
-              <Bell className="h-4 w-4" />
-            </Button>
-            {reminderCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                {reminderCount > 9 ? "9+" : reminderCount}
-              </span>
-            )}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => onReminder(task)}
+                  data-testid={`button-task-reminder-${task.id}`}
+                >
+                  <Bell className="h-4 w-4" />
+                </Button>
+                {reminderCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                    {reminderCount > 9 ? "9+" : reminderCount}
+                  </span>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>Manage reminders</TooltipContent>
+          </Tooltip>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>More options</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(task)}>
                 <Pencil className="h-4 w-4 mr-2" />
@@ -1313,11 +1334,16 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/projects">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/projects">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Back to Projects</TooltipContent>
+        </Tooltip>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-semibold text-foreground">{project.name}</h1>
@@ -1427,12 +1453,17 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Tasks</h2>
             <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" onClick={() => handleOpenTaskDialog()} data-testid="button-add-task">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              </DialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DialogTrigger asChild>
+                    <Button size="sm" onClick={() => handleOpenTaskDialog()} data-testid="button-add-task">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Task
+                    </Button>
+                  </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Create a new task</TooltipContent>
+              </Tooltip>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingTask ? "Edit Task" : "Add New Task"}</DialogTitle>
@@ -1711,12 +1742,17 @@ export default function ProjectDetail() {
             <h2 className="text-lg font-semibold">Documents & Folders</h2>
             <div className="flex gap-2">
               <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" data-testid="button-add-folder">
-                    <FolderOpen className="h-4 w-4 mr-2" />
-                    New Folder
-                  </Button>
-                </DialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" data-testid="button-add-folder">
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        New Folder
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Create a new folder</TooltipContent>
+                </Tooltip>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Folder</DialogTitle>
@@ -1762,12 +1798,17 @@ export default function ProjectDetail() {
                 </DialogContent>
               </Dialog>
               <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" data-testid="button-add-document">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Add Document
-                  </Button>
-                </DialogTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-document">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Add Document
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Upload a document</TooltipContent>
+                </Tooltip>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Add Document</DialogTitle>
@@ -1799,18 +1840,23 @@ export default function ProjectDetail() {
                                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
                                     <File className="h-4 w-4 text-muted-foreground" />
                                     <span className="text-sm truncate flex-1">{uploadedFilePath.split('/').pop()}</span>
-                                    <Button 
-                                      type="button" 
-                                      size="icon" 
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setUploadedFilePath("");
-                                        field.onChange("");
-                                      }}
-                                      data-testid="button-remove-upload"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          type="button" 
+                                          size="icon" 
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setUploadedFilePath("");
+                                            field.onChange("");
+                                          }}
+                                          data-testid="button-remove-upload"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Remove uploaded file</TooltipContent>
+                                    </Tooltip>
                                   </div>
                                 ) : (
                                   <ObjectUploader
@@ -2016,12 +2062,17 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Checklists</h2>
             <Dialog open={isChecklistDialogOpen} onOpenChange={setIsChecklistDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-checklist">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Checklist
-                </Button>
-              </DialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-checklist">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Checklist
+                    </Button>
+                  </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Create a new checklist</TooltipContent>
+              </Tooltip>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create Checklist</DialogTitle>
@@ -2100,14 +2151,19 @@ export default function ProjectDetail() {
                           <span className="text-sm text-muted-foreground">
                             {completedCount}/{totalCount}
                           </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deleteChecklistMutation.mutate(checklist.id)}
-                            data-testid={`button-delete-checklist-${checklist.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => deleteChecklistMutation.mutate(checklist.id)}
+                                data-testid={`button-delete-checklist-${checklist.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete checklist</TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                       {totalCount > 0 && (
@@ -2141,14 +2197,19 @@ export default function ProjectDetail() {
                           className="flex-1"
                           data-testid={`input-checklist-item-${checklist.id}`}
                         />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addChecklistItem(checklist, newChecklistItemText[checklist.id] || "")}
-                          data-testid={`button-add-checklist-item-${checklist.id}`}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => addChecklistItem(checklist, newChecklistItemText[checklist.id] || "")}
+                              data-testid={`button-add-checklist-item-${checklist.id}`}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Add item</TooltipContent>
+                        </Tooltip>
                       </div>
                     </CardContent>
                   </Card>
@@ -2175,12 +2236,17 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Project Associates</h2>
             <Dialog open={isAddAssociateDialogOpen} onOpenChange={setIsAddAssociateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-associate">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Associate
-                </Button>
-              </DialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-associate">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Associate
+                    </Button>
+                  </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Link an associate to this project</TooltipContent>
+              </Tooltip>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Associate to Project</DialogTitle>
@@ -2259,11 +2325,16 @@ export default function ProjectDetail() {
                       </div>
                     </div>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost" data-testid={`button-associate-menu-${pa.id}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" data-testid={`button-associate-menu-${pa.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>More options</TooltipContent>
+                      </Tooltip>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <Link href={`/associates/${pa.associateId}`}>
@@ -2304,12 +2375,17 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Notes</h2>
             <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-note">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Note
-                </Button>
-              </DialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-note">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Note
+                    </Button>
+                  </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Add a note</TooltipContent>
+              </Tooltip>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Note</DialogTitle>
@@ -2477,12 +2553,17 @@ export default function ProjectDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Time Logs</h2>
             <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-time-log">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log Time
-                </Button>
-              </DialogTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-time-log">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log Time
+                    </Button>
+                  </DialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Log time spent</TooltipContent>
+              </Tooltip>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Log Time</DialogTitle>
