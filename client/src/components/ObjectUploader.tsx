@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import Dashboard from "@uppy/dashboard";
@@ -34,11 +34,20 @@ export function ObjectUploader({
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
   const [showLimitExceeded, setShowLimitExceeded] = useState(false);
-  const dashboardRef = useRef<HTMLDivElement>(null);
+  const [dashboardElement, setDashboardElement] = useState<HTMLDivElement | null>(null);
   const uppyRef = useRef<Uppy | null>(null);
 
+  const dashboardRef = useCallback((node: HTMLDivElement | null) => {
+    setDashboardElement(node);
+  }, []);
+
   useEffect(() => {
-    if (!showModal || !dashboardRef.current) return;
+    if (!showModal || !dashboardElement) return;
+
+    if (uppyRef.current) {
+      uppyRef.current.destroy();
+      uppyRef.current = null;
+    }
 
     const uppy = new Uppy({
       restrictions: {
@@ -64,7 +73,7 @@ export function ObjectUploader({
       })
       .use(Dashboard, {
         inline: true,
-        target: dashboardRef.current,
+        target: dashboardElement,
         proudlyDisplayPoweredByUppy: false,
         width: "100%",
         height: 300,
@@ -81,7 +90,7 @@ export function ObjectUploader({
       uppy.destroy();
       uppyRef.current = null;
     };
-  }, [showModal, maxNumberOfFiles, maxFileSize, onGetUploadParameters, onComplete]);
+  }, [showModal, dashboardElement, maxNumberOfFiles, maxFileSize, onGetUploadParameters, onComplete]);
 
   return (
     <div>
