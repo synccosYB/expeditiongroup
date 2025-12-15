@@ -52,6 +52,11 @@ import {
   ChevronDown,
   File,
   Upload,
+  Bell,
+  Mail,
+  Phone,
+  MessageCircle,
+  X,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -60,7 +65,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
-import type { Project, Client, Task, Note, TimeLog, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate } from "@shared/schema";
+import type { Project, Client, Task, Note, TimeLog, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder } from "@shared/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -151,12 +156,324 @@ const checklistFormSchema = z.object({
   templateId: z.number().optional().nullable(),
 });
 
+const reminderFormSchema = z.object({
+  channel: z.enum(["email", "sms", "whatsapp"]),
+  recipientEmail: z.string().optional(),
+  recipientPhone: z.string().optional(),
+  scheduledAt: z.string().min(1, "Scheduled time is required"),
+  message: z.string().optional(),
+}).refine((data) => {
+  if (data.channel === "email") {
+    return data.recipientEmail && data.recipientEmail.length > 0;
+  }
+  return true;
+}, {
+  message: "Email address is required for email reminders",
+  path: ["recipientEmail"],
+}).refine((data) => {
+  if (data.channel === "sms" || data.channel === "whatsapp") {
+    return data.recipientPhone && data.recipientPhone.length > 0;
+  }
+  return true;
+}, {
+  message: "Phone number is required for SMS/WhatsApp reminders",
+  path: ["recipientPhone"],
+});
+
 type TaskFormData = z.infer<typeof taskFormSchema>;
+type ReminderFormData = z.infer<typeof reminderFormSchema>;
 type NoteFormData = z.infer<typeof noteFormSchema>;
 type TimeLogFormData = z.infer<typeof timeLogFormSchema>;
 type FolderFormData = z.infer<typeof folderFormSchema>;
 type DocumentFormData = z.infer<typeof documentFormSchema>;
 type ChecklistFormData = z.infer<typeof checklistFormSchema>;
+
+function ReminderDialog({ 
+  taskId, 
+  isOpen, 
+  onClose 
+}: { 
+  taskId: number; 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [channel, setChannel] = useState<"email" | "sms" | "whatsapp">("email");
+
+  const { data: reminders, isLoading: remindersLoading } = useQuery<TaskReminder[]>({
+    queryKey: ["/api/tasks", taskId, "reminders"],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks/${taskId}/reminders`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch reminders');
+      return res.json();
+    },
+    enabled: isOpen,
+  });
+
+  const reminderForm = useForm<ReminderFormData>({
+    resolver: zodResolver(reminderFormSchema),
+    defaultValues: {
+      channel: "email",
+      recipientEmail: "",
+      recipientPhone: "",
+      scheduledAt: "",
+      message: "",
+    },
+  });
+
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: ReminderFormData) => {
+      const payload = {
+        taskId,
+        channel: data.channel,
+        recipientEmail: data.channel === "email" ? data.recipientEmail : null,
+        recipientPhone: data.channel !== "email" ? data.recipientPhone : null,
+        scheduledAt: new Date(data.scheduledAt),
+        message: data.message || null,
+      };
+      return await apiRequest("POST", `/api/tasks/${taskId}/reminders`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "reminders"] });
+      toast({ title: "Reminder created successfully" });
+      reminderForm.reset();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "Please log in again", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Error", description: "Failed to create reminder", variant: "destructive" });
+    },
+  });
+
+  const deleteReminderMutation = useMutation({
+    mutationFn: async (reminderId: number) => {
+      return await apiRequest("DELETE", `/api/reminders/${reminderId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "reminders"] });
+      toast({ title: "Reminder deleted" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "Please log in again", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Error", description: "Failed to delete reminder", variant: "destructive" });
+    },
+  });
+
+  const onSubmit = (data: ReminderFormData) => {
+    createReminderMutation.mutate(data);
+  };
+
+  const getChannelIcon = (ch: string) => {
+    switch (ch) {
+      case "email": return <Mail className="h-4 w-4" />;
+      case "sms": return <Phone className="h-4 w-4" />;
+      case "whatsapp": return <MessageCircle className="h-4 w-4" />;
+      default: return <Bell className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "pending": return "secondary";
+      case "sent": return "default";
+      case "failed": return "destructive";
+      case "cancelled": return "outline";
+      default: return "secondary";
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Task Reminders
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {reminders && reminders.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Existing Reminders</h4>
+              {reminders.map((reminder) => (
+                <div 
+                  key={reminder.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                  data-testid={`reminder-item-${reminder.id}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {getChannelIcon(reminder.channel)}
+                    <div>
+                      <p className="text-sm">
+                        {reminder.channel === "email" ? reminder.recipientEmail : reminder.recipientPhone}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(reminder.scheduledAt), "MMM d, yyyy h:mm a")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getStatusColor(reminder.status) as any} size="sm">
+                      {reminder.status}
+                    </Badge>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      onClick={() => deleteReminderMutation.mutate(reminder.id)}
+                      disabled={deleteReminderMutation.isPending}
+                      data-testid={`button-delete-reminder-${reminder.id}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Form {...reminderForm}>
+            <form onSubmit={reminderForm.handleSubmit(onSubmit)} className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Add New Reminder</h4>
+              
+              <FormField
+                control={reminderForm.control}
+                name="channel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notification Channel</FormLabel>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setChannel(value as typeof channel);
+                      }} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-reminder-channel">
+                          <SelectValue placeholder="Select channel" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="email">
+                          <span className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" /> Email
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="sms">
+                          <span className="flex items-center gap-2">
+                            <Phone className="h-4 w-4" /> SMS
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="whatsapp">
+                          <span className="flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4" /> WhatsApp
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {channel === "email" ? (
+                <FormField
+                  control={reminderForm.control}
+                  name="recipientEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recipient Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="email" 
+                          placeholder="email@example.com" 
+                          {...field} 
+                          data-testid="input-reminder-email"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={reminderForm.control}
+                  name="recipientPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recipient Phone</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="tel" 
+                          placeholder="+1 555-123-4567" 
+                          {...field} 
+                          data-testid="input-reminder-phone"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={reminderForm.control}
+                name="scheduledAt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Scheduled Time</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="datetime-local" 
+                        {...field} 
+                        data-testid="input-reminder-datetime"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={reminderForm.control}
+                name="message"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Custom reminder message..." 
+                        className="resize-none" 
+                        {...field} 
+                        data-testid="textarea-reminder-message"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={createReminderMutation.isPending}
+                data-testid="button-create-reminder"
+              >
+                {createReminderMutation.isPending ? "Creating..." : "Create Reminder"}
+              </Button>
+            </form>
+          </Form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function TaskHierarchyItem({ 
   task, 
@@ -164,6 +481,7 @@ function TaskHierarchyItem({
   onEdit, 
   onDelete, 
   onToggle,
+  onReminder,
   expandedTasks,
   toggleExpand,
 }: { 
@@ -172,6 +490,7 @@ function TaskHierarchyItem({
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onToggle: (task: Task) => void;
+  onReminder: (task: Task) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
 }) {
@@ -244,23 +563,33 @@ function TaskHierarchyItem({
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(task)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task)}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            onClick={() => onReminder(task)}
+            data-testid={`button-task-reminder-${task.id}`}
+          >
+            <Bell className="h-4 w-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(task)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {hasSubtasks && isExpanded && (
         <div className="space-y-2">
@@ -272,6 +601,7 @@ function TaskHierarchyItem({
               onEdit={onEdit}
               onDelete={onDelete}
               onToggle={onToggle}
+              onReminder={onReminder}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
             />
@@ -296,6 +626,7 @@ export default function ProjectDetail() {
   const [isAddAssociateDialogOpen, setIsAddAssociateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+  const [reminderTaskId, setReminderTaskId] = useState<number | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [selectedAssociateId, setSelectedAssociateId] = useState<string>("");
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
@@ -1213,6 +1544,7 @@ export default function ProjectDetail() {
                   onEdit={handleOpenTaskDialog}
                   onDelete={setDeletingTask}
                   onToggle={toggleTaskStatus}
+                  onReminder={(task) => setReminderTaskId(task.id)}
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
                 />
@@ -2051,6 +2383,14 @@ export default function ProjectDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {reminderTaskId && (
+        <ReminderDialog 
+          taskId={reminderTaskId} 
+          isOpen={!!reminderTaskId} 
+          onClose={() => setReminderTaskId(null)} 
+        />
+      )}
     </div>
   );
 }

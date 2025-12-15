@@ -17,6 +17,7 @@ import {
   insertChecklistTemplateSchema,
   insertChecklistInstanceSchema,
   insertNewsletterSubscriberSchema,
+  insertTaskReminderSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -1102,6 +1103,59 @@ export async function registerRoutes(
       }
       console.error("Error subscribing to newsletter:", error);
       res.status(500).json({ message: "Failed to subscribe" });
+    }
+  });
+
+  // Task Reminders
+  app.get("/api/tasks/:taskId/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const reminders = await storage.getTaskReminders(parseInt(req.params.taskId));
+      res.json(reminders);
+    } catch (error) {
+      console.error("Error fetching task reminders:", error);
+      res.status(500).json({ message: "Failed to fetch task reminders" });
+    }
+  });
+
+  app.post("/api/tasks/:taskId/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertTaskReminderSchema.parse({
+        ...req.body,
+        taskId: parseInt(req.params.taskId),
+      });
+      const reminder = await storage.createTaskReminder(parsed);
+      res.status(201).json(reminder);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating task reminder:", error);
+      res.status(500).json({ message: "Failed to create task reminder" });
+    }
+  });
+
+  app.delete("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deleted = await storage.deleteTaskReminder(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting task reminder:", error);
+      res.status(500).json({ message: "Failed to delete task reminder" });
     }
   });
 

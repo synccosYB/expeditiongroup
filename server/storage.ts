@@ -13,6 +13,7 @@ import {
   checklistTemplates,
   checklistInstances,
   newsletterSubscribers,
+  taskReminders,
   type User,
   type UpsertUser,
   type Client,
@@ -40,6 +41,8 @@ import {
   type ChecklistInstance,
   type InsertChecklistInstance,
   type NewsletterSubscriber,
+  type TaskReminder,
+  type InsertTaskReminder,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql, isNull, ne, or, ilike } from "drizzle-orm";
@@ -155,6 +158,12 @@ export interface IStorage {
   
   // Newsletter
   addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber>;
+  
+  // Task Reminders
+  getTaskReminders(taskId: number): Promise<TaskReminder[]>;
+  createTaskReminder(reminder: InsertTaskReminder): Promise<TaskReminder>;
+  updateTaskReminder(id: number, reminder: Partial<InsertTaskReminder>): Promise<TaskReminder | undefined>;
+  deleteTaskReminder(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -806,6 +815,30 @@ export class DatabaseStorage implements IStorage {
   async addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber> {
     const [subscriber] = await db.insert(newsletterSubscribers).values({ email }).returning();
     return subscriber;
+  }
+
+  // Task Reminders
+  async getTaskReminders(taskId: number): Promise<TaskReminder[]> {
+    return await db.select().from(taskReminders).where(eq(taskReminders.taskId, taskId)).orderBy(desc(taskReminders.scheduledAt));
+  }
+
+  async createTaskReminder(reminder: InsertTaskReminder): Promise<TaskReminder> {
+    const [newReminder] = await db.insert(taskReminders).values(reminder).returning();
+    return newReminder;
+  }
+
+  async updateTaskReminder(id: number, reminder: Partial<InsertTaskReminder>): Promise<TaskReminder | undefined> {
+    const [updated] = await db
+      .update(taskReminders)
+      .set(reminder)
+      .where(eq(taskReminders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTaskReminder(id: number): Promise<boolean> {
+    const result = await db.delete(taskReminders).where(eq(taskReminders.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
