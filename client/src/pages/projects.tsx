@@ -76,6 +76,7 @@ const projectFormSchema = z.object({
   zip: z.string().optional(),
   county: z.string().optional(),
   jurisdiction: z.string().optional(),
+  jurisdictionAddress: z.string().optional(),
   status: z.enum(["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled"]).default("intake"),
   startDate: z.string().optional(),
   targetEndDate: z.string().optional(),
@@ -122,6 +123,7 @@ export default function Projects() {
       zip: "",
       county: "",
       jurisdiction: "",
+      jurisdictionAddress: "",
       status: "intake",
       startDate: "",
       targetEndDate: "",
@@ -243,6 +245,7 @@ export default function Projects() {
         zip: (project as any).zip || "",
         county: project.county || "",
         jurisdiction: (project as any).jurisdiction || "",
+        jurisdictionAddress: (project as any).jurisdictionAddress || "",
         status: project.status,
         startDate: project.startDate ? format(new Date(project.startDate), "yyyy-MM-dd") : "",
         targetEndDate: project.targetEndDate ? format(new Date(project.targetEndDate), "yyyy-MM-dd") : "",
@@ -468,23 +471,42 @@ export default function Projects() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="jurisdiction"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Jurisdiction</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Town or village where DOB office is located"
-                          {...field}
-                          data-testid="input-project-jurisdiction"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="jurisdiction"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jurisdiction</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Town or village name"
+                            {...field}
+                            data-testid="input-project-jurisdiction"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="jurisdictionAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jurisdiction Office Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Address of DOB office"
+                            {...field}
+                            data-testid="input-project-jurisdiction-address"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="status"

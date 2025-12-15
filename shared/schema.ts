@@ -87,6 +87,7 @@ export const projects = pgTable("projects", {
   zip: varchar("zip", { length: 20 }),
   county: varchar("county", { length: 100 }),
   jurisdiction: varchar("jurisdiction", { length: 255 }),
+  jurisdictionAddress: text("jurisdiction_address"),
   municipality: varchar("municipality", { length: 255 }),
   jobType: projectTypeEnum("job_type").default("other"),
   status: projectStatusEnum("status").default("intake").notNull(),
