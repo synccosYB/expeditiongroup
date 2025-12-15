@@ -486,6 +486,7 @@ function TaskHierarchyItem({
   onReminder,
   expandedTasks,
   toggleExpand,
+  reminderCounts,
 }: { 
   task: TaskWithSubtasks; 
   level?: number;
@@ -495,7 +496,9 @@ function TaskHierarchyItem({
   onReminder: (task: Task) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
+  reminderCounts?: Map<number, number>;
 }) {
+  const reminderCount = reminderCounts?.get(task.id) ?? 0;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   const isExpanded = expandedTasks.has(task.id);
 
@@ -566,14 +569,21 @@ function TaskHierarchyItem({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            onClick={() => onReminder(task)}
-            data-testid={`button-task-reminder-${task.id}`}
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
+          <div className="relative">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => onReminder(task)}
+              data-testid={`button-task-reminder-${task.id}`}
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+            {reminderCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                {reminderCount > 9 ? "9+" : reminderCount}
+              </span>
+            )}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
@@ -606,6 +616,7 @@ function TaskHierarchyItem({
               onReminder={onReminder}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
+              reminderCounts={reminderCounts}
             />
           ))}
         </div>
@@ -686,6 +697,16 @@ export default function ProjectDetail() {
 
   const { data: checklistTemplates } = useQuery<ChecklistTemplate[]>({
     queryKey: ["/api/checklist-templates"],
+  });
+
+  const { data: allReminders } = useQuery<(TaskReminder & { task: Task })[]>({
+    queryKey: ["/api/reminders"],
+  });
+
+  const taskReminderCounts = new Map<number, number>();
+  allReminders?.filter(r => r.status === "pending").forEach(reminder => {
+    const count = taskReminderCounts.get(reminder.taskId) || 0;
+    taskReminderCounts.set(reminder.taskId, count + 1);
   });
 
   const taskForm = useForm<TaskFormData>({
@@ -1573,6 +1594,7 @@ export default function ProjectDetail() {
                   onReminder={(task) => setReminderTaskId(task.id)}
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
+                  reminderCounts={taskReminderCounts}
                 />
               ))}
             </div>
