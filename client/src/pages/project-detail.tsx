@@ -57,6 +57,7 @@ import {
   Phone,
   MessageCircle,
   X,
+  FolderInput,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -726,6 +727,10 @@ export default function ProjectDetail() {
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
   const [uploadedFilePath, setUploadedFilePath] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("other");
+  const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
+  const [movingDocument, setMovingDocument] = useState<Document | null>(null);
+  const [moveToFolderId, setMoveToFolderId] = useState<string>("__none__");
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
@@ -1088,6 +1093,64 @@ export default function ProjectDetail() {
         return;
       }
       toast({ title: "Error", description: "Failed to add document", variant: "destructive" });
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: number) => {
+      return await apiRequest("DELETE", `/api/documents/${documentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Document deleted successfully" });
+      setDeletingDocument(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: async (folderId: number) => {
+      return await apiRequest("DELETE", `/api/folders/${folderId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Folder deleted successfully" });
+      setDeletingFolder(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to delete folder", variant: "destructive" });
+    },
+  });
+
+  const moveDocumentMutation = useMutation({
+    mutationFn: async ({ documentId, folderId }: { documentId: number; folderId: number | null }) => {
+      return await apiRequest("PATCH", `/api/documents/${documentId}`, { folderId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Document moved successfully" });
+      setMovingDocument(null);
+      setMoveToFolderId("__none__");
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to move document", variant: "destructive" });
     },
   });
 
@@ -1992,7 +2055,7 @@ export default function ProjectDetail() {
               <h3 className="text-sm font-medium text-muted-foreground mb-3">Folders</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {folders.map((folder) => (
-                  <Card key={folder.id} className="hover-elevate cursor-pointer" data-testid={`folder-item-${folder.id}`}>
+                  <Card key={folder.id} className="hover-elevate" data-testid={`folder-item-${folder.id}`}>
                     <CardContent className="flex items-center gap-3 py-4">
                       <FolderOpen className="h-8 w-8 text-muted-foreground" />
                       <div className="flex-1 min-w-0">
@@ -2004,6 +2067,23 @@ export default function ProjectDetail() {
                           {documents?.filter(d => d.folderId === folder.id).length || 0} documents
                         </p>
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" data-testid={`button-folder-menu-${folder.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={() => setDeletingFolder(folder)}
+                            className="text-destructive"
+                            data-testid={`button-delete-folder-${folder.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Folder
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </CardContent>
                   </Card>
                 ))}
@@ -2032,10 +2112,37 @@ export default function ProjectDetail() {
                       </div>
                     </div>
                     <Button size="sm" variant="ghost" asChild>
-                      <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                      <a href={doc.storagePath} target="_blank" rel="noopener noreferrer" data-testid={`button-view-document-${doc.id}`}>
                         View
                       </a>
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost" data-testid={`button-document-menu-${doc.id}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setMovingDocument(doc);
+                            setMoveToFolderId(doc.folderId?.toString() || "__none__");
+                          }}
+                          data-testid={`button-move-document-${doc.id}`}
+                        >
+                          <FolderInput className="h-4 w-4 mr-2" />
+                          Move to Folder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => setDeletingDocument(doc)}
+                          className="text-destructive"
+                          data-testid={`button-delete-document-${doc.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </CardContent>
                 </Card>
               ))}
@@ -2743,6 +2850,110 @@ export default function ProjectDetail() {
           onClose={() => setReminderTaskId(null)} 
         />
       )}
+
+      {/* Delete Document Dialog */}
+      <AlertDialog open={!!deletingDocument} onOpenChange={() => setDeletingDocument(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingDocument?.fileName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingDocument && deleteDocumentMutation.mutate(deletingDocument.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-document"
+            >
+              {deleteDocumentMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Folder Dialog */}
+      <AlertDialog open={!!deletingFolder} onOpenChange={() => setDeletingFolder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the folder "{deletingFolder?.name}"? 
+              {deletingFolder && documents?.filter(d => d.folderId === deletingFolder.id).length ? (
+                <span className="block mt-2 text-destructive">
+                  Warning: This folder contains {documents?.filter(d => d.folderId === deletingFolder.id).length} document(s). 
+                  They will be moved to "No folder".
+                </span>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingFolder && deleteFolderMutation.mutate(deletingFolder.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-folder"
+            >
+              {deleteFolderMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Move Document Dialog */}
+      <Dialog open={!!movingDocument} onOpenChange={(open) => !open && setMovingDocument(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Move "{movingDocument?.fileName}" to a different folder:
+            </p>
+            <Select
+              value={moveToFolderId}
+              onValueChange={setMoveToFolderId}
+            >
+              <SelectTrigger data-testid="select-move-to-folder">
+                <SelectValue placeholder="Select folder" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No folder (root level)</SelectItem>
+                {folders?.map((folder) => (
+                  <SelectItem key={folder.id} value={folder.id.toString()}>
+                    {folder.name}{movingDocument?.folderId === folder.id ? " (current)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-4">
+              <Button variant="outline" onClick={() => setMovingDocument(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (movingDocument) {
+                    const newFolderId = moveToFolderId === "__none__" ? null : parseInt(moveToFolderId);
+                    if (newFolderId === movingDocument.folderId) {
+                      setMovingDocument(null);
+                      return;
+                    }
+                    moveDocumentMutation.mutate({
+                      documentId: movingDocument.id,
+                      folderId: newFolderId,
+                    });
+                  }
+                }}
+                disabled={moveDocumentMutation.isPending}
+                data-testid="button-confirm-move-document"
+              >
+                {moveDocumentMutation.isPending ? "Moving..." : "Move"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
