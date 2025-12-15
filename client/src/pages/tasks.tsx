@@ -43,7 +43,6 @@ import {
   ChevronDown,
   Clock,
   MoreHorizontal,
-  Plus,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -186,11 +185,10 @@ function TaskHierarchyItem({
               <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                 <Link 
                   href={`/projects/${task.project?.id}`} 
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 font-medium text-foreground hover:text-primary transition-colors"
                   data-testid={`link-project-${task.projectId}`}
                 >
-                  <ExternalLink className="h-3 w-3" />
-                  {task.project?.name}
+                  P-{task.project?.id}: {task.project?.name}
                 </Link>
                 {task.assignee && (
                   <span className="flex items-center gap-1">
