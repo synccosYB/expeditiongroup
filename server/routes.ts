@@ -1019,6 +1019,74 @@ export async function registerRoutes(
     }
   });
 
+  // Client Portal - Add note to project
+  app.post("/api/client/projects/:id/notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const project = await storage.getProject(parseInt(req.params.id));
+      if (!project || project.clientId !== user.clientId) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      const parsed = insertNoteSchema.parse({
+        ...req.body,
+        projectId: parseInt(req.params.id),
+        userId: req.session.userId!,
+      });
+      const note = await storage.createNote(parsed);
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating client note:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+
+  // Client Portal - Get documents visible to client
+  app.get("/api/client/projects/:id/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const project = await storage.getProject(parseInt(req.params.id));
+      if (!project || project.clientId !== user.clientId) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      const documents = await storage.getDocumentsByProjectId(parseInt(req.params.id));
+      const visibleDocs = documents.filter(doc => doc.isVisibleToClient);
+      res.json(visibleDocs);
+    } catch (error) {
+      console.error("Error fetching client documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Client Portal - Get tasks requiring client upload
+  app.get("/api/client/todos", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const allTasks: any[] = [];
+      for (const project of projects) {
+        const tasks = await storage.getTasksByProjectId(project.id);
+        const clientTasks = tasks.filter(t => t.requiresClientUpload && t.status !== "done");
+        clientTasks.forEach(t => allTasks.push({ ...t, project }));
+      }
+      res.json(allTasks);
+    } catch (error) {
+      console.error("Error fetching client todos:", error);
+      res.status(500).json({ message: "Failed to fetch client todos" });
+    }
+  });
+
   // Newsletter subscription (public endpoint)
   app.post("/api/newsletter/subscribe", async (req, res) => {
     try {

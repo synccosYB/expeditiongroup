@@ -19,7 +19,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { AssociateTypeBadge, StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import type { Associate, Project, Task } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";

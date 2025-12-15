@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GlobalSearch } from "@/components/global-search";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -24,7 +25,7 @@ import Tasks from "@/pages/tasks";
 import TimeLogs from "@/pages/time-logs";
 import Associates from "@/pages/associates";
 import AssociateDetail from "@/pages/associate-detail";
-import ClientPortal from "@/pages/client-portal";
+import ClientPortal, { ClientProjectDetail } from "@/pages/client-portal";
 import ForGeneralContractors from "@/pages/for-general-contractors";
 import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
@@ -63,6 +64,7 @@ function ClientRouter() {
   return (
     <Switch>
       <Route path="/" component={ClientPortal} />
+      <Route path="/project/:id" component={ClientProjectDetail} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -83,6 +85,7 @@ function AuthenticatedLayout() {
         <div className="flex flex-col flex-1 overflow-hidden">
           <header className="flex items-center justify-between gap-4 p-3 border-b bg-background shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
+            {isAdmin && <GlobalSearch />}
             <ThemeToggle />
           </header>
           <main className="flex-1 overflow-auto p-6">
