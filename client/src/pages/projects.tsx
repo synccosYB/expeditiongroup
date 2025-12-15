@@ -71,7 +71,11 @@ const projectFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
   county: z.string().optional(),
+  jurisdiction: z.string().optional(),
   status: z.enum(["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled"]).default("intake"),
   startDate: z.string().optional(),
   targetEndDate: z.string().optional(),
@@ -113,7 +117,11 @@ export default function Projects() {
       name: "",
       description: "",
       address: "",
+      city: "",
+      state: "",
+      zip: "",
       county: "",
+      jurisdiction: "",
       status: "intake",
       startDate: "",
       targetEndDate: "",
@@ -230,7 +238,11 @@ export default function Projects() {
         name: project.name,
         description: project.description || "",
         address: project.address || "",
+        city: (project as any).city || "",
+        state: (project as any).state || "",
+        zip: (project as any).zip || "",
         county: project.county || "",
+        jurisdiction: (project as any).jurisdiction || "",
         status: project.status,
         startDate: project.startDate ? format(new Date(project.startDate), "yyyy-MM-dd") : "",
         targetEndDate: project.targetEndDate ? format(new Date(project.targetEndDate), "yyyy-MM-dd") : "",
@@ -403,6 +415,76 @@ export default function Projects() {
                     )}
                   />
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="City"
+                            {...field}
+                            data-testid="input-project-city"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="State"
+                            {...field}
+                            data-testid="input-project-state"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="zip"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Zip</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Zip code"
+                            {...field}
+                            data-testid="input-project-zip"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="jurisdiction"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jurisdiction</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Town or village where DOB office is located"
+                          {...field}
+                          data-testid="input-project-jurisdiction"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="status"
