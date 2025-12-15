@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
+import { ReminderBell } from "@/components/reminder-bell";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -86,7 +87,10 @@ function AuthenticatedLayout() {
           <header className="flex items-center justify-between gap-4 p-3 border-b bg-background shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             {isAdmin && <GlobalSearch />}
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              {isAdmin && <ReminderBell />}
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-7xl mx-auto">

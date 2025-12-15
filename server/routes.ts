@@ -1109,6 +1109,42 @@ export async function registerRoutes(
   });
 
   // Task Reminders
+  app.get("/api/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const reminders = await storage.getAllReminders();
+      res.json(reminders);
+    } catch (error) {
+      console.error("Error fetching all reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  app.patch("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { status, actionNote } = req.body;
+      const updateData: any = { status };
+      if (actionNote !== undefined) updateData.actionNote = actionNote;
+      if (status === 'done' || status === 'postponed') updateData.actionAt = new Date();
+      
+      const updated = await storage.updateTaskReminder(parseInt(req.params.id), updateData);
+      if (!updated) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating reminder:", error);
+      res.status(500).json({ message: "Failed to update reminder" });
+    }
+  });
+
   app.get("/api/tasks/:taskId/reminders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

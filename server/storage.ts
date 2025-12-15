@@ -822,6 +822,20 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(taskReminders).where(eq(taskReminders.taskId, taskId)).orderBy(desc(taskReminders.scheduledAt));
   }
 
+  async getAllReminders(): Promise<(TaskReminder & { task: Task; project: Project })[]> {
+    const result = await db
+      .select()
+      .from(taskReminders)
+      .innerJoin(tasks, eq(taskReminders.taskId, tasks.id))
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .orderBy(desc(taskReminders.scheduledAt));
+    return result.map(r => ({
+      ...r.task_reminders,
+      task: r.tasks,
+      project: r.projects,
+    }));
+  }
+
   async createTaskReminder(reminder: InsertTaskReminder): Promise<TaskReminder> {
     const [newReminder] = await db.insert(taskReminders).values(reminder).returning();
     return newReminder;

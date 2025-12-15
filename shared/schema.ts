@@ -27,7 +27,7 @@ export const projectPriorityEnum = pgEnum("project_priority", ["low", "normal", 
 export const associateTypeEnum = pgEnum("associate_type", ["engineer", "architect", "surveyor", "lawyer", "contractor", "dob_contact", "village_contact", "consultant", "other"]);
 export const documentCategoryEnum = pgEnum("document_category", ["plan", "permit", "survey", "dob_letter", "correspondence", "legal", "photo", "inspection", "other"]);
 export const reminderChannelEnum = pgEnum("reminder_channel", ["email", "sms", "whatsapp"]);
-export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled"]);
+export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled", "done", "postponed"]);
 
 // Session storage table (IMPORTANT: mandatory for Replit Auth)
 export const sessions = pgTable(
@@ -252,6 +252,8 @@ export const taskReminders = pgTable("task_reminders", {
   status: reminderStatusEnum("status").default("pending").notNull(),
   sentAt: timestamp("sent_at"),
   errorMessage: text("error_message"),
+  actionNote: text("action_note"),
+  actionAt: timestamp("action_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
