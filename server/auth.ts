@@ -94,15 +94,18 @@ export function setupAuth(app: Express) {
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const parsed = loginSchema.parse(req.body);
+      console.log("Login attempt for:", parsed.email);
       
       // Find user by email
       const user = await storage.getUserByEmail(parsed.email);
+      console.log("User found:", user ? "yes" : "no", "Has password:", user?.passwordHash ? "yes" : "no");
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
       // Verify password
       const isValid = await bcrypt.compare(parsed.password, user.passwordHash);
+      console.log("Password valid:", isValid);
       if (!isValid) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
