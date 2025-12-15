@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -126,6 +126,10 @@ const taskFormSchema = z.object({
 const noteFormSchema = z.object({
   content: z.string().min(1, "Note content is required"),
   isVisibleToClient: z.boolean().default(false),
+  entityType: z.enum(["project", "task", "associate", "client"]).default("project"),
+  taskId: z.number().optional().nullable(),
+  associateId: z.number().optional().nullable(),
+  clientId: z.number().optional().nullable(),
 });
 
 const timeLogFormSchema = z.object({
@@ -730,8 +734,24 @@ export default function ProjectDetail() {
     defaultValues: {
       content: "",
       isVisibleToClient: false,
+      entityType: "project",
+      taskId: null,
+      associateId: null,
+      clientId: null,
     },
   });
+
+  const watchedEntityType = noteForm.watch("entityType");
+  const prevEntityTypeRef = useRef(watchedEntityType);
+
+  useEffect(() => {
+    if (prevEntityTypeRef.current !== watchedEntityType) {
+      noteForm.setValue("taskId", null);
+      noteForm.setValue("associateId", null);
+      noteForm.setValue("clientId", null);
+      prevEntityTypeRef.current = watchedEntityType;
+    }
+  }, [watchedEntityType, noteForm]);
 
   const timeLogForm = useForm<TimeLogFormData>({
     resolver: zodResolver(timeLogFormSchema),
@@ -888,11 +908,28 @@ export default function ProjectDetail() {
 
   const createNoteMutation = useMutation({
     mutationFn: async (data: NoteFormData) => {
-      const payload = {
-        ...data,
-        projectId: parseInt(id!),
+      const payload: any = {
+        content: data.content,
+        isVisibleToClient: data.isVisibleToClient,
         userId: user?.id,
       };
+      
+      switch (data.entityType) {
+        case "project":
+          payload.projectId = parseInt(id!);
+          break;
+        case "task":
+          payload.taskId = data.taskId;
+          payload.projectId = parseInt(id!);
+          break;
+        case "associate":
+          payload.associateId = data.associateId;
+          break;
+        case "client":
+          payload.clientId = project?.clientId;
+          break;
+      }
+      
       return await apiRequest("POST", "/api/notes", payload);
     },
     onSuccess: () => {
@@ -2224,6 +2261,86 @@ export default function ProjectDetail() {
                 </DialogHeader>
                 <Form {...noteForm}>
                   <form onSubmit={noteForm.handleSubmit((data) => createNoteMutation.mutate(data))} className="space-y-4">
+                    <FormField
+                      control={noteForm.control}
+                      name="entityType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Attach To</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-note-entity-type">
+                                <SelectValue placeholder="Select entity type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="project">This Project</SelectItem>
+                              <SelectItem value="task" disabled={!project.tasks || project.tasks.length === 0}>
+                                A Task {(!project.tasks || project.tasks.length === 0) && "(none available)"}
+                              </SelectItem>
+                              <SelectItem value="associate" disabled={!projectAssociates || projectAssociates.length === 0}>
+                                An Associate {(!projectAssociates || projectAssociates.length === 0) && "(none available)"}
+                              </SelectItem>
+                              <SelectItem value="client" disabled={!project.clientId}>
+                                The Client {!project.clientId && "(not linked)"}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {watchedEntityType === "task" && project.tasks && project.tasks.length > 0 && (
+                      <FormField
+                        control={noteForm.control}
+                        name="taskId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Select Task</FormLabel>
+                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-note-task">
+                                  <SelectValue placeholder="Select a task" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {project.tasks.map((task) => (
+                                  <SelectItem key={task.id} value={task.id.toString()}>{task.title}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {watchedEntityType === "associate" && projectAssociates && projectAssociates.length > 0 && (
+                      <FormField
+                        control={noteForm.control}
+                        name="associateId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Select Associate</FormLabel>
+                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-note-associate">
+                                  <SelectValue placeholder="Select an associate" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {projectAssociates.map((pa) => (
+                                  <SelectItem key={pa.associate.id} value={pa.associate.id.toString()}>{pa.associate.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <FormField
                       control={noteForm.control}
                       name="content"
