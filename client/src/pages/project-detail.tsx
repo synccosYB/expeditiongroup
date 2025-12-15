@@ -726,6 +726,9 @@ export default function ProjectDetail() {
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
   const [uploadedFilePath, setUploadedFilePath] = useState<string>("");
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const [pendingUploadPath, setPendingUploadPath] = useState<string>("");
+  const [pendingFileSize, setPendingFileSize] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("other");
   const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
@@ -1081,9 +1084,14 @@ export default function ProjectDetail() {
       return await apiRequest("POST", `/api/projects/${id}/documents`, data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "documents"] });
       toast({ title: "Document added successfully" });
       setIsDocumentDialogOpen(false);
+      setUploadedFilePath("");
+      setIsUploadComplete(false);
+      setPendingUploadPath("");
+      setPendingFileSize(null);
       documentForm.reset();
     },
     onError: (error) => {
@@ -1911,6 +1919,9 @@ export default function ProjectDetail() {
                                           variant="ghost"
                                           onClick={() => {
                                             setUploadedFilePath("");
+                                            setIsUploadComplete(false);
+                                            setPendingUploadPath("");
+                                            setPendingFileSize(null);
                                             field.onChange("");
                                           }}
                                           data-testid="button-remove-upload"
@@ -1942,12 +1953,19 @@ export default function ProjectDetail() {
                                         throw new Error("Failed to get upload URL");
                                       }
                                       const data = await res.json();
-                                      setUploadedFilePath(data.objectPath);
-                                      field.onChange(data.objectPath);
-                                      documentForm.setValue("fileSize", file?.size || null);
+                                      setPendingUploadPath(data.objectPath);
+                                      setPendingFileSize(file?.size || null);
+                                      setIsUploadComplete(false);
                                       return { method: "PUT" as const, url: data.uploadUrl };
                                     }}
                                     onComplete={(result) => {
+                                      if (result.successful && result.successful.length > 0) {
+                                        setUploadedFilePath(pendingUploadPath);
+                                        documentForm.setValue("storagePath", pendingUploadPath);
+                                        documentForm.setValue("fileSize", pendingFileSize);
+                                        setIsUploadComplete(true);
+                                        toast({ title: "File uploaded successfully" });
+                                      }
                                     }}
                                   >
                                     <Upload className="h-4 w-4 mr-2" />
@@ -2038,8 +2056,8 @@ export default function ProjectDetail() {
                         <Button type="button" variant="outline" onClick={() => setIsDocumentDialogOpen(false)}>
                           Cancel
                         </Button>
-                        <Button type="submit" disabled={createDocumentMutation.isPending} data-testid="button-save-document">
-                          {createDocumentMutation.isPending ? "Adding..." : "Add Document"}
+                        <Button type="submit" disabled={createDocumentMutation.isPending || !isUploadComplete} data-testid="button-save-document">
+                          {createDocumentMutation.isPending ? "Adding..." : !isUploadComplete && uploadedFilePath ? "Uploading..." : "Add Document"}
                         </Button>
                       </div>
                     </form>
