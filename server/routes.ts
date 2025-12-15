@@ -1197,6 +1197,24 @@ export async function registerRoutes(
     }
   });
 
+  // Storage Usage
+  const STORAGE_LIMIT_BYTES = 10 * 1024 * 1024; // 10MB
+
+  app.get("/api/storage/usage", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.userId!;
+      const usedBytes = await storage.getUserStorageUsage(userId);
+      res.json({
+        usedBytes,
+        limitBytes: STORAGE_LIMIT_BYTES,
+        remainingBytes: Math.max(0, STORAGE_LIMIT_BYTES - usedBytes),
+      });
+    } catch (error) {
+      console.error("Error fetching storage usage:", error);
+      res.status(500).json({ message: "Failed to fetch storage usage" });
+    }
+  });
+
   // Object Storage - File Upload
   const objectStorageService = new ObjectStorageService();
 
@@ -1219,7 +1237,19 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Client not found" });
       }
 
-      const { category = "other", fileName } = req.body;
+      const { category = "other", fileName, fileSize } = req.body;
+
+      // Check storage limit
+      const currentUsage = await storage.getUserStorageUsage(req.session.userId!);
+      const fileSizeNum = typeof fileSize === 'number' ? fileSize : 0;
+      if (currentUsage + fileSizeNum > STORAGE_LIMIT_BYTES) {
+        return res.status(413).json({
+          message: "Storage limit exceeded",
+          code: "STORAGE_LIMIT_EXCEEDED",
+          usedBytes: currentUsage,
+          limitBytes: STORAGE_LIMIT_BYTES,
+        });
+      }
 
       // Sanitize names for folder path
       const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase();

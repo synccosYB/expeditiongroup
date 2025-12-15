@@ -159,6 +159,9 @@ export interface IStorage {
   // Newsletter
   addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber>;
   
+  // Storage
+  getUserStorageUsage(userId: string): Promise<number>;
+  
   // Task Reminders
   getTaskReminders(taskId: number): Promise<TaskReminder[]>;
   createTaskReminder(reminder: InsertTaskReminder): Promise<TaskReminder>;
@@ -815,6 +818,15 @@ export class DatabaseStorage implements IStorage {
   async addNewsletterSubscriber(email: string): Promise<NewsletterSubscriber> {
     const [subscriber] = await db.insert(newsletterSubscribers).values({ email }).returning();
     return subscriber;
+  }
+
+  // Storage
+  async getUserStorageUsage(userId: string): Promise<number> {
+    const result = await db
+      .select({ total: sql<number>`COALESCE(SUM(${documents.fileSize}), 0)` })
+      .from(documents)
+      .where(eq(documents.uploadedByUserId, userId));
+    return result[0]?.total ?? 0;
   }
 
   // Task Reminders
