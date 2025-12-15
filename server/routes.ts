@@ -1252,8 +1252,8 @@ export async function registerRoutes(
       }
 
       // Sanitize names for folder path
-      const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase();
-      const clientSlug = `${client.id}-${sanitize(client.companyName)}`;
+      const sanitize = (str: string) => str?.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase() || "unknown";
+      const clientSlug = `${client.id}-${sanitize(client.name)}`;
       const projectSlug = `${project.id}-${sanitize(project.name)}`;
       
       // Build folder path: clients/<clientSlug>/projects/<projectSlug>/<category>/
