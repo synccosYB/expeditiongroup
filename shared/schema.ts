@@ -408,8 +408,22 @@ export const checklistInstancesRelations = relations(checklistInstances, ({ one 
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true });
+const dateCoercion = z.preprocess((val) => {
+  if (val === null || val === undefined || val === '') return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'string') return new Date(val);
+  return val;
+}, z.date().nullable().optional());
+
+export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  startDate: dateCoercion,
+  targetEndDate: dateCoercion,
+  actualEndDate: dateCoercion,
+});
+export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  dueDate: dateCoercion,
+  completedAt: dateCoercion,
+});
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({ id: true, createdAt: true });
 export const insertTimeLogSchema = createInsertSchema(timeLogs).omit({ id: true, createdAt: true });
