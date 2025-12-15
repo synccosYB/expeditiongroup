@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -723,6 +723,27 @@ export default function ProjectDetail() {
       notes: "",
     },
   });
+
+  const watchedStartTime = timeLogForm.watch("startTime");
+  const watchedEndTime = timeLogForm.watch("endTime");
+
+  useEffect(() => {
+    if (!watchedStartTime || !watchedEndTime) return;
+    
+    const [startH, startM] = watchedStartTime.split(":").map(Number);
+    const [endH, endM] = watchedEndTime.split(":").map(Number);
+    if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return;
+    
+    let startMinutes = startH * 60 + startM;
+    let endMinutes = endH * 60 + endM;
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60;
+    }
+    const diffMinutes = endMinutes - startMinutes;
+    const hours = (diffMinutes / 60).toFixed(2);
+    
+    timeLogForm.setValue("totalHours", hours, { shouldValidate: true });
+  }, [watchedStartTime, watchedEndTime, timeLogForm]);
 
   const folderForm = useForm<FolderFormData>({
     resolver: zodResolver(folderFormSchema),
