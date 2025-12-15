@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -272,6 +272,26 @@ export default function Tasks() {
       isBillable: true,
     },
   });
+
+  const watchedStartTime = timeLogForm.watch("startTime");
+  const watchedEndTime = timeLogForm.watch("endTime");
+
+  useEffect(() => {
+    if (watchedStartTime && watchedEndTime) {
+      const [startHour, startMin] = watchedStartTime.split(":").map(Number);
+      const [endHour, endMin] = watchedEndTime.split(":").map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      let diff = endMinutes - startMinutes;
+      if (diff < 0) diff += 24 * 60;
+      
+      if (diff > 0) {
+        timeLogForm.setValue("totalMinutes", diff.toString());
+      }
+    }
+  }, [watchedStartTime, watchedEndTime, timeLogForm]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
