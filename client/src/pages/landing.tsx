@@ -76,7 +76,7 @@ const clientTypes = [
 
 const stats = [
   { value: "15+", label: "Years Experience" },
-  { value: "500+", label: "Projects Completed" },
+  { value: "200+", label: "Projects Completed" },
   { value: "98%", label: "Success Rate" },
 ];
 

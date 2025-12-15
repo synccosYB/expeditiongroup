@@ -19,8 +19,8 @@ const milestones = [
   },
   {
     year: "2022",
-    title: "500+ Projects Milestone",
-    description: "We celebrated completing over 500 successful permit expeditions, serving clients from small contractors to major developers.",
+    title: "200+ Projects Milestone",
+    description: "We celebrated completing over 200 successful permit expeditions, serving clients from small contractors to major developers.",
     icon: Award
   },
   {

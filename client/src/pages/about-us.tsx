@@ -25,7 +25,7 @@ const values = [
 
 const stats = [
   { value: "15+", label: "Years of Experience" },
-  { value: "500+", label: "Projects Completed" },
+  { value: "200+", label: "Projects Completed" },
   { value: "98%", label: "Success Rate" },
   { value: "3", label: "Counties Served" }
 ];
