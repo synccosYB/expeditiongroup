@@ -124,13 +124,14 @@ export function AppSidebar() {
           <Button
             size="icon"
             variant="ghost"
-            asChild
             data-testid="button-logout"
             aria-label="Log out"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+              window.location.href = "/";
+            }}
           >
-            <a href="/api/logout">
-              <LogOut className="h-4 w-4" />
-            </a>
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </SidebarFooter>
