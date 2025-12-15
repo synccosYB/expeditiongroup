@@ -129,7 +129,7 @@ export default function SettingsPage() {
                     <p className="font-medium truncate" data-testid={`text-user-email-${user.id}`}>
                       {user.email}
                     </p>
-                    <Badge variant="outline" size="sm">
+                    <Badge variant="outline">
                       {user.role}
                     </Badge>
                   </div>
