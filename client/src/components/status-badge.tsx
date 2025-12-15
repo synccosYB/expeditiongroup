@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-type TaskStatus = "pending" | "in_progress" | "waiting_on_client" | "done";
-type ProjectStatus = "active" | "on_hold" | "completed" | "cancelled";
+type TaskStatus = "todo" | "in_progress" | "waiting" | "done" | "cancelled";
+type ProjectStatus = "intake" | "in_progress" | "waiting_on_client" | "with_dob" | "completed" | "on_hold" | "cancelled";
 
 interface StatusBadgeProps {
   status: TaskStatus | ProjectStatus;
@@ -11,8 +11,31 @@ interface StatusBadgeProps {
 }
 
 const taskStatusConfig: Record<TaskStatus, { label: string; className: string }> = {
-  pending: {
-    label: "Pending",
+  todo: {
+    label: "To Do",
+    className: "bg-muted text-muted-foreground",
+  },
+  in_progress: {
+    label: "In Progress",
+    className: "bg-chart-1/10 text-chart-1 dark:bg-chart-1/20",
+  },
+  waiting: {
+    label: "Waiting",
+    className: "bg-chart-3/10 text-chart-3 dark:bg-chart-3/20",
+  },
+  done: {
+    label: "Done",
+    className: "bg-chart-2/10 text-chart-2 dark:bg-chart-2/20",
+  },
+  cancelled: {
+    label: "Cancelled",
+    className: "bg-destructive/10 text-destructive dark:bg-destructive/20",
+  },
+};
+
+const projectStatusConfig: Record<ProjectStatus, { label: string; className: string }> = {
+  intake: {
+    label: "Intake",
     className: "bg-muted text-muted-foreground",
   },
   in_progress: {
@@ -23,24 +46,17 @@ const taskStatusConfig: Record<TaskStatus, { label: string; className: string }>
     label: "Waiting on Client",
     className: "bg-chart-3/10 text-chart-3 dark:bg-chart-3/20",
   },
-  done: {
-    label: "Done",
-    className: "bg-chart-2/10 text-chart-2 dark:bg-chart-2/20",
+  with_dob: {
+    label: "With DOB",
+    className: "bg-chart-4/10 text-chart-4 dark:bg-chart-4/20",
   },
-};
-
-const projectStatusConfig: Record<ProjectStatus, { label: string; className: string }> = {
-  active: {
-    label: "Active",
+  completed: {
+    label: "Completed",
     className: "bg-chart-2/10 text-chart-2 dark:bg-chart-2/20",
   },
   on_hold: {
     label: "On Hold",
-    className: "bg-chart-3/10 text-chart-3 dark:bg-chart-3/20",
-  },
-  completed: {
-    label: "Completed",
-    className: "bg-chart-4/10 text-chart-4 dark:bg-chart-4/20",
+    className: "bg-chart-5/10 text-chart-5 dark:bg-chart-5/20",
   },
   cancelled: {
     label: "Cancelled",
@@ -53,16 +69,19 @@ export function StatusBadge({ status, type = "task", className }: StatusBadgePro
     ? taskStatusConfig[status as TaskStatus] 
     : projectStatusConfig[status as ProjectStatus];
 
+  const fallbackConfig = { label: status, className: "bg-muted text-muted-foreground" };
+  const finalConfig = config || fallbackConfig;
+
   return (
     <Badge
       variant="secondary"
       className={cn(
         "no-default-hover-elevate no-default-active-elevate font-medium",
-        config.className,
+        finalConfig.className,
         className
       )}
     >
-      {config.label}
+      {finalConfig.label}
     </Badge>
   );
 }
