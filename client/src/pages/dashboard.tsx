@@ -52,6 +52,10 @@ export default function Dashboard() {
     queryKey: ["/api/projects"],
   });
 
+  const { data: allClients, isLoading: clientsLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
   const { data: allTasks, isLoading: tasksLoading } = useQuery<(Task & { project: Project })[]>({
     queryKey: ["/api/tasks"],
   });
@@ -67,7 +71,7 @@ export default function Dashboard() {
   const recentProjects = allProjects?.slice(0, 5);
   const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
 
-  const isLoading = statsLoading || projectsLoading || tasksLoading || pipelineLoading || overdueLoading;
+  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading;
 
   // Create a map for easy lookup of counts by status
   const statusCountMap = new Map<string, number>();
@@ -89,9 +93,7 @@ export default function Dashboard() {
     switch (reportType) {
       case "clients":
         reportTitle = "Total Clients Report";
-        reportData = allProjects?.map(p => p.client).filter((c, i, arr) => 
-          arr.findIndex(x => x?.id === c?.id) === i
-        ) ?? [];
+        reportData = allClients ?? [];
         break;
       case "projects":
         reportTitle = "Active Projects Report";
