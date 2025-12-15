@@ -98,7 +98,7 @@ export interface IStorage {
   // Associates
   getAssociates(): Promise<Associate[]>;
   getAssociate(id: number): Promise<Associate | undefined>;
-  getAssociateWithRelations(id: number): Promise<(Associate & { projects: Project[]; tasks: Task[] }) | undefined>;
+  getAssociateWithRelations(id: number): Promise<(Associate & { projects: Project[]; tasks: (Task & { project?: Project })[] }) | undefined>;
   createAssociate(associate: InsertAssociate): Promise<Associate>;
   updateAssociate(id: number, associate: Partial<InsertAssociate>): Promise<Associate | undefined>;
   deleteAssociate(id: number): Promise<boolean>;
@@ -322,16 +322,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tasks
-  async getTasks(): Promise<(Task & { project: Project })[]> {
+  async getTasks(): Promise<(Task & { project: Project; assignee?: User })[]> {
     const result = await db
       .select()
       .from(tasks)
       .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .leftJoin(users, eq(tasks.assigneeId, users.id))
       .orderBy(desc(tasks.createdAt));
     
     return result.map(r => ({
       ...r.tasks,
       project: r.projects!,
+      assignee: r.users || undefined,
     }));
   }
 
@@ -505,7 +507,7 @@ export class DatabaseStorage implements IStorage {
     return associate;
   }
 
-  async getAssociateWithRelations(id: number): Promise<(Associate & { projects: Project[]; tasks: Task[] }) | undefined> {
+  async getAssociateWithRelations(id: number): Promise<(Associate & { projects: Project[]; tasks: (Task & { project?: Project })[] }) | undefined> {
     const [associate] = await db.select().from(associates).where(eq(associates.id, id));
     if (!associate) return undefined;
 
@@ -515,16 +517,20 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(projects, eq(projectAssociates.projectId, projects.id))
       .where(eq(projectAssociates.associateId, id));
     
-    const associateTasks = await db
+    const associateTasksResult = await db
       .select()
       .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
       .where(eq(tasks.relatedAssociateId, id))
       .orderBy(desc(tasks.createdAt));
 
     return {
       ...associate,
       projects: projectAssociateResults.map(r => r.projects!).filter(Boolean),
-      tasks: associateTasks,
+      tasks: associateTasksResult.map(r => ({
+        ...r.tasks,
+        project: r.projects || undefined,
+      })),
     };
   }
 

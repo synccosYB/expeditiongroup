@@ -23,6 +23,7 @@ import ProjectDetail from "@/pages/project-detail";
 import Tasks from "@/pages/tasks";
 import TimeLogs from "@/pages/time-logs";
 import Associates from "@/pages/associates";
+import AssociateDetail from "@/pages/associate-detail";
 import ClientPortal from "@/pages/client-portal";
 import ForGeneralContractors from "@/pages/for-general-contractors";
 import ForPropertyDevelopers from "@/pages/for-property-developers";
@@ -52,6 +53,7 @@ function AdminRouter() {
       <Route path="/tasks" component={Tasks} />
       <Route path="/time-logs" component={TimeLogs} />
       <Route path="/associates" component={Associates} />
+      <Route path="/associates/:id" component={AssociateDetail} />
       <Route component={NotFound} />
     </Switch>
   );

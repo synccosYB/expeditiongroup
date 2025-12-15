@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { AssociateTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -456,6 +458,12 @@ export default function Associates() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/associates/${associate.id}`}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Details
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleOpenDialog(associate)}>
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
