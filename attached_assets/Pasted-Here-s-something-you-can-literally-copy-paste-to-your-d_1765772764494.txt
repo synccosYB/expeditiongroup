@@ -1,0 +1,560 @@
+Here’s something you can literally copy-paste to your developer as the “what to build” for the **Client & Admin Portal** for Expedition Group.
+
+---
+
+## 1. High-Level Overview
+
+We’re building a **web application** for **Expedition Group** that has:
+
+* **Admin Portal** – internal use for Expedition staff to manage clients, projects/jobs, tasks, vendors/associates, documents, and time.
+* **Client Portal** – for homeowners/contractors to see the status of their jobs, upload documents, and communicate with us.
+
+This is both a **public website + CRM backend** for expediting work (DOB, permits, violations, inspections, etc.).
+
+---
+
+## 2. Roles & Access
+
+Implement a basic **role-based access control**:
+
+1. **Super Admin**
+
+   * Full system control (users, settings, all data).
+
+2. **Admin / Case Manager**
+
+   * Manages clients, jobs, tasks, associates, documents, time logs.
+   * Can see everything except system settings.
+
+3. **Client**
+
+   * Only sees their own profile, their jobs, tasks/status, and documents.
+
+(We can add more fine-grained roles later; design with extensibility in mind.)
+
+---
+
+## 3. Core Entities (Data Model – Phase 1)
+
+Please model at least the following entities and relationships:
+
+1. **Client**
+
+   * Name
+   * Company (if contractor)
+   * Phone(s)
+   * Email(s)
+   * Address (mailing)
+   * Notes
+   * Status (Active / Inactive)
+   * Related Jobs
+
+2. **Job / Project / Case**
+
+   * Client (FK)
+   * Job Name (e.g., “123 Main St – New Dwelling Permit”)
+   * Property Address
+   * Municipality / DOB jurisdiction
+   * Job Type (Violation removal, Permit, CO, Blue Roof, Survey, etc.)
+   * Status (e.g., Intake, In Progress, Waiting on Client, With DOB, Completed, On Hold, Cancelled)
+   * Priority
+   * Internal Job Code
+   * Dates (Created, Start, Target completion, Actual completion)
+   * Assigned Admin/Case Manager (FK User)
+   * Related Associates (Architect, Engineer, Expediter, Surveyor, etc. – many-to-many)
+   * Folders/Documents (FKs)
+   * Tasks (FKs)
+   * Time Logs (FKs)
+   * Notes / Activity history
+
+3. **Associate**
+
+   * This is any third-party professional related to a job.
+
+   * Name
+
+   * Company
+
+   * Role/Type (Architect, Engineer, Surveyor, Lawyer, Contractor, DOB Contact, etc.)
+
+   * Phone(s)
+
+   * Email(s)
+
+   * Address
+
+   * Notes
+
+   * Linked Jobs (many-to-many)
+
+   * Linked Tasks
+
+   > Requirement from earlier:
+   >
+   > * From a **Client**: see all tasks for that client.
+   > * From an **Associate**: see all tasks & jobs that involve that associate.
+
+4. **Task**
+
+   * Belongs to a **Job** (FK)
+   * Optional link to Client and/or Associate
+   * Title
+   * Description
+   * Status (To Do / In Progress / Waiting / Done / Cancelled)
+   * Type (Phone call, Email, Filing, Site Visit, Research, Document Prep, etc.)
+   * Assignee (FK User)
+   * Due Date
+   * Created Date
+   * Completed Date
+   * Priority
+   * Internal notes
+   * “Location” type: In-office vs On-road (we discussed separate “road tasks” vs “office tasks”)
+
+5. **Folder & Document Uploads**
+
+   * **Folder**
+
+     * Belongs to a Job (FK)
+     * Name (e.g., “Plans”, “Permits”, “Inspections”, “Correspondence”)
+     * Description
+   * **Document**
+
+     * Belongs to a Folder (FK) and Job (FK)
+
+     * File name
+
+     * File type
+
+     * Uploaded by (User or Client)
+
+     * Upload date
+
+     * Tags (e.g., “Approved Plan”, “DOB Letter”, “Survey”, etc.)
+
+   > Earlier you said: “By folder I meant uploading documents” – so this is the structure.
+
+6. **User**
+
+   * Name
+   * Email
+   * Role (Super Admin / Admin / Client)
+   * Password hash
+   * Status (Active/Inactive)
+   * For **Client Users**: link to Client record (FK).
+
+7. **Time Log** (for hourly billing & tracking)
+
+   * User (FK)
+   * Job (FK)
+   * Task (optional FK)
+   * Date
+   * Start time
+   * End time
+   * Total hours
+   * Notes
+
+   (We already have time-log style data in your older sheet; use similar structure.)
+
+8. **Checklists / Templates** (Phase 1 minimal, but design DB-able)
+
+   * E.g. “Final Survey – New Dwelling Checklist”
+   * Template:
+
+     * Name
+     * Description
+     * List of checklist items
+   * Instance (per Job):
+
+     * Job (FK)
+     * Template (FK)
+     * Items (item text + status OK / Required / N/A + comments)
+
+---
+
+## 4. Admin Portal – Pages & Functionality
+
+### 4.1. Login & Authentication
+
+* Email + Password login.
+* Role-based redirect:
+
+  * Admin → Admin Dashboard
+  * Client → Client Dashboard
+* Forgot password flow.
+
+---
+
+### 4.2. Admin Dashboard
+
+Goal: High-level overview for Case Managers/Admins.
+
+Widgets:
+
+* **Quick stats:**
+
+  * # Active Clients
+  * # Active Jobs
+  * # Jobs by status (pipeline view)
+  * # Tasks due Today / Overdue
+* **My Tasks**: list of tasks assigned to me with status & due dates.
+* **Recent Activity**: latest job updates, documents uploaded, new notes, etc.
+
+---
+
+### 4.3. Client Management (Admin side)
+
+**Page: Client List**
+
+* Table with:
+
+  * Client Name
+  * Type (Homeowner / Contractor / Other)
+  * Phone
+  * Email
+  * # Active Jobs
+  * Status
+* Filters:
+
+  * Search by name, phone, email.
+  * Filter by status, client type.
+* Actions:
+
+  * Add new client
+  * Open client profile
+
+**Page: Client Profile**
+
+* Client info panel.
+* Contact details & notes.
+* Tabs:
+
+  1. **Jobs**
+
+     * Table listing all jobs for that client (with statuses).
+  2. **Contacts/Associates**
+
+     * Associates linked to this client.
+  3. **Documents**
+
+     * Optionally surface job documents grouped by job.
+  4. **Activity**
+
+     * Timeline of changes (tasks, notes, uploads, etc.)
+
+---
+
+### 4.4. Job / Case Management
+
+**Page: Job List**
+
+* Table with:
+
+  * Job Name
+  * Client
+  * Property Address
+  * Municipality
+  * Status
+  * Priority
+  * Assigned Admin
+* Filters & search:
+
+  * By client, address, municipality, status, priority.
+* Quick actions:
+
+  * Create new job
+  * Open job details
+
+**Page: Job Detail**
+Tabs/sections:
+
+1. **Overview**
+
+   * Job name, client, address, job type, status, assigned admin, key dates.
+   * High-level status notes.
+2. **Tasks**
+
+   * All tasks linked to this job.
+   * Ability to:
+
+     * Add/edit tasks
+     * Change status
+     * Filter by status (To Do / In Progress / Done).
+3. **Documents / Folders**
+
+   * Folder structure.
+   * Upload files into folders.
+   * Show who uploaded & when.
+4. **Associates**
+
+   * List of associates connected to this job (role: architect, engineer, etc.)
+   * Add/remove associates.
+5. **Checklists**
+
+   * Attach one or more checklist templates to this job.
+   * Mark items as OK / Req’d / N/A + comments.
+6. **Time Logs**
+
+   * Time entries for job.
+   * Total hours per user and in total.
+7. **Activity / Notes**
+
+   * Timeline of internal notes, status changes, assignments, etc.
+
+---
+
+### 4.5. Associate Management
+
+**Page: Associate List**
+
+* Table with:
+
+  * Associate Name
+  * Company
+  * Role/Type
+  * Phone
+  * Email
+  * # Jobs
+* Search by name, role, company.
+
+**Page: Associate Profile**
+
+* Contact details & notes.
+* **Tab: Jobs**
+
+  * All jobs where this associate is involved.
+* **Tab: Tasks**
+
+  * All tasks attached to this associate, across jobs.
+  * This satisfies your requirement:
+    “I want to be able to see all tasks I have with an associate regardless of client.”
+
+---
+
+### 4.6. Task Management (Global)
+
+**Page: Task Board / List**
+
+* Global task view (across all jobs & clients).
+* Filters:
+
+  * By assigned user
+  * By client
+  * By associate
+  * By status
+  * By due date
+* Two views:
+
+  * **List view**
+  * **Kanban board** by status (optional, if not too much for phase 1).
+
+---
+
+### 4.7. Time Tracking
+
+**Page: Time Logs**
+
+* Global time log list with filters:
+
+  * By user
+  * By job
+  * By date range
+* Ability to:
+
+  * Add/edit time entries.
+  * Export (CSV) for billing.
+
+---
+
+### 4.8. Admin – Document Templates & Checklists
+
+**Page: Checklist Templates**
+
+* Create/edit templates like:
+
+  * “Final Survey – New Dwelling” (we already have the checklist content).
+* Each template:
+
+  * Name
+  * Description
+  * Items (text fields)
+* Ability to apply a template to a job, which creates an instance to be filled.
+
+---
+
+## 5. Client Portal – Pages & Functionality
+
+### 5.1. Client Login & Dashboard
+
+**Login**
+
+* Clients log in with email/password.
+
+**Client Dashboard**
+
+* Welcome card with client name.
+* Summary:
+
+  * # Active Jobs
+  * # Jobs Completed
+  * # Pending items (tasks or document requests that require client action).
+* List of **current jobs** with basic status.
+
+---
+
+### 5.2. Client – Jobs
+
+**Page: My Jobs**
+
+* Table:
+
+  * Job Name
+  * Address
+  * Type
+  * Status
+  * Last updated date
+* Open job detail.
+
+**Page: Job Detail (Client View)**
+
+* Simplified version of Admin job details:
+
+  1. **Overview**
+
+     * Job name, address, status, description of current stage.
+  2. **Timeline / Status**
+
+     * High-level steps with checkmarks, e.g.:
+
+       * “Documents received”
+       * “Plans submitted”
+       * “Under DOB review”
+       * “Corrections required”
+       * “Approved”
+  3. **To-Dos for Client**
+
+     * If there are tasks that require client action (e.g., “upload survey”, “sign form”), show clearly with due dates.
+  4. **Documents**
+
+     * Client can view documents we shared with them.
+     * Client can upload documents (these go to the job’s document folder and are visible in Admin portal).
+  5. **Messages / Notes (Phase 1 basic)**
+
+     * Simple comment thread per job.
+     * For now, this can be a basic note system, not a full chat.
+
+---
+
+### 5.3. Client – Profile
+
+**Page: My Profile**
+
+* Client can:
+
+  * View & edit basic contact details (phone, email, address).
+  * See list of associates connected to their jobs (optional in Phase 1).
+* Security:
+
+  * Change password.
+
+---
+
+## 6. Search Requirements
+
+From our previous conversations, search is critical:
+
+* **Search by client**:
+
+  * Find all jobs and tasks tied to that client.
+* **Search by associate**:
+
+  * Find all tasks and jobs involving that associate.
+* **Global search bar**:
+
+  * Search by:
+
+    * Client name
+    * Property address
+    * Job code
+    * Associate name
+
+Implement at least a basic global search (backend queries with indexes for performance).
+
+---
+
+## 7. Technical & Architectural Notes (Suggestions)
+
+You don’t have to lock into these, but this is the general direction:
+
+* **Backend**:
+
+  * Node.js + Express / NestJS (or similar)
+  * REST API (or GraphQL if you prefer), with JWT-based auth.
+  * Use a relational DB (Postgres/MySQL) or MongoDB, as long as relationships are done cleanly.
+
+* **Frontend**:
+
+  * React (with a component library like shadcn/ui, MUI, or similar).
+  * Separate **Admin UI** and **Client UI** routes.
+  * Responsive design (desktop first, but workable on tablet/mobile).
+
+* **Security**:
+
+  * Password hashing (e.g., bcrypt).
+  * Role-based middleware on all endpoints.
+
+* **File Storage**:
+
+  * Use cloud storage (e.g., S3 or equivalent) with references stored in DB.
+  * Support basic file types: PDF, DOCX, images, etc.
+
+---
+
+## 8. Phase 1 Scope (what MUST be working)
+
+For Phase 1, please focus on:
+
+1. **Authentication & Roles**
+
+   * Login
+   * Role-based routing
+   * Client vs Admin separation.
+
+2. **Basic Admin Portal**
+
+   * Client list & profiles
+   * Job list & job details (Overview, Tasks, Documents, Associates)
+   * Associate list & profiles
+   * Task management (global + per job)
+   * Document upload per job (with basic folder tagging)
+   * Time logs (simple entry & view)
+
+3. **Basic Client Portal**
+
+   * Login
+   * Client dashboard
+   * My Jobs list
+   * Job detail (overview, status, documents upload/view)
+   * Simple note/comment thread (optional but highly useful)
+
+4. **Basic Search**
+
+   * Search by client name
+   * Search by job (address / job name)
+   * Search by associate
+
+5. **Checklist Template Structure**
+
+   * At least one template (Final Survey – New Dwelling) hard-coded/seeded.
+   * Ability to attach template to a job and mark items.
+
+Once Phase 1 is fully stable, we can layer on:
+
+* More automation (status workflows).
+* Email notifications.
+* Billing/time reports.
+* More advanced SOP/process features.
+
+---
+
+If you want, next step I can do is:
+**write the API endpoints list + example JSON payloads** for each entity (Client, Job, Task, etc.) so your dev has a concrete blueprint to start coding against.
