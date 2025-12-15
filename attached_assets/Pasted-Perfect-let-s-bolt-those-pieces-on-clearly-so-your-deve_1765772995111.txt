@@ -1,0 +1,200 @@
+Perfect, let’s bolt those pieces on clearly so your developer knows **exactly** what to build.
+
+You can copy-paste this to them:
+
+---
+
+## Addendum: Tasks, Sub-Tasks, Time Tracking & Client Document Upload
+
+### 1. Task & Sub-Task Structure
+
+**Goal:** Every job should have tasks, and each task can have nested sub-tasks so we can break work down properly and see progress.
+
+**Data model**
+
+Use **one `Task` table/collection** with a self-reference for subtasks:
+
+**Task**
+
+* `id`
+* `jobId` (FK → Job)
+* `parentTaskId` (nullable FK → Task)
+
+  * `NULL` = main task
+  * non-NULL = subtask of that main task
+* `title`
+* `description`
+* `status` (enum: `todo`, `in_progress`, `waiting`, `done`, `cancelled`)
+* `type` (e.g. `phone_call`, `email`, `filing`, `research`, `site_visit`, etc.)
+* `assigneeId` (FK → User)
+* `relatedClientId` (optional FK → Client)
+* `relatedAssociateId` (optional FK → Associate)
+* `priority` (low / normal / high / urgent)
+* `dueDate`
+* `createdAt`
+* `completedAt` (nullable)
+* `locationType` (`office` / `road`) – we spoke about road vs office tasks
+* `internalNotes` (text)
+
+**UI / UX**
+
+* On **Job Detail → Tasks tab**:
+
+  * Show main tasks as rows.
+  * Under each task, show subtasks indented.
+  * Allow:
+
+    * Add Task
+    * Add Sub-Task under a task
+    * Change status, due date, assignee
+* On **Global Task view**:
+
+  * Show both tasks and subtasks in one list, but indicate hierarchy (e.g., “Parent Task > Subtask”).
+
+---
+
+### 2. Time Worked on Each Task
+
+**Goal:** Track exactly how much time is spent per task (and subtask), and roll that up per job.
+
+**Data model**
+
+New entity: **TimeEntry**
+
+**TimeEntry**
+
+* `id`
+* `taskId` (FK → Task)
+* `jobId` (FK → Job) – redundant but useful for reporting
+* `userId` (FK → User)
+* `date` (work date)
+* `startTime` (optional)
+* `endTime` (optional)
+* `totalMinutes` (integer)
+* `isBillable` (boolean)
+* `notes` (optional)
+
+> Important: Time is linked **to the task**, not only to the job.
+
+**Logic & UI**
+
+* On each **Task**:
+
+  * Show a small time section:
+
+    * “Total time on this task: Xh Ym”
+    * Button: **“Add Time Entry”**
+* When adding time entry:
+
+  * Fields: Date, Start, End OR Total minutes, Billable (Y/N), Note.
+* On **Job → Time Logs tab**:
+
+  * Show all time entries for tasks in that job.
+  * Group by task and by user.
+* Rollups:
+
+  * Per Task: sum all `TimeEntry.totalMinutes` for that task.
+  * Per Job: sum time of all tasks belonging to that job.
+
+---
+
+### 3. Client Upload of Documentation
+
+**Goal:** Clients must be able to upload documents directly into the system from the Client Portal, and those documents should be visible/usable in the Admin Portal.
+
+#### 3.1. Where Clients Upload
+
+**Client Portal → Job Detail → Documents section**
+
+* Client sees:
+
+  * List of existing documents that are shared with them.
+  * For each document: name, type, upload date, who uploaded.
+* Client can:
+
+  * Click **“Upload Document”**
+  * Choose file(s)
+  * Select category/folder (e.g. “Plans”, “Surveys”, “Correspondence”, “Legal”, “Other”)
+  * Optional note (e.g. “Updated survey from engineer”).
+
+#### 3.2. Data model for documents
+
+**Document**
+
+* `id`
+* `jobId` (FK → Job)
+* `folderId` (optional FK → Folder)
+* `uploadedByUserId` (nullable FK → User)
+* `uploadedByClientId` (nullable FK → Client)
+* `fileName`
+* `storagePath` / URL (S3 or equivalent)
+* `fileType` (MIME)
+* `category` / `tag` (string enum – e.g. `plan`, `permit`, `survey`, `dob_letter`, `photo`, `other`)
+* `isVisibleToClient` (boolean)
+* `createdAt`
+* `notes` (optional)
+
+> When a **client** uploads a document:
+>
+> * Set `uploadedByClientId` and optionally map to a “Client User” if exists.
+> * Auto-set `isVisibleToClient = true`.
+
+#### 3.3. Optional: Tie document requests to tasks (Phase 1, low-effort hook)
+
+Add to **Task**:
+
+* `requiresClientUpload` (boolean)
+* Optionally `requestedDocumentType` (string/enum)
+
+**Behavior:**
+
+* If a task requires client upload, show that clearly in:
+
+  * Admin portal: Task detail.
+  * Client portal: “To-Dos” section on Job.
+* When client uploads a document for that job, admin can manually mark that task as `done`.
+  (Later we can automate mapping doc → task.)
+
+---
+
+### 4. Minimum “Done” Definition for These Features in Phase 1
+
+For **Phase 1**, I need the following to be working:
+
+1. **Tasks & Sub-tasks**
+
+   * Ability to create/edit/delete tasks on a job.
+   * Ability to create sub-tasks (parentTaskId) under a task.
+   * Tasks & subtasks visible under Job → Tasks, clearly structured.
+
+2. **Time on Each Task**
+
+   * From a task, I can log one or more TimeEntries.
+   * Each task shows “Total time logged”.
+   * Job Time tab shows time grouped by task.
+
+3. **Client Document Upload**
+
+   * From Client Portal:
+
+     * Client logs in → opens job → sees Documents.
+     * Can upload files.
+   * From Admin Portal:
+
+     * See those documents under Job → Documents.
+     * Visible that they were uploaded by client.
+   * Files stored in cloud (S3 or similar) with DB references.
+
+---
+
+If you build exactly this on top of what we already specced, it will cover:
+
+* **Tasks + Subtasks**
+* **Time worked on each task**
+* **Client upload of documentations**
+
+If you’d like, I can next write **example JSON payloads + API endpoints** specifically for:
+
+* `POST /tasks`
+* `POST /tasks/:id/time-entries`
+* `POST /jobs/:id/client-documents`
