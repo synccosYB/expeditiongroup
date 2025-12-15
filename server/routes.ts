@@ -147,6 +147,21 @@ export async function registerRoutes(
     }
   });
 
+  // Get projects by client ID
+  app.get("/api/clients/:id/projects", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projects = await storage.getProjectsByClientId(parseInt(req.params.id));
+      res.json(projects);
+    } catch (error) {
+      console.error("Error fetching client projects:", error);
+      res.status(500).json({ message: "Failed to fetch client projects" });
+    }
+  });
+
   app.get("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

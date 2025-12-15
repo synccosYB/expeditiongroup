@@ -17,6 +17,7 @@ import AboutUs from "@/pages/about-us";
 import OurStory from "@/pages/our-story";
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
+import ClientDetail from "@/pages/client-detail";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Tasks from "@/pages/tasks";
@@ -45,6 +46,7 @@ function AdminRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/clients" component={Clients} />
+      <Route path="/clients/:id" component={ClientDetail} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/tasks" component={Tasks} />

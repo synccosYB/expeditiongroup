@@ -30,7 +30,8 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, Users, Mail, Phone, MapPin, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Users, Mail, Phone, MapPin, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -426,6 +427,12 @@ export default function Clients() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/clients/${client.id}`}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Profile
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleOpenDialog(client)}>
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
