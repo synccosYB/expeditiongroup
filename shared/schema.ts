@@ -126,12 +126,14 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Notes table
+// Notes table - can be linked to project, task, associate, or client
 export const notes = pgTable("notes", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  associateId: integer("associate_id").references(() => associates.id, { onDelete: "cascade" }),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: "cascade" }),
   userId: varchar("user_id").references(() => users.id),
-  clientId: integer("client_id").references(() => clients.id),
   content: text("content").notNull(),
   isVisibleToClient: boolean("is_visible_to_client").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -337,13 +339,21 @@ export const notesRelations = relations(notes, ({ one }) => ({
     fields: [notes.projectId],
     references: [projects.id],
   }),
-  user: one(users, {
-    fields: [notes.userId],
-    references: [users.id],
+  task: one(tasks, {
+    fields: [notes.taskId],
+    references: [tasks.id],
+  }),
+  associate: one(associates, {
+    fields: [notes.associateId],
+    references: [associates.id],
   }),
   client: one(clients, {
     fields: [notes.clientId],
     references: [clients.id],
+  }),
+  user: one(users, {
+    fields: [notes.userId],
+    references: [users.id],
   }),
 }));
 
