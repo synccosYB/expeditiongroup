@@ -3,6 +3,8 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { ZodError } from "zod";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -1156,6 +1158,83 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting task reminder:", error);
       res.status(500).json({ message: "Failed to delete task reminder" });
+    }
+  });
+
+  // Object Storage - File Upload
+  const objectStorageService = new ObjectStorageService();
+
+  // Get presigned URL for document upload with folder path based on project/client/category
+  app.post("/api/projects/:projectId/documents/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const client = await storage.getClient(project.clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const { category = "other", fileName } = req.body;
+
+      // Sanitize names for folder path
+      const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase();
+      const clientSlug = `${client.id}-${sanitize(client.companyName)}`;
+      const projectSlug = `${project.id}-${sanitize(project.name)}`;
+      
+      // Build folder path: clients/<clientSlug>/projects/<projectSlug>/<category>/
+      const folderPath = `clients/${clientSlug}/projects/${projectSlug}/${category}`;
+
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL(folderPath);
+      
+      // Normalize the upload URL to get the permanent object path (already prefixed with /objects/)
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadUrl);
+
+      res.json({
+        uploadUrl,
+        objectPath,
+        folderPath,
+        method: "PUT" as const,
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Serve uploaded objects (with ACL check)
+  app.get("/objects/*", async (req: any, res) => {
+    try {
+      const objectPath = req.path;
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      
+      // Check if user is authenticated and has access
+      const userId = req.session?.userId?.toString();
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        userId,
+        objectFile,
+        requestedPermission: ObjectPermission.READ,
+      });
+
+      if (!canAccess) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ message: "Object not found" });
+      }
+      console.error("Error serving object:", error);
+      res.status(500).json({ message: "Failed to serve object" });
     }
   });
 

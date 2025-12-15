@@ -85,6 +85,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 type TaskWithSubtasks = Task & { 
   subtasks?: TaskWithSubtasks[];
@@ -631,6 +632,8 @@ export default function ProjectDetail() {
   const [selectedAssociateId, setSelectedAssociateId] = useState<string>("");
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
+  const [uploadedFilePath, setUploadedFilePath] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("other");
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
@@ -1652,9 +1655,53 @@ export default function ProjectDetail() {
                         name="storagePath"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Storage Path / URL *</FormLabel>
+                            <FormLabel>Upload File *</FormLabel>
                             <FormControl>
-                              <Input placeholder="/documents/file.pdf or https://..." {...field} data-testid="input-document-path" />
+                              <div className="space-y-2">
+                                {uploadedFilePath ? (
+                                  <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
+                                    <File className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm truncate flex-1">{uploadedFilePath.split('/').pop()}</span>
+                                    <Button 
+                                      type="button" 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setUploadedFilePath("");
+                                        field.onChange("");
+                                      }}
+                                      data-testid="button-remove-upload"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <ObjectUploader
+                                    maxNumberOfFiles={1}
+                                    onGetUploadParameters={async () => {
+                                      const category = documentForm.getValues("category") || "other";
+                                      const res = await fetch(`/api/projects/${id}/documents/upload`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        credentials: "include",
+                                        body: JSON.stringify({ category }),
+                                      });
+                                      if (!res.ok) throw new Error("Failed to get upload URL");
+                                      const data = await res.json();
+                                      // Store the permanent objectPath for later use
+                                      setUploadedFilePath(data.objectPath);
+                                      field.onChange(data.objectPath);
+                                      return { method: "PUT" as const, url: data.uploadUrl };
+                                    }}
+                                    onComplete={(result) => {
+                                      // objectPath already set in onGetUploadParameters
+                                    }}
+                                  >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Choose File
+                                  </ObjectUploader>
+                                )}
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
