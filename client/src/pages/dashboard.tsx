@@ -14,6 +14,7 @@ import {
   Timer,
   AlertTriangle,
   Calendar,
+  Printer,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -81,6 +82,129 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
 
+  const handlePrintReport = (reportType: string) => {
+    let reportTitle = "";
+    let reportData: any[] = [];
+    
+    switch (reportType) {
+      case "clients":
+        reportTitle = "Total Clients Report";
+        reportData = allProjects?.map(p => p.client).filter((c, i, arr) => 
+          arr.findIndex(x => x?.id === c?.id) === i
+        ) ?? [];
+        break;
+      case "projects":
+        reportTitle = "Active Projects Report";
+        reportData = allProjects?.filter(p => p.status !== "completed" && p.status !== "cancelled") ?? [];
+        break;
+      case "tasks":
+        reportTitle = "Pending Tasks Report";
+        reportData = allTasks?.filter(t => t.status !== "done") ?? [];
+        break;
+      case "hours":
+        reportTitle = "Hours This Week Report";
+        break;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const currentDate = new Date().toLocaleDateString();
+    
+    let tableContent = "";
+    if (reportType === "clients") {
+      tableContent = `
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>County</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.map((c: any) => `
+              <tr>
+                <td>${c?.name ?? ""}</td>
+                <td>${c?.company ?? "-"}</td>
+                <td>${c?.email ?? "-"}</td>
+                <td>${c?.phone ?? "-"}</td>
+                <td>${c?.county ?? "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (reportType === "projects") {
+      tableContent = `
+        <table>
+          <thead>
+            <tr><th>Project Name</th><th>Client</th><th>Status</th><th>County</th><th>Address</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.map((p: any) => `
+              <tr>
+                <td>${p.name}</td>
+                <td>${p.client?.name ?? "-"}</td>
+                <td>${p.status?.replace(/_/g, " ")}</td>
+                <td>${p.county ?? "-"}</td>
+                <td>${p.address ?? "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (reportType === "tasks") {
+      tableContent = `
+        <table>
+          <thead>
+            <tr><th>Task</th><th>Project</th><th>Status</th><th>Type</th><th>Due Date</th></tr>
+          </thead>
+          <tbody>
+            ${reportData.map((t: any) => `
+              <tr>
+                <td>${t.title}</td>
+                <td>${t.project?.name ?? "-"}</td>
+                <td>${t.status?.replace(/_/g, " ")}</td>
+                <td>${t.type ?? "-"}</td>
+                <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "-"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    } else if (reportType === "hours") {
+      tableContent = `
+        <div class="summary">
+          <p><strong>Total Hours This Week:</strong> ${stats?.totalHoursThisWeek ?? 0} hours</p>
+        </div>
+      `;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${reportTitle}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .date { color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background-color: #f5f5f5; font-weight: bold; }
+          tr:nth-child(even) { background-color: #fafafa; }
+          .summary { padding: 20px; background: #f5f5f5; border-radius: 8px; }
+          @media print { body { margin: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>${reportTitle}</h1>
+        <p class="date">Generated on: ${currentDate}</p>
+        ${tableContent}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const statCards = [
     {
       title: "Total Clients",
@@ -88,6 +212,7 @@ export default function Dashboard() {
       icon: Users,
       color: "text-chart-1",
       bgColor: "bg-chart-1/10",
+      reportType: "clients",
     },
     {
       title: "Active Projects",
@@ -95,6 +220,7 @@ export default function Dashboard() {
       icon: FolderKanban,
       color: "text-chart-2",
       bgColor: "bg-chart-2/10",
+      reportType: "projects",
     },
     {
       title: "Pending Tasks",
@@ -102,6 +228,7 @@ export default function Dashboard() {
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
+      reportType: "tasks",
     },
     {
       title: "Hours This Week",
@@ -109,6 +236,7 @@ export default function Dashboard() {
       icon: Clock,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",
+      reportType: "hours",
     },
   ];
 
@@ -123,7 +251,12 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.title}>
+          <Card 
+            key={stat.title} 
+            className="cursor-pointer hover-elevate transition-all"
+            onClick={() => handlePrintReport(stat.reportType)}
+            data-testid={`stat-card-${stat.reportType}`}
+          >
             <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -133,8 +266,11 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {stat.value}
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-2xl font-bold text-foreground">
+                  {stat.value}
+                </div>
+                <Printer className="h-4 w-4 text-muted-foreground" />
               </div>
             </CardContent>
           </Card>
