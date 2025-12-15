@@ -19,6 +19,7 @@ import {
   Clock,
   UserCog,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ const adminMenuItems = [
   { title: "Tasks", url: "/tasks", icon: ClipboardList },
   { title: "Time Logs", url: "/time-logs", icon: Clock },
   { title: "Associates", url: "/associates", icon: UserCog },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const clientMenuItems = [

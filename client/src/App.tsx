@@ -31,6 +31,7 @@ import ForGeneralContractors from "@/pages/for-general-contractors";
 import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
 import ForConstructionManagers from "@/pages/for-construction-managers";
+import SettingsPage from "@/pages/settings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -56,6 +57,7 @@ function AdminRouter() {
       <Route path="/time-logs" component={TimeLogs} />
       <Route path="/associates" component={Associates} />
       <Route path="/associates/:id" component={AssociateDetail} />
+      <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
