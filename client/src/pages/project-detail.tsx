@@ -205,6 +205,7 @@ function ReminderDialog({
 }) {
   const { toast } = useToast();
   const [channel, setChannel] = useState<"email" | "sms" | "whatsapp">("email");
+  const [expandedReminderId, setExpandedReminderId] = useState<number | null>(null);
 
   const { data: reminders, isLoading: remindersLoading } = useQuery<TaskReminder[]>({
     queryKey: ["/api/tasks", taskId, "reminders"],
@@ -310,34 +311,88 @@ function ReminderDialog({
               {reminders.map((reminder) => (
                 <div 
                   key={reminder.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                  className="rounded-lg border bg-muted/50 overflow-hidden"
                   data-testid={`reminder-item-${reminder.id}`}
                 >
-                  <div className="flex items-center gap-2">
-                    {getChannelIcon(reminder.channel)}
-                    <div>
-                      <p className="text-sm">
-                        {reminder.channel === "email" ? reminder.recipientEmail : reminder.recipientPhone}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(reminder.scheduledAt), "MMM d, yyyy h:mm a")}
-                      </p>
+                  <div 
+                    className="flex items-center justify-between p-3 cursor-pointer hover-elevate"
+                    onClick={() => setExpandedReminderId(expandedReminderId === reminder.id ? null : reminder.id)}
+                    data-testid={`button-expand-reminder-${reminder.id}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {expandedReminderId === reminder.id ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {getChannelIcon(reminder.channel)}
+                      <div>
+                        <p className="text-sm">
+                          {reminder.channel === "email" ? reminder.recipientEmail : reminder.recipientPhone}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(reminder.scheduledAt), "MMM d, yyyy h:mm a")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusColor(reminder.status) as any} size="sm">
+                        {reminder.status}
+                      </Badge>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteReminderMutation.mutate(reminder.id);
+                        }}
+                        disabled={deleteReminderMutation.isPending}
+                        data-testid={`button-delete-reminder-${reminder.id}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getStatusColor(reminder.status) as any} size="sm">
-                      {reminder.status}
-                    </Badge>
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      onClick={() => deleteReminderMutation.mutate(reminder.id)}
-                      disabled={deleteReminderMutation.isPending}
-                      data-testid={`button-delete-reminder-${reminder.id}`}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {expandedReminderId === reminder.id && (
+                    <div className="px-3 pb-3 pt-0 border-t bg-background/50 space-y-2">
+                      <div className="grid grid-cols-2 gap-2 pt-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Channel</p>
+                          <p className="text-sm capitalize">{reminder.channel}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Status</p>
+                          <p className="text-sm capitalize">{reminder.status}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Recipient</p>
+                          <p className="text-sm">{reminder.channel === "email" ? reminder.recipientEmail : reminder.recipientPhone}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Scheduled</p>
+                          <p className="text-sm">{format(new Date(reminder.scheduledAt), "PPpp")}</p>
+                        </div>
+                      </div>
+                      {reminder.message && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Message</p>
+                          <p className="text-sm bg-muted p-2 rounded-md mt-1">{reminder.message}</p>
+                        </div>
+                      )}
+                      {reminder.sentAt && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Sent At</p>
+                          <p className="text-sm">{format(new Date(reminder.sentAt), "PPpp")}</p>
+                        </div>
+                      )}
+                      {reminder.failureReason && (
+                        <div>
+                          <p className="text-xs text-muted-foreground text-destructive">Failure Reason</p>
+                          <p className="text-sm text-destructive">{reminder.failureReason}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
