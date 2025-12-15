@@ -95,11 +95,11 @@ export function ObjectUploader({
       </Button>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg z-[100]">
           <DialogHeader>
             <DialogTitle>Upload File</DialogTitle>
           </DialogHeader>
-          <div ref={dashboardRef} className="uppy-dashboard-container" />
+          <div ref={dashboardRef} className="uppy-dashboard-container min-h-[300px]" />
         </DialogContent>
       </Dialog>
 

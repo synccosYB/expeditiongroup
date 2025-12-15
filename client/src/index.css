@@ -289,3 +289,38 @@
     inset: -1px;
   }
 }
+
+/* Uppy Dashboard Styles for nested dialogs */
+.uppy-dashboard-container {
+  width: 100%;
+  min-height: 300px;
+}
+
+.uppy-dashboard-container .uppy-Dashboard {
+  width: 100% !important;
+  height: 300px !important;
+}
+
+.uppy-dashboard-container .uppy-Dashboard-inner {
+  width: 100% !important;
+  height: 300px !important;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.uppy-dashboard-container .uppy-Dashboard-AddFiles {
+  border: none;
+}
+
+.uppy-dashboard-container .uppy-Dashboard-AddFiles-title {
+  color: hsl(var(--foreground));
+}
+
+.uppy-dashboard-container .uppy-Dashboard-browse {
+  color: hsl(var(--primary));
+}
+
+.uppy-dashboard-container .uppy-Dashboard-dropFilesHereHint {
+  color: hsl(var(--muted-foreground));
+}
