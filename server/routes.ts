@@ -1022,6 +1022,21 @@ export async function registerRoutes(
     }
   });
 
+  // All users list (admin only)
+  app.get("/api/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // Client Portal - Add note to project
   app.post("/api/client/projects/:id/notes", isAuthenticated, async (req: any, res) => {
     try {

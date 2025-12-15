@@ -140,6 +140,47 @@ export function setupAuth(app: Express) {
       res.json({ message: "Logged out successfully" });
     });
   });
+
+  // Admin password reset endpoint
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      // Check if user is authenticated
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if user is admin
+      const currentUser = await storage.getUser(req.session.userId);
+      if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin")) {
+        return res.status(403).json({ message: "Only admins can reset passwords" });
+      }
+
+      const resetSchema = z.object({
+        userId: z.string(),
+        newPassword: z.string().min(8, "Password must be at least 8 characters"),
+      });
+
+      const parsed = resetSchema.parse(req.body);
+
+      // Hash new password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(parsed.newPassword, saltRounds);
+
+      // Update user password
+      const updatedUser = await storage.updateUserPassword(parsed.userId, passwordHash);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
 }
 
 // Middleware to check if user is authenticated
