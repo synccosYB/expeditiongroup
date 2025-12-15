@@ -44,6 +44,7 @@ export function ReminderBell() {
   const [actionReminder, setActionReminder] = useState<ReminderWithDetails | null>(null);
   const [actionType, setActionType] = useState<"done" | "postponed" | null>(null);
   const [actionNote, setActionNote] = useState("");
+  const [viewReminder, setViewReminder] = useState<ReminderWithDetails | null>(null);
 
   const { data: reminders = [], isLoading } = useQuery<ReminderWithDetails[]>({
     queryKey: ["/api/reminders"],
@@ -143,8 +144,9 @@ export function ReminderBell() {
                 {reminders.map((reminder) => (
                   <div 
                     key={reminder.id} 
-                    className={`p-3 ${reminder.status !== "pending" ? "opacity-60" : ""}`}
+                    className={`p-3 cursor-pointer hover-elevate ${reminder.status !== "pending" ? "opacity-60" : ""}`}
                     data-testid={`reminder-item-${reminder.id}`}
+                    onClick={() => setViewReminder(reminder)}
                   >
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
@@ -156,13 +158,9 @@ export function ReminderBell() {
                             {reminder.status}
                           </Badge>
                         </div>
-                        <Link 
-                          href={`/projects/${reminder.project?.id}`}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          onClick={() => setIsOpen(false)}
-                        >
+                        <div className="text-xs text-muted-foreground">
                           P-{reminder.project?.id}: {reminder.project?.name}
-                        </Link>
+                        </div>
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           {reminder.channel === "email" && <Mail className="h-3 w-3" />}
                           {reminder.channel !== "email" && <Phone className="h-3 w-3" />}
@@ -183,7 +181,7 @@ export function ReminderBell() {
                         )}
                       </div>
                       {reminder.status === "pending" && (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -300,6 +298,126 @@ export function ReminderBell() {
               data-testid="button-confirm-action"
             >
               {updateReminderMutation.isPending ? "Saving..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewReminder} onOpenChange={(open) => !open && setViewReminder(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Reminder Details
+            </DialogTitle>
+          </DialogHeader>
+          {viewReminder && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Task</Label>
+                  <p className="text-sm font-medium">{viewReminder.task?.title || "Unknown Task"}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Project</Label>
+                  <Link
+                    href={`/projects/${viewReminder.project?.id}`}
+                    className="text-sm text-foreground hover:underline block"
+                    onClick={() => {
+                      setViewReminder(null);
+                      setIsOpen(false);
+                    }}
+                    data-testid="link-reminder-project"
+                  >
+                    P-{viewReminder.project?.id}: {viewReminder.project?.name}
+                  </Link>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <div className="mt-1">
+                    <Badge variant={getStatusBadgeVariant(viewReminder.status)}>
+                      {viewReminder.status}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Channel</Label>
+                  <div className="flex items-center gap-2 text-sm mt-1">
+                    {viewReminder.channel === "email" ? (
+                      <><Mail className="h-4 w-4" /> Email</>
+                    ) : viewReminder.channel === "sms" ? (
+                      <><Phone className="h-4 w-4" /> SMS</>
+                    ) : (
+                      <><Phone className="h-4 w-4" /> WhatsApp</>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Recipient</Label>
+                  <p className="text-sm">{viewReminder.recipientEmail || viewReminder.recipientPhone}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Scheduled</Label>
+                  <p className="text-sm">{format(new Date(viewReminder.scheduledAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                </div>
+                {viewReminder.message && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Message</Label>
+                    <p className="text-sm whitespace-pre-wrap">{viewReminder.message}</p>
+                  </div>
+                )}
+                {viewReminder.actionNote && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Action Note</Label>
+                    <p className="text-sm italic">{viewReminder.actionNote}</p>
+                  </div>
+                )}
+                {viewReminder.actionAt && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Actioned At</Label>
+                    <p className="text-sm">{format(new Date(viewReminder.actionAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                  </div>
+                )}
+                <div>
+                  <Label className="text-xs text-muted-foreground">Created</Label>
+                  <p className="text-sm">{format(new Date(viewReminder.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                </div>
+              </div>
+              {viewReminder.status === "pending" && (
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setViewReminder(null);
+                      handleAction(viewReminder, "done");
+                    }}
+                    data-testid="button-view-done"
+                  >
+                    <Check className="h-4 w-4 mr-2 text-green-600" />
+                    Mark Done
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setViewReminder(null);
+                      handleAction(viewReminder, "postponed");
+                    }}
+                    data-testid="button-view-postpone"
+                  >
+                    <Clock className="h-4 w-4 mr-2 text-yellow-600" />
+                    Postpone
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewReminder(null)} data-testid="button-close-details">
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
