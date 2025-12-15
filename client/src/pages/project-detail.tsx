@@ -1100,8 +1100,8 @@ export default function ProjectDetail() {
                         <FormItem>
                           <FormLabel>Parent Task (for subtasks)</FormLabel>
                           <Select
-                            onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
-                            value={field.value?.toString() || ""}
+                            onValueChange={(val) => field.onChange(val === "__none__" ? null : parseInt(val))}
+                            value={field.value?.toString() || "__none__"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-task-parent">
@@ -1109,7 +1109,7 @@ export default function ProjectDetail() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">None (top-level task)</SelectItem>
+                              <SelectItem value="__none__">None (top-level task)</SelectItem>
                               {parentTasks.filter(t => t.id !== editingTask?.id).map((task) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
                                   {task.title}
@@ -1128,8 +1128,8 @@ export default function ProjectDetail() {
                         <FormItem>
                           <FormLabel>Assigned To</FormLabel>
                           <Select
-                            onValueChange={(val) => field.onChange(val || null)}
-                            value={field.value || ""}
+                            onValueChange={(val) => field.onChange(val === "__none__" ? null : val)}
+                            value={field.value || "__none__"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-task-assignee">
@@ -1137,7 +1137,7 @@ export default function ProjectDetail() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Unassigned</SelectItem>
+                              <SelectItem value="__none__">Unassigned</SelectItem>
                               {adminUsers?.map((u) => (
                                 <SelectItem key={u.id} value={u.id}>
                                   {u.firstName || u.email}
@@ -1156,8 +1156,8 @@ export default function ProjectDetail() {
                         <FormItem>
                           <FormLabel>Related Associate</FormLabel>
                           <Select
-                            onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
-                            value={field.value?.toString() || ""}
+                            onValueChange={(val) => field.onChange(val === "__none__" ? null : parseInt(val))}
+                            value={field.value?.toString() || "__none__"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-task-related-associate">
@@ -1165,7 +1165,7 @@ export default function ProjectDetail() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="__none__">None</SelectItem>
                               {associates?.map((associate) => (
                                 <SelectItem key={associate.id} value={associate.id.toString()}>
                                   {associate.name} ({associate.type})
@@ -1364,8 +1364,8 @@ export default function ProjectDetail() {
                             <FormItem>
                               <FormLabel>Folder</FormLabel>
                               <Select
-                                onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
-                                value={field.value?.toString() || ""}
+                                onValueChange={(val) => field.onChange(val === "__none__" ? null : parseInt(val))}
+                                value={field.value?.toString() || "__none__"}
                               >
                                 <FormControl>
                                   <SelectTrigger data-testid="select-document-folder">
@@ -1373,7 +1373,7 @@ export default function ProjectDetail() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="">No folder</SelectItem>
+                                  <SelectItem value="__none__">No folder</SelectItem>
                                   {folders?.map((folder) => (
                                     <SelectItem key={folder.id} value={folder.id.toString()}>
                                       {folder.name}
@@ -1525,8 +1525,8 @@ export default function ProjectDetail() {
                         <FormItem>
                           <FormLabel>From Template (optional)</FormLabel>
                           <Select
-                            onValueChange={(val) => field.onChange(val ? parseInt(val) : null)}
-                            value={field.value?.toString() || ""}
+                            onValueChange={(val) => field.onChange(val === "__none__" ? null : parseInt(val))}
+                            value={field.value?.toString() || "__none__"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-checklist-template">
@@ -1534,7 +1534,7 @@ export default function ProjectDetail() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Start from scratch</SelectItem>
+                              <SelectItem value="__none__">Start from scratch</SelectItem>
                               {checklistTemplates?.map((template) => (
                                 <SelectItem key={template.id} value={template.id.toString()}>
                                   {template.name}
