@@ -26,6 +26,8 @@ export const projectTypeEnum = pgEnum("project_type", ["violation_removal", "per
 export const projectPriorityEnum = pgEnum("project_priority", ["low", "normal", "high", "urgent"]);
 export const associateTypeEnum = pgEnum("associate_type", ["engineer", "architect", "surveyor", "lawyer", "contractor", "dob_contact", "village_contact", "consultant", "other"]);
 export const documentCategoryEnum = pgEnum("document_category", ["plan", "permit", "survey", "dob_letter", "correspondence", "legal", "photo", "inspection", "other"]);
+export const reminderChannelEnum = pgEnum("reminder_channel", ["email", "sms", "whatsapp"]);
+export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled"]);
 
 // Session storage table (IMPORTANT: mandatory for Replit Auth)
 export const sessions = pgTable(
@@ -238,6 +240,21 @@ export const checklistInstances = pgTable("checklist_instances", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Task Reminders table
+export const taskReminders = pgTable("task_reminders", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  channel: reminderChannelEnum("channel").notNull(),
+  recipientEmail: varchar("recipient_email", { length: 255 }),
+  recipientPhone: varchar("recipient_phone", { length: 50 }),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  message: text("message"),
+  status: reminderStatusEnum("status").default("pending").notNull(),
+  sentAt: timestamp("sent_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Newsletter Subscribers table
 export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -303,6 +320,14 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [associates.id],
   }),
   timeEntries: many(timeEntries),
+  reminders: many(taskReminders),
+}));
+
+export const taskRemindersRelations = relations(taskReminders, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskReminders.taskId],
+    references: [tasks.id],
+  }),
 }));
 
 export const notesRelations = relations(notes, ({ one }) => ({
@@ -433,6 +458,13 @@ export const insertFolderSchema = createInsertSchema(folders).omit({ id: true, c
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChecklistInstanceSchema = createInsertSchema(checklistInstances).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTaskReminderSchema = createInsertSchema(taskReminders).omit({ id: true, createdAt: true, sentAt: true, errorMessage: true }).extend({
+  scheduledAt: z.preprocess((val) => {
+    if (val instanceof Date) return val;
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }, z.date()),
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -463,3 +495,5 @@ export type InsertChecklistInstance = z.infer<typeof insertChecklistInstanceSche
 export type ChecklistInstance = typeof checklistInstances.$inferSelect;
 export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscriberSchema>;
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type InsertTaskReminder = z.infer<typeof insertTaskReminderSchema>;
+export type TaskReminder = typeof taskReminders.$inferSelect;
