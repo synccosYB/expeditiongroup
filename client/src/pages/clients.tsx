@@ -60,7 +60,14 @@ const clientFormSchema = z.object({
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
   county: z.string().optional(),
+  billingAddress: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingState: z.string().optional(),
+  billingZip: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -86,7 +93,14 @@ export default function Clients() {
       email: "",
       phone: "",
       address: "",
+      city: "",
+      state: "",
+      zip: "",
       county: "",
+      billingAddress: "",
+      billingCity: "",
+      billingState: "",
+      billingZip: "",
       notes: "",
     },
   });
@@ -191,7 +205,14 @@ export default function Clients() {
         email: client.email || "",
         phone: client.phone || "",
         address: client.address || "",
+        city: client.city || "",
+        state: client.state || "",
+        zip: client.zip || "",
         county: client.county || "",
+        billingAddress: client.billingAddress || "",
+        billingCity: client.billingCity || "",
+        billingState: client.billingState || "",
+        billingZip: client.billingZip || "",
         notes: client.notes || "",
       });
     } else {
@@ -322,6 +343,59 @@ export default function Clients() {
                     </FormItem>
                   )}
                 />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="City"
+                            {...field}
+                            data-testid="input-client-city"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="NY"
+                            {...field}
+                            data-testid="input-client-state"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="zip"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Zip Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="12345"
+                            {...field}
+                            data-testid="input-client-zip"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <FormField
                   control={form.control}
                   name="county"
