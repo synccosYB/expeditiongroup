@@ -1,17 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
+import { PublicHeader } from "@/components/public-header";
+import { PublicFooter } from "@/components/public-footer";
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center">
-          <a href="/" className="flex items-center" data-testid="link-logo-header">
-            <img src={logoFull} alt="Expedition Group" className="h-9" />
-          </a>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex flex-col">
+      <PublicHeader />
 
       <main className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
         <Button variant="ghost" size="sm" asChild className="mb-6" data-testid="button-back">
@@ -130,6 +125,8 @@ export default function TermsOfService() {
           </section>
         </div>
       </main>
+
+      <PublicFooter />
     </div>
   );
 }
