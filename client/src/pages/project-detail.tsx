@@ -63,6 +63,7 @@ import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/sta
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
@@ -917,7 +918,7 @@ export default function ProjectDetail() {
       const payload = {
         ...data,
         projectId: parseInt(id!),
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
         parentTaskId: data.parentTaskId || null,
         assigneeId: data.assigneeId || null,
         relatedAssociateId: data.relatedAssociateId || null,
@@ -945,7 +946,7 @@ export default function ProjectDetail() {
     mutationFn: async ({ taskId, data }: { taskId: number; data: Partial<TaskFormData> }) => {
       const payload = {
         ...data,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
         parentTaskId: data.parentTaskId || null,
         assigneeId: data.assigneeId || null,
         relatedAssociateId: data.relatedAssociateId || null,
@@ -1038,7 +1039,7 @@ export default function ProjectDetail() {
         ...data,
         projectId: parseInt(id!),
         userId: user?.id,
-        date: new Date(data.date),
+        date: parseLocalDate(data.date),
       };
       return await apiRequest("POST", "/api/time-logs", payload);
     },

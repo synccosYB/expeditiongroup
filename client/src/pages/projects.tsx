@@ -47,6 +47,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { parseLocalDate } from "@/lib/dateUtils";
 import type { Project, Client } from "@shared/schema";
 import {
   DropdownMenu,
@@ -134,8 +135,8 @@ export default function Projects() {
     mutationFn: async (data: ProjectFormData) => {
       const payload = {
         ...data,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        targetEndDate: data.targetEndDate ? new Date(data.targetEndDate) : null,
+        startDate: data.startDate ? parseLocalDate(data.startDate) : null,
+        targetEndDate: data.targetEndDate ? parseLocalDate(data.targetEndDate) : null,
       };
       return await apiRequest("POST", "/api/projects", payload);
     },
@@ -170,8 +171,8 @@ export default function Projects() {
     mutationFn: async ({ id, data }: { id: number; data: ProjectFormData }) => {
       const payload = {
         ...data,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        targetEndDate: data.targetEndDate ? new Date(data.targetEndDate) : null,
+        startDate: data.startDate ? parseLocalDate(data.startDate) : null,
+        targetEndDate: data.targetEndDate ? parseLocalDate(data.targetEndDate) : null,
       };
       return await apiRequest("PATCH", `/api/projects/${id}`, payload);
     },

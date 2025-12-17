@@ -51,6 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { parseLocalDate } from "@/lib/dateUtils";
 import type { Task, Project, User } from "@shared/schema";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
@@ -327,7 +328,7 @@ export default function Tasks() {
         taskId: data.taskId,
         projectId: data.projectId,
         userId: user?.id,
-        date: new Date(data.date),
+        date: parseLocalDate(data.date),
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         totalMinutes: parseInt(data.totalMinutes),
