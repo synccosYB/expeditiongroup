@@ -223,10 +223,11 @@ export default function Landing() {
       </header>
 
       <main>
-        <section className="relative overflow-hidden py-8 lg:py-12">
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/10 rounded-full blur-3xl opacity-50" />
-          <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
+        <section className="relative overflow-hidden py-16 lg:py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background pointer-events-none" />
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-primary/8 rounded-full blur-3xl opacity-40 pointer-events-none dark:opacity-20" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl opacity-60 pointer-events-none dark:opacity-30" />
+          <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-primary/3 rounded-full blur-3xl opacity-50 pointer-events-none dark:opacity-25" />
           
           <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -323,10 +324,11 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="services" className="py-10 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-6">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+        <section id="services" className="relative py-14 lg:py-16 bg-muted/30">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent pointer-events-none dark:via-primary/2" />
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+            <AnimatedSection className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 Our Services
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -356,7 +358,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-6 border-y border-border/50 bg-background">
+        <section className="py-10 lg:py-12 border-y border-border/30 bg-background">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <AnimatedSection>
               <div className="text-center mb-4">
@@ -382,10 +384,11 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-10">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <AnimatedSection className="text-center mb-6">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+        <section id="how-it-works" className="relative py-14 lg:py-16">
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/2 to-transparent pointer-events-none dark:via-primary/1" />
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+            <AnimatedSection className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 How It Works
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -418,8 +421,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="who-we-serve" className="py-10 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <section id="who-we-serve" className="relative py-14 lg:py-16 bg-muted/30">
+          <div className="absolute inset-0 bg-gradient-to-t from-transparent via-primary/3 to-transparent pointer-events-none dark:via-primary/2" />
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-8 items-center">
               <AnimatedSection>
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
@@ -489,13 +493,16 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="py-8 bg-primary/10">
-          <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
+        <section className="relative py-14 lg:py-16 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/15 to-primary/10 pointer-events-none dark:from-primary/5 dark:via-primary/8 dark:to-primary/5" />
+          <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl opacity-50 pointer-events-none dark:opacity-25" />
+          <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-primary/5 rounded-full blur-3xl opacity-60 pointer-events-none dark:opacity-30" />
+          <div className="relative max-w-4xl mx-auto px-6 lg:px-8 text-center">
             <AnimatedSection>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5">
                 Ready to Expedite Your Permits?
               </h2>
-              <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
                 Get started with a free consultation and see how we can accelerate your next project.
               </p>
               <Button size="lg" asChild data-testid="button-cta-bottom" className="text-base px-10">
@@ -514,16 +521,16 @@ export default function Landing() {
           </div>
         </section>
 
-        <section id="newsletter" className="py-10 bg-muted/30">
+        <section id="newsletter" className="py-14 lg:py-16 bg-muted/40 border-t border-border/30">
           <div className="max-w-2xl mx-auto px-6 lg:px-8 text-center">
             <AnimatedSection>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 mx-auto mb-4">
-                <Mail className="h-6 w-6 text-primary" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto mb-5">
+                <Mail className="h-7 w-7 text-primary" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                 Sign Up for Our Newsletter
               </h2>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-muted-foreground mb-8">
                 Stay updated with the latest permit news, regulatory changes, and industry insights.
               </p>
               <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
@@ -556,8 +563,8 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="border-t bg-background">
-        <div className="py-8">
+      <footer className="border-t border-border/50 bg-background">
+        <div className="py-10 lg:py-12">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="col-span-2 md:col-span-1">
