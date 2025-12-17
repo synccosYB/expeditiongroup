@@ -20,10 +20,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Users, Key, Loader2 } from "lucide-react";
+import { Settings, Users, Key, Loader2, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -43,6 +50,8 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"admin" | "client">("client");
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -78,6 +87,28 @@ export default function SettingsPage() {
     },
   });
 
+  const changeRoleMutation = useMutation({
+    mutationFn: async (data: { userId: string; role: "admin" | "client" }) => {
+      return await apiRequest("PATCH", `/api/users/${data.userId}/role`, { role: data.role });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Role updated",
+        description: `${selectedUser?.email} is now ${selectedRole === "admin" ? "an Admin" : "a Client"}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsRoleDialogOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to change role",
+        description: error.message || "Could not update role",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onResetPassword = (data: PasswordResetFormData) => {
     if (!selectedUser) return;
     resetPasswordMutation.mutate({
@@ -90,6 +121,20 @@ export default function SettingsPage() {
     setSelectedUser(user);
     resetForm.reset();
     setIsResetDialogOpen(true);
+  };
+
+  const openRoleDialog = (user: User) => {
+    setSelectedUser(user);
+    setSelectedRole(user.role === "admin" || user.role === "super_admin" ? "admin" : "client");
+    setIsRoleDialogOpen(true);
+  };
+
+  const onChangeRole = () => {
+    if (!selectedUser) return;
+    changeRoleMutation.mutate({
+      userId: selectedUser.id,
+      role: selectedRole,
+    });
   };
 
   if (isLoading) {
@@ -113,7 +158,7 @@ export default function SettingsPage() {
             User Management
           </CardTitle>
           <CardDescription>
-            View all users and reset passwords
+            View all users, change roles, and reset passwords
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -139,15 +184,26 @@ export default function SettingsPage() {
                     </p>
                   )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openResetDialog(user)}
-                  data-testid={`button-reset-password-${user.id}`}
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Reset Password
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openRoleDialog(user)}
+                    data-testid={`button-change-role-${user.id}`}
+                  >
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Change Role
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openResetDialog(user)}
+                    data-testid={`button-reset-password-${user.id}`}
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    Reset Password
+                  </Button>
+                </div>
               </div>
             ))}
             {(!users || users.length === 0) && (
@@ -231,6 +287,55 @@ export default function SettingsPage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change User Role</DialogTitle>
+            <DialogDescription>
+              Select a new role for {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role</label>
+              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as "admin" | "client")}>
+                <SelectTrigger data-testid="select-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin - Full CRM access</SelectItem>
+                  <SelectItem value="client">Client - Portal access only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRoleDialogOpen(false)}
+              data-testid="button-cancel-role"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onChangeRole}
+              disabled={changeRoleMutation.isPending}
+              data-testid="button-confirm-role"
+            >
+              {changeRoleMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                "Update Role"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

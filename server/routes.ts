@@ -2,7 +2,7 @@ import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import {
@@ -1034,6 +1034,34 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // Update user role (admin only)
+  app.patch("/api/users/:id/role", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (currentUser?.role !== "admin" && currentUser?.role !== "super_admin") {
+        return res.status(403).json({ message: "Only admins can change roles" });
+      }
+
+      const roleSchema = z.object({
+        role: z.enum(["admin", "client"]),
+      });
+      const parsed = roleSchema.parse(req.body);
+
+      const updatedUser = await storage.updateUserRole(req.params.id, parsed.role);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update role" });
     }
   });
 
