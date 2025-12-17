@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Users, Key, Loader2, UserCog } from "lucide-react";
+import { Settings, Users, Key, Loader2, UserCog, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -44,13 +44,23 @@ const passwordResetSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const addUserSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  role: z.enum(["admin", "client"]),
+});
+
 type PasswordResetFormData = z.infer<typeof passwordResetSchema>;
+type AddUserFormData = z.infer<typeof addUserSchema>;
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"admin" | "client">("client");
 
   const { data: users, isLoading } = useQuery<User[]>({
@@ -62,6 +72,17 @@ export default function SettingsPage() {
     defaultValues: {
       newPassword: "",
       confirmPassword: "",
+    },
+  });
+
+  const addUserForm = useForm<AddUserFormData>({
+    resolver: zodResolver(addUserSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      role: "client",
     },
   });
 
@@ -109,6 +130,28 @@ export default function SettingsPage() {
     },
   });
 
+  const addUserMutation = useMutation({
+    mutationFn: async (data: AddUserFormData) => {
+      return await apiRequest("POST", "/api/users", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "User created",
+        description: "New user has been added successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsAddUserDialogOpen(false);
+      addUserForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create user",
+        description: error.message || "Could not create user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onResetPassword = (data: PasswordResetFormData) => {
     if (!selectedUser) return;
     resetPasswordMutation.mutate({
@@ -137,6 +180,10 @@ export default function SettingsPage() {
     });
   };
 
+  const onAddUser = (data: AddUserFormData) => {
+    addUserMutation.mutate(data);
+  };
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -152,14 +199,26 @@ export default function SettingsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            User Management
-          </CardTitle>
-          <CardDescription>
-            View all users, change roles, and reset passwords
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              User Management
+            </CardTitle>
+            <CardDescription>
+              View all users, change roles, and reset passwords
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => {
+              addUserForm.reset();
+              setIsAddUserDialogOpen(true);
+            }}
+            data-testid="button-add-user"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -336,6 +395,138 @@ export default function SettingsPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>
+              Create a new admin or client user
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...addUserForm}>
+            <form onSubmit={addUserForm.handleSubmit(onAddUser)} className="space-y-4">
+              <FormField
+                control={addUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="user@example.com"
+                        data-testid="input-add-email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={addUserForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="John"
+                          data-testid="input-add-firstname"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addUserForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Doe"
+                          data-testid="input-add-lastname"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={addUserForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Minimum 8 characters"
+                        data-testid="input-add-password"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addUserForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-add-role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin - Full CRM access</SelectItem>
+                        <SelectItem value="client">Client - Portal access only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddUserDialogOpen(false)}
+                  data-testid="button-cancel-add-user"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={addUserMutation.isPending}
+                  data-testid="button-confirm-add-user"
+                >
+                  {addUserMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Add User"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>

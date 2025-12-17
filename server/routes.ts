@@ -1037,6 +1037,51 @@ export async function registerRoutes(
     }
   });
 
+  // Create user (admin only)
+  app.post("/api/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (currentUser?.role !== "admin" && currentUser?.role !== "super_admin") {
+        return res.status(403).json({ message: "Only admins can create users" });
+      }
+
+      const createUserSchema = z.object({
+        email: z.string().email("Invalid email"),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        role: z.enum(["admin", "client"]),
+      });
+      const parsed = createUserSchema.parse(req.body);
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(parsed.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Hash password
+      const bcrypt = await import("bcrypt");
+      const passwordHash = await bcrypt.hash(parsed.password, 10);
+
+      const user = await storage.createUser({
+        email: parsed.email,
+        passwordHash,
+        firstName: parsed.firstName || null,
+        lastName: parsed.lastName || null,
+        role: parsed.role,
+      });
+
+      res.status(201).json(user);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
   // Update user role (admin only)
   app.patch("/api/users/:id/role", isAuthenticated, async (req: any, res) => {
     try {
