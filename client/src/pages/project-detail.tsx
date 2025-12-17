@@ -634,7 +634,7 @@ function TaskHierarchyItem({
             {task.dueDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(task.dueDate), "MMM d")}
+                {format(new Date(task.dueDate), "MM/dd/yyyy")}
               </span>
             )}
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
@@ -1465,7 +1465,7 @@ export default function ProjectDetail() {
               <div>
                 <p className="text-xs text-muted-foreground">Start Date</p>
                 <p className="text-sm font-medium">
-                  {format(new Date(project.startDate), "MMM d, yyyy")}
+                  {format(new Date(project.startDate), "MM/dd/yyyy")}
                 </p>
               </div>
             </CardContent>
@@ -2650,7 +2650,7 @@ export default function ProjectDetail() {
                     <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
                       <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
                       <span>-</span>
-                      <span>{format(new Date(note.createdAt!), "MMM d, yyyy 'at' h:mm a")}</span>
+                      <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
                       {note.isVisibleToClient && (
                         <Badge variant="outline" size="sm">Visible to client</Badge>
                       )}
@@ -2807,7 +2807,7 @@ export default function ProjectDetail() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{log.taskDescription}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                          <span>{format(new Date(log.date), "MMM d, yyyy")}</span>
+                          <span>{format(new Date(log.date), "MM/dd/yyyy")}</span>
                           {log.startTime && log.endTime && (
                             <span>{log.startTime} - {log.endTime}</span>
                           )}

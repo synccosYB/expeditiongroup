@@ -200,7 +200,7 @@ function TaskHierarchyItem({
                 {task.dueDate && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(task.dueDate), "MMM d, yyyy")}
+                    {format(new Date(task.dueDate), "MM/dd/yyyy")}
                   </span>
                 )}
                 <Badge variant="outline" size="sm">{task.locationType || 'office'}</Badge>

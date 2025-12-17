@@ -115,7 +115,7 @@ export default function TimeLogs() {
                       </Link>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(log.date), "MMM d, yyyy")}
+                        {format(new Date(log.date), "MM/dd/yyyy")}
                       </span>
                       {log.startTime && log.endTime && (
                         <span>{log.startTime} - {log.endTime}</span>

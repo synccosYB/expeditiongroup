@@ -681,7 +681,7 @@ export default function Projects() {
                   {project.startDate && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Started {format(new Date(project.startDate), "MMM d, yyyy")}</span>
+                      <span>Started {format(new Date(project.startDate), "MM/dd/yyyy")}</span>
                     </div>
                   )}
                 </div>

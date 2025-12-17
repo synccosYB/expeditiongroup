@@ -196,7 +196,7 @@ export default function AssociateDetail() {
                           </div>
                           {project.createdAt && (
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(project.createdAt), "MMM d, yyyy")}
+                              {format(new Date(project.createdAt), "MM/dd/yyyy")}
                             </span>
                           )}
                         </div>
@@ -248,7 +248,7 @@ function TaskCard({ task }: { task: Task & { project?: Project } }) {
                 <div className={`flex items-center gap-1 text-xs ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
                   {isOverdue && <AlertCircle className="h-3 w-3" />}
                   <Calendar className="h-3 w-3" />
-                  {format(new Date(task.dueDate), "MMM d")}
+                  {format(new Date(task.dueDate), "MM/dd/yyyy")}
                 </div>
               )}
             </div>
