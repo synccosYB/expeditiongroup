@@ -178,13 +178,13 @@ export default function AuthPage() {
                         <FormItem>
                           <div className="flex items-center justify-between">
                             <FormLabel>Password</FormLabel>
-                            <a 
+                            <Link 
                               href="/forgot-password" 
                               className="text-xs text-primary hover:underline"
                               data-testid="link-forgot-password"
                             >
                               Forgot password?
-                            </a>
+                            </Link>
                           </div>
                           <FormControl>
                             <div className="relative">
