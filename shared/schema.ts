@@ -494,7 +494,9 @@ const requiredDateCoercion = z.preprocess((val) => {
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({ id: true, createdAt: true }).extend({
   date: requiredDateCoercion,
 });
-export const insertTimeLogSchema = createInsertSchema(timeLogs).omit({ id: true, createdAt: true });
+export const insertTimeLogSchema = createInsertSchema(timeLogs).omit({ id: true, createdAt: true }).extend({
+  date: requiredDateCoercion,
+});
 export const insertAssociateSchema = createInsertSchema(associates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProjectAssociateSchema = createInsertSchema(projectAssociates).omit({ id: true, createdAt: true });
 export const insertFolderSchema = createInsertSchema(folders).omit({ id: true, createdAt: true, updatedAt: true });
