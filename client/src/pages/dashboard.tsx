@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import {
   Users,
@@ -15,11 +18,13 @@ import {
   AlertTriangle,
   Calendar,
   Printer,
+  Filter,
+  X,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import type { Project, Task, Client } from "@shared/schema";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
 interface DashboardStats {
   totalClients: number;
@@ -44,8 +49,24 @@ const STATUS_PIPELINE_ORDER = [
 ] as const;
 
 export default function Dashboard() {
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
+  const statsQueryKey = startDate || endDate 
+    ? ["/api/dashboard/stats", { startDate, endDate }]
+    : ["/api/dashboard/stats"];
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
+    queryKey: statsQueryKey,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      const url = `/api/dashboard/stats${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
   });
 
   const { data: allProjects, isLoading: projectsLoading } = useQuery<(Project & { client: Client })[]>({
@@ -242,13 +263,53 @@ export default function Dashboard() {
     },
   ];
 
+  const clearDateFilters = () => {
+    setStartDate("");
+    setEndDate("");
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Overview of your permit expediting operations
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Overview of your permit expediting operations
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filter Hours:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="startDate" className="text-sm text-muted-foreground">From</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-36"
+              data-testid="input-start-date"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="endDate" className="text-sm text-muted-foreground">To</Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-36"
+              data-testid="input-end-date"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <Button variant="ghost" size="icon" onClick={clearDateFilters} data-testid="button-clear-date-filter">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

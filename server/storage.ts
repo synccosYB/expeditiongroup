@@ -142,7 +142,7 @@ export interface IStorage {
   deleteChecklistInstance(id: number): Promise<boolean>;
   
   // Dashboard
-  getDashboardStats(): Promise<{
+  getDashboardStats(startDate?: Date, endDate?: Date): Promise<{
     totalClients: number;
     totalProjects: number;
     activeProjects: number;
@@ -727,7 +727,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(startDate?: Date, endDate?: Date): Promise<{
     totalClients: number;
     totalProjects: number;
     activeProjects: number;
@@ -741,11 +741,23 @@ export class DatabaseStorage implements IStorage {
     const [activeCount] = await db.select({ count: count() }).from(projects).where(eq(projects.status, "in_progress"));
     const [pendingCount] = await db.select({ count: count() }).from(tasks).where(eq(tasks.status, "todo"));
 
-    // Calculate total hours from all time entries
-    const allTimeEntries = await db
+    // Calculate total hours from time entries with optional date filtering
+    let timeEntriesQuery = db
       .select({ totalMinutes: timeEntries.totalMinutes })
       .from(timeEntries);
     
+    if (startDate && endDate) {
+      timeEntriesQuery = timeEntriesQuery.where(and(
+        sql`${timeEntries.date} >= ${startDate}`,
+        sql`${timeEntries.date} <= ${endDate}`
+      )) as typeof timeEntriesQuery;
+    } else if (startDate) {
+      timeEntriesQuery = timeEntriesQuery.where(sql`${timeEntries.date} >= ${startDate}`) as typeof timeEntriesQuery;
+    } else if (endDate) {
+      timeEntriesQuery = timeEntriesQuery.where(sql`${timeEntries.date} <= ${endDate}`) as typeof timeEntriesQuery;
+    }
+    
+    const allTimeEntries = await timeEntriesQuery;
     const totalMinutes = allTimeEntries.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
     const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
 

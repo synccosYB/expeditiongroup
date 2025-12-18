@@ -55,7 +55,9 @@ export async function registerRoutes(
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const stats = await storage.getDashboardStats();
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const stats = await storage.getDashboardStats(startDate, endDate);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
