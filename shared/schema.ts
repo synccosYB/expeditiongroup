@@ -50,6 +50,19 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Password reset requests table (for admin to handle)
+export const passwordResetRequestStatusEnum = pgEnum("password_reset_request_status", ["pending", "completed", "expired"]);
+
+export const passwordResetRequests = pgTable("password_reset_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  email: varchar("email").notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  status: passwordResetRequestStatusEnum("status").default("pending").notNull(),
+  handledBy: varchar("handled_by").references(() => users.id),
+  handledAt: timestamp("handled_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Users table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

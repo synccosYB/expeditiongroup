@@ -7,7 +7,7 @@ import connectPg from "connect-pg-simple";
 import { z } from "zod";
 import { pool } from "./db";
 import { db } from "./db";
-import { passwordResetTokens, users } from "@shared/schema";
+import { passwordResetTokens, passwordResetRequests, users } from "@shared/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
 
 const PostgresSessionStore = connectPg(session);
@@ -145,7 +145,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Forgot password endpoint (public - for requesting password reset)
+  // Forgot password endpoint (public - creates a request for admin to handle)
   app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
     try {
       const forgotSchema = z.object({
@@ -154,38 +154,81 @@ export function setupAuth(app: Express) {
 
       const parsed = forgotSchema.parse(req.body);
 
-      // Always return success to prevent email enumeration
+      // Find user by email (if exists)
       const user = await storage.getUserByEmail(parsed.email);
       
-      if (user) {
-        // Generate a secure random token
-        const token = crypto.randomBytes(32).toString("hex");
-        const tokenHash = await bcrypt.hash(token, 10);
-        
-        // Token expires in 30 minutes
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      // Create a password reset request for admin to handle
+      await db.insert(passwordResetRequests).values({
+        email: parsed.email,
+        userId: user?.id || null,
+        status: "pending",
+      });
 
-        // Store the token
-        await db.insert(passwordResetTokens).values({
-          userId: user.id,
-          tokenHash,
-          expiresAt,
-        });
-
-        // In production, you would send an email here
-        // For now, log the reset link (in dev only)
-        const resetLink = `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/reset-password?token=${token}`;
-        console.log("Password reset link for", parsed.email, ":", resetLink);
-      }
+      console.log("Password reset request created for:", parsed.email);
 
       // Always return success to prevent email enumeration
-      res.json({ message: "If an account exists with that email, password reset instructions have been sent." });
+      res.json({ message: "Your password reset request has been submitted. An administrator will contact you shortly." });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
       console.error("Forgot password error:", error);
       res.status(500).json({ message: "Failed to process request" });
+    }
+  });
+
+  // Get pending password reset requests (admin only)
+  app.get("/api/auth/password-reset-requests", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const currentUser = await storage.getUser(req.session.userId);
+      if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const requests = await db
+        .select()
+        .from(passwordResetRequests)
+        .orderBy(passwordResetRequests.createdAt);
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Get password reset requests error:", error);
+      res.status(500).json({ message: "Failed to fetch requests" });
+    }
+  });
+
+  // Mark password reset request as completed (admin only)
+  app.patch("/api/auth/password-reset-requests/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const currentUser = await storage.getUser(req.session.userId);
+      if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "super_admin")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const requestId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      await db
+        .update(passwordResetRequests)
+        .set({ 
+          status, 
+          handledBy: req.session.userId,
+          handledAt: new Date()
+        })
+        .where(eq(passwordResetRequests.id, requestId));
+
+      res.json({ message: "Request updated successfully" });
+    } catch (error) {
+      console.error("Update password reset request error:", error);
+      res.status(500).json({ message: "Failed to update request" });
     }
   });
 

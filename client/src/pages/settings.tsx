@@ -30,11 +30,22 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Users, Key, Loader2, UserCog, UserPlus } from "lucide-react";
+import { Settings, Users, Key, Loader2, UserCog, UserPlus, Mail, Check, Clock, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import type { User } from "@shared/schema";
+import { format } from "date-fns";
+
+type PasswordResetRequest = {
+  id: number;
+  email: string;
+  userId: string | null;
+  status: "pending" | "completed" | "expired";
+  handledBy: string | null;
+  handledAt: string | null;
+  createdAt: string;
+};
 
 const passwordResetSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
@@ -65,6 +76,10 @@ export default function SettingsPage() {
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: resetRequests, isLoading: isLoadingRequests } = useQuery<PasswordResetRequest[]>({
+    queryKey: ["/api/auth/password-reset-requests"],
   });
 
   const resetForm = useForm<PasswordResetFormData>({
@@ -125,6 +140,26 @@ export default function SettingsPage() {
       toast({
         title: "Failed to change role",
         description: error.message || "Could not update role",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const markRequestCompletedMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      return await apiRequest("PATCH", `/api/auth/password-reset-requests/${requestId}`, { status: "completed" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Request marked as completed",
+        description: "The password reset request has been handled",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/password-reset-requests"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update request",
+        description: error.message || "Could not update request",
         variant: "destructive",
       });
     },
@@ -271,6 +306,83 @@ export default function SettingsPage() {
               </p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Password Reset Requests
+          </CardTitle>
+          <CardDescription>
+            Users who have requested password resets. Reset their password above and mark as completed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRequests ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {resetRequests?.filter(r => r.status === "pending").map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between gap-4 p-4 rounded-lg border bg-card"
+                  data-testid={`reset-request-row-${request.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium truncate" data-testid={`text-reset-email-${request.id}`}>
+                        {request.email}
+                      </p>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Requested {format(new Date(request.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {request.userId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const user = users?.find(u => u.id === request.userId);
+                          if (user) {
+                            openResetDialog(user);
+                          }
+                        }}
+                        data-testid={`button-reset-for-request-${request.id}`}
+                      >
+                        <Key className="h-4 w-4 mr-2" />
+                        Reset Password
+                      </Button>
+                    )}
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => markRequestCompletedMutation.mutate(request.id)}
+                      disabled={markRequestCompletedMutation.isPending}
+                      data-testid={`button-mark-completed-${request.id}`}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Mark Completed
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {(!resetRequests || resetRequests.filter(r => r.status === "pending").length === 0) && (
+                <p className="text-center text-muted-foreground py-8">
+                  No pending password reset requests
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
