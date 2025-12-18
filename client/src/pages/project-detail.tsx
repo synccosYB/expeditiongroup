@@ -1563,7 +1563,7 @@ export default function ProjectDetail() {
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Task description" className="resize-none" {...field} data-testid="textarea-task-description" />
+                            <Textarea placeholder="Task description" className="resize-none min-h-[120px]" {...field} data-testid="textarea-task-description" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
