@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import logoFull from "@/assets/logo-expedition-group-checkbox.svg";
 import logoCheckbox from "@/assets/logo-checkbox-icon.svg";
@@ -39,6 +39,9 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -173,14 +176,38 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Password</FormLabel>
+                            <a 
+                              href="/forgot-password" 
+                              className="text-xs text-primary hover:underline"
+                              data-testid="link-forgot-password"
+                            >
+                              Forgot password?
+                            </a>
+                          </div>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="Enter your password"
-                              data-testid="input-login-password"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Input
+                                type={showLoginPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                className="pr-10"
+                                data-testid="input-login-password"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                data-testid="button-toggle-login-password"
+                              >
+                                {showLoginPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -269,12 +296,27 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="At least 8 characters"
-                              data-testid="input-register-password"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Input
+                                type={showRegisterPassword ? "text" : "password"}
+                                placeholder="At least 8 characters"
+                                className="pr-10"
+                                data-testid="input-register-password"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                                data-testid="button-toggle-register-password"
+                              >
+                                {showRegisterPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -287,12 +329,27 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Confirm Password</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="Confirm your password"
-                              data-testid="input-register-confirm-password"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Input
+                                type={showConfirmPassword ? "text" : "password"}
+                                placeholder="Confirm your password"
+                                className="pr-10"
+                                data-testid="input-register-confirm-password"
+                                {...field}
+                              />
+                              <button
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                data-testid="button-toggle-confirm-password"
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
