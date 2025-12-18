@@ -87,6 +87,8 @@ export interface IStorage {
   // Notes
   createNote(note: InsertNote): Promise<Note>;
   getNotesByProjectId(projectId: number): Promise<(Note & { user?: User })[]>;
+  updateNote(id: number, note: Partial<InsertNote>): Promise<Note | undefined>;
+  deleteNote(id: number): Promise<boolean>;
   
   // Time Entries
   getTimeEntries(): Promise<(TimeEntry & { task: Task; project: Project })[]>;
@@ -458,6 +460,20 @@ export class DatabaseStorage implements IStorage {
       ...r.notes,
       user: r.users || undefined,
     }));
+  }
+
+  async updateNote(id: number, note: Partial<InsertNote>): Promise<Note | undefined> {
+    const [updatedNote] = await db
+      .update(notes)
+      .set({ ...note, updatedAt: new Date() })
+      .where(eq(notes.id, id))
+      .returning();
+    return updatedNote;
+  }
+
+  async deleteNote(id: number): Promise<boolean> {
+    const result = await db.delete(notes).where(eq(notes.id, id)).returning();
+    return result.length > 0;
   }
 
   // Time Entries

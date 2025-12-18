@@ -545,6 +545,78 @@ function ReminderDialog({
   );
 }
 
+function EditNoteDialog({
+  note,
+  onClose,
+  onSave,
+  isPending,
+}: {
+  note: (Note & { user?: User }) | null;
+  onClose: () => void;
+  onSave: (updates: { content: string; isVisibleToClient: boolean }) => void;
+  isPending: boolean;
+}) {
+  const [content, setContent] = useState("");
+  const [isVisibleToClient, setIsVisibleToClient] = useState(false);
+
+  useEffect(() => {
+    if (note) {
+      setContent(note.content);
+      setIsVisibleToClient(note.isVisibleToClient ?? false);
+    }
+  }, [note]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({ content, isVisibleToClient });
+  };
+
+  return (
+    <Dialog open={!!note} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Note</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="edit-note-content" className="text-sm font-medium">
+              Content
+            </label>
+            <Textarea
+              id="edit-note-content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={4}
+              data-testid="textarea-edit-note-content"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="edit-note-visible"
+              checked={isVisibleToClient}
+              onCheckedChange={(checked) => setIsVisibleToClient(!!checked)}
+              data-testid="checkbox-edit-note-visible"
+            />
+            <label htmlFor="edit-note-visible" className="text-sm">
+              Visible to client
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-edit-note">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending} data-testid="button-save-edit-note">
+              {isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function TaskHierarchyItem({ 
   task, 
   level = 0, 
@@ -736,6 +808,7 @@ export default function ProjectDetail() {
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
   const [movingDocument, setMovingDocument] = useState<Document | null>(null);
   const [moveToFolderId, setMoveToFolderId] = useState<string>("__none__");
+  const [editingNote, setEditingNote] = useState<(Note & { user?: User }) | null>(null);
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
@@ -1031,6 +1104,43 @@ export default function ProjectDetail() {
         return;
       }
       toast({ title: "Error", description: "Failed to add note", variant: "destructive" });
+    },
+  });
+
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ noteId, content, isVisibleToClient }: { noteId: number; content: string; isVisibleToClient: boolean }) => {
+      return await apiRequest("PATCH", `/api/notes/${noteId}`, { content, isVisibleToClient });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Note updated successfully" });
+      setEditingNote(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to update note", variant: "destructive" });
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: number) => {
+      return await apiRequest("DELETE", `/api/notes/${noteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Note deleted successfully" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to delete note", variant: "destructive" });
     },
   });
 
@@ -2647,14 +2757,26 @@ export default function ProjectDetail() {
               {project.notes.map((note) => (
                 <Card key={note.id} data-testid={`note-item-${note.id}`}>
                   <CardContent className="py-4">
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                    <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-                      <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
-                      <span>-</span>
-                      <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
-                      {note.isVisibleToClient && (
-                        <Badge variant="outline" size="sm">Visible to client</Badge>
-                      )}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap">
+                          <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
+                          <span>-</span>
+                          <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
+                          {note.isVisibleToClient && (
+                            <Badge variant="outline" size="sm">Visible to client</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingNote(note)}
+                        data-testid={`button-edit-note-${note.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -2673,6 +2795,20 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
           )}
+
+          <EditNoteDialog
+            note={editingNote}
+            onClose={() => setEditingNote(null)}
+            onSave={(updates) => {
+              if (!editingNote) return;
+              updateNoteMutation.mutate({
+                noteId: editingNote.id,
+                content: updates.content,
+                isVisibleToClient: updates.isVisibleToClient,
+              });
+            }}
+            isPending={updateNoteMutation.isPending}
+          />
         </TabsContent>
 
         {/* Time Logs Tab */}

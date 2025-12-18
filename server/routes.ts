@@ -354,6 +354,40 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/notes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const updateNoteSchema = z.object({
+        content: z.string().optional(),
+        isVisibleToClient: z.boolean().optional(),
+      });
+      const parsed = updateNoteSchema.parse(req.body);
+      const note = await storage.updateNote(parseInt(req.params.id), parsed);
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      res.json(note);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating note:", error);
+      res.status(500).json({ message: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/notes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const deleted = await storage.deleteNote(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
   app.get("/api/time-logs", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
