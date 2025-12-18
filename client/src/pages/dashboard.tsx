@@ -25,7 +25,7 @@ interface DashboardStats {
   totalClients: number;
   activeProjects: number;
   pendingTasks: number;
-  totalHoursThisWeek: number;
+  totalHours: number;
 }
 
 interface ProjectsByStatus {
@@ -104,7 +104,7 @@ export default function Dashboard() {
         reportData = allTasks?.filter(t => t.status !== "done") ?? [];
         break;
       case "hours":
-        reportTitle = "Hours This Week Report";
+        reportTitle = "Total Hours Report";
         break;
     }
 
@@ -174,7 +174,7 @@ export default function Dashboard() {
     } else if (reportType === "hours") {
       tableContent = `
         <div class="summary">
-          <p><strong>Total Hours This Week:</strong> ${stats?.totalHoursThisWeek ?? 0} hours</p>
+          <p><strong>Total Hours:</strong> ${stats?.totalHours ?? 0} hours</p>
         </div>
       `;
     }
@@ -233,8 +233,8 @@ export default function Dashboard() {
       reportType: "tasks",
     },
     {
-      title: "Hours This Week",
-      value: stats?.totalHoursThisWeek ?? 0,
+      title: "Total Hours",
+      value: stats?.totalHours ?? 0,
       icon: Clock,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",

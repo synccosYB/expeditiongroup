@@ -147,7 +147,7 @@ export interface IStorage {
     totalProjects: number;
     activeProjects: number;
     pendingTasks: number;
-    totalHoursThisWeek: number;
+    totalHours: number;
     recentProjects: (Project & { client: Client })[];
     upcomingTasks: (Task & { project: Project })[];
   }>;
@@ -732,7 +732,7 @@ export class DatabaseStorage implements IStorage {
     totalProjects: number;
     activeProjects: number;
     pendingTasks: number;
-    totalHoursThisWeek: number;
+    totalHours: number;
     recentProjects: (Project & { client: Client })[];
     upcomingTasks: (Task & { project: Project })[];
   }> {
@@ -741,16 +741,13 @@ export class DatabaseStorage implements IStorage {
     const [activeCount] = await db.select({ count: count() }).from(projects).where(eq(projects.status, "in_progress"));
     const [pendingCount] = await db.select({ count: count() }).from(tasks).where(eq(tasks.status, "todo"));
 
-    // Calculate hours this week from time entries
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const timeEntriesThisWeek = await db
+    // Calculate total hours from all time entries
+    const allTimeEntries = await db
       .select({ totalMinutes: timeEntries.totalMinutes })
-      .from(timeEntries)
-      .where(sql`${timeEntries.date} >= ${weekAgo}`);
+      .from(timeEntries);
     
-    const totalMinutes = timeEntriesThisWeek.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
-    const totalHoursThisWeek = Math.round((totalMinutes / 60) * 10) / 10;
+    const totalMinutes = allTimeEntries.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
 
     const recentProjectsResult = await db
       .select()
@@ -776,7 +773,7 @@ export class DatabaseStorage implements IStorage {
       totalProjects: projectCount.count,
       activeProjects: activeCount.count,
       pendingTasks: pendingCount.count,
-      totalHoursThisWeek,
+      totalHours,
       recentProjects: recentProjectsResult.map(r => ({
         ...r.projects,
         client: r.clients!,
