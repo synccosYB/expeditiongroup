@@ -299,15 +299,16 @@ export default function Dashboard() {
             {STATUS_PIPELINE_ORDER.map((stage) => {
               const count = statusCountMap.get(stage.key) ?? 0;
               return (
-                <div
+                <Link
                   key={stage.key}
-                  className="text-center p-3 rounded-lg bg-muted/30"
+                  href={`/projects?status=${stage.key}`}
+                  className="text-center p-3 rounded-lg bg-muted/30 hover-elevate cursor-pointer transition-all"
                   data-testid={`pipeline-stage-${stage.key}`}
                 >
                   <div className={`w-3 h-3 rounded-full ${stage.color} mx-auto mb-2`} />
                   <div className="text-2xl font-bold text-foreground">{count}</div>
                   <div className="text-xs text-muted-foreground">{stage.label}</div>
-                </div>
+                </Link>
               );
             })}
           </div>

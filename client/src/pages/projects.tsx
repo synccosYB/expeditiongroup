@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,11 +98,23 @@ const statusOptions = [
 
 export default function Projects() {
   const { toast } = useToast();
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<(Project & { client: Client }) | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+
+  // Read status filter from URL query params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const urlStatus = params.get("status");
+    const validStatuses = ["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled"];
+    if (urlStatus && validStatuses.includes(urlStatus)) {
+      setStatusFilter(urlStatus);
+    }
+  }, [searchString]);
 
   const { data: projects, isLoading } = useQuery<(Project & { client: Client })[]>({
     queryKey: ["/api/projects"],
