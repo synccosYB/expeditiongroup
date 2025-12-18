@@ -63,7 +63,7 @@ import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/sta
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatTimeRange12h } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
@@ -2812,7 +2812,7 @@ export default function ProjectDetail() {
                           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                             <span>{format(new Date(entry.date), "MM/dd/yyyy")}</span>
                             {entry.startTime && entry.endTime && (
-                              <span>{entry.startTime} - {entry.endTime}</span>
+                              <span>{formatTimeRange12h(entry.startTime, entry.endTime)}</span>
                             )}
                             <span className="font-medium text-foreground">{((entry.totalMinutes || 0) / 60).toFixed(1)} hrs</span>
                             {entry.isBillable && <Badge variant="outline" size="sm">Billable</Badge>}
@@ -2834,7 +2834,7 @@ export default function ProjectDetail() {
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
                           <span>{format(new Date(log.date), "MM/dd/yyyy")}</span>
                           {log.startTime && log.endTime && (
-                            <span>{log.startTime} - {log.endTime}</span>
+                            <span>{formatTimeRange12h(log.startTime, log.endTime)}</span>
                           )}
                           <span className="font-medium text-foreground">{log.totalHours} hrs</span>
                           <span>{log.user?.firstName || log.user?.email}</span>

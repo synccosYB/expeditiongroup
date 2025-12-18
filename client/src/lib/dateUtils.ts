@@ -12,3 +12,17 @@ export function formatDateForInput(date: Date | string | null | undefined): stri
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+export function formatTime12h(time24: string | null | undefined): string {
+  if (!time24) return "";
+  const [hours, minutes] = time24.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return time24;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
+export function formatTimeRange12h(startTime: string | null | undefined, endTime: string | null | undefined): string {
+  if (!startTime || !endTime) return "";
+  return `${formatTime12h(startTime)} - ${formatTime12h(endTime)}`;
+}

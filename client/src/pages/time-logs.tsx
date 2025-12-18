@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import type { TimeLog, TimeEntry, Project, User, Task } from "@shared/schema";
 import { format } from "date-fns";
+import { formatTimeRange12h } from "@/lib/dateUtils";
 
 type TimeLogWithRelations = TimeLog & { project: Project; user?: User };
 type TimeEntryWithRelations = TimeEntry & { project: Project; task: Task };
@@ -180,7 +181,7 @@ export default function TimeLogs() {
                         {format(new Date(log.date), "MM/dd/yyyy")}
                       </span>
                       {log.startTime && log.endTime && (
-                        <span>{log.startTime} - {log.endTime}</span>
+                        <span>{formatTimeRange12h(log.startTime, log.endTime)}</span>
                       )}
                     </div>
                     {log.notes && (
