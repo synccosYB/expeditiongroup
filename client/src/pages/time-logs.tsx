@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -10,14 +10,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Clock, ExternalLink, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Clock, ExternalLink, Calendar, CheckCircle } from "lucide-react";
 import { TaskTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
-import type { TimeLog, Project, User } from "@shared/schema";
+import type { TimeLog, TimeEntry, Project, User, Task } from "@shared/schema";
 import { format } from "date-fns";
 
-type TimeLogWithRelations = TimeLog & { project: Project; user: User };
+type TimeLogWithRelations = TimeLog & { project: Project; user?: User };
+type TimeEntryWithRelations = TimeEntry & { project: Project; task: Task };
+
+type UnifiedTimeLog = {
+  id: string;
+  source: "legacy" | "entry";
+  description: string;
+  projectId: number;
+  projectName: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  totalHours: number;
+  type: string | null;
+  isBillable: boolean;
+  notes: string | null;
+};
 
 const typeOptions = [
   { value: "all", label: "All Types" },
@@ -29,19 +46,56 @@ export default function TimeLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const { data: timeLogs, isLoading } = useQuery<TimeLogWithRelations[]>({
+  const { data: timeLogs, isLoading: logsLoading } = useQuery<TimeLogWithRelations[]>({
     queryKey: ["/api/time-logs"],
   });
 
-  const filteredLogs = timeLogs?.filter((log) => {
+  const { data: timeEntries, isLoading: entriesLoading } = useQuery<TimeEntryWithRelations[]>({
+    queryKey: ["/api/time-entries"],
+  });
+
+  const isLoading = logsLoading || entriesLoading;
+
+  const unifiedLogs: UnifiedTimeLog[] = [
+    ...(timeLogs?.map((log) => ({
+      id: `log-${log.id}`,
+      source: "legacy" as const,
+      description: log.taskDescription,
+      projectId: log.projectId,
+      projectName: log.project?.name || "Unknown Project",
+      date: log.date as unknown as string,
+      startTime: log.startTime,
+      endTime: log.endTime,
+      totalHours: parseFloat(log.totalHours || "0"),
+      type: log.type,
+      isBillable: true,
+      notes: log.notes,
+    })) || []),
+    ...(timeEntries?.map((entry) => ({
+      id: `entry-${entry.id}`,
+      source: "entry" as const,
+      description: entry.task?.title || "Task",
+      projectId: entry.projectId,
+      projectName: entry.project?.name || "Unknown Project",
+      date: entry.date as unknown as string,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      totalHours: (entry.totalMinutes || 0) / 60,
+      type: entry.task?.locationType || null,
+      isBillable: entry.isBillable ?? true,
+      notes: entry.notes,
+    })) || []),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const filteredLogs = unifiedLogs.filter((log) => {
     const matchesSearch =
-      log.taskDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.project?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.projectName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || log.type === typeFilter;
     return matchesSearch && matchesType;
   });
 
-  const totalHours = filteredLogs?.reduce((sum, log) => sum + parseFloat(log.totalHours || "0"), 0) || 0;
+  const totalHours = filteredLogs.reduce((sum, log) => sum + log.totalHours, 0);
 
   if (isLoading) {
     return (
@@ -100,18 +154,26 @@ export default function TimeLogs() {
         </Select>
       </div>
 
-      {filteredLogs && filteredLogs.length > 0 ? (
+      {filteredLogs.length > 0 ? (
         <div className="space-y-3">
           {filteredLogs.map((log) => (
             <Card key={log.id} className="hover-elevate" data-testid={`card-time-log-${log.id}`}>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{log.taskDescription}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium">{log.description}</p>
+                      {log.isBillable && (
+                        <Badge variant="outline" className="text-xs">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Billable
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                      <Link href={`/projects/${log.project?.id}`} className="flex items-center gap-1 hover:text-primary transition-colors">
+                      <Link href={`/projects/${log.projectId}`} className="flex items-center gap-1 hover:text-primary transition-colors">
                         <ExternalLink className="h-3 w-3" />
-                        {log.project?.name}
+                        {log.projectName}
                       </Link>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -121,11 +183,14 @@ export default function TimeLogs() {
                         <span>{log.startTime} - {log.endTime}</span>
                       )}
                     </div>
+                    {log.notes && (
+                      <p className="text-xs text-muted-foreground mt-2">{log.notes}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <TaskTypeBadge type={log.type} />
+                    {log.type && <TaskTypeBadge type={log.type} />}
                     <span className="text-sm font-semibold text-foreground whitespace-nowrap">
-                      {log.totalHours} hrs
+                      {log.totalHours.toFixed(1)} hrs
                     </span>
                   </div>
                 </div>
