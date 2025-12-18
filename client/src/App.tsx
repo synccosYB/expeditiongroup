@@ -52,6 +52,7 @@ function AdminRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/auth" component={Dashboard} />
       <Route path="/clients" component={Clients} />
       <Route path="/clients/:id" component={ClientDetail} />
       <Route path="/projects" component={Projects} />
@@ -71,6 +72,7 @@ function ClientRouter() {
     <Switch>
       <Route path="/" component={ClientPortal} />
       <Route path="/dashboard" component={ClientPortal} />
+      <Route path="/auth" component={ClientPortal} />
       <Route path="/project/:id" component={ClientProjectDetail} />
       <Route component={NotFound} />
     </Switch>
