@@ -32,6 +32,8 @@ import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
 import ForConstructionManagers from "@/pages/for-construction-managers";
 import SettingsPage from "@/pages/settings";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -116,6 +118,8 @@ function Router() {
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/dashboard" component={AuthPage} />
         <Route path="/cookie-policy" component={CookiePolicy} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
