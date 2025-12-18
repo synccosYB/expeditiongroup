@@ -179,6 +179,21 @@ export async function registerRoutes(
     }
   });
 
+  // Projects by status - must be before /api/projects/:id to avoid route conflict
+  app.get("/api/projects/by-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const statusCounts = await storage.getProjectsByStatus();
+      res.json(statusCounts);
+    } catch (error) {
+      console.error("Error fetching projects by status:", error);
+      res.status(500).json({ message: "Failed to fetch projects by status" });
+    }
+  });
+
   app.get("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -956,21 +971,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error performing search:", error);
       res.status(500).json({ message: "Failed to perform search" });
-    }
-  });
-
-  // Projects by status
-  app.get("/api/projects/by-status", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-      const statusCounts = await storage.getProjectsByStatus();
-      res.json(statusCounts);
-    } catch (error) {
-      console.error("Error fetching projects by status:", error);
-      res.status(500).json({ message: "Failed to fetch projects by status" });
     }
   });
 
