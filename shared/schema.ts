@@ -485,7 +485,15 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, creat
   completedAt: dateCoercion,
 });
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({ id: true, createdAt: true });
+const requiredDateCoercion = z.preprocess((val) => {
+  if (val instanceof Date) return val;
+  if (typeof val === 'string') return new Date(val);
+  return val;
+}, z.date());
+
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({ id: true, createdAt: true }).extend({
+  date: requiredDateCoercion,
+});
 export const insertTimeLogSchema = createInsertSchema(timeLogs).omit({ id: true, createdAt: true });
 export const insertAssociateSchema = createInsertSchema(associates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProjectAssociateSchema = createInsertSchema(projectAssociates).omit({ id: true, createdAt: true });
