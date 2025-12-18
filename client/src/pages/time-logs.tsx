@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -10,11 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, Clock, ExternalLink, Calendar, CheckCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Search, Clock, ExternalLink, Calendar, CheckCircle, Pencil } from "lucide-react";
 import { TaskTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimeLog, TimeEntry, Project, User, Task } from "@shared/schema";
 import { format } from "date-fns";
 import { formatTimeRange12h } from "@/lib/dateUtils";
@@ -24,6 +36,7 @@ type TimeEntryWithRelations = TimeEntry & { project: Project; task: Task };
 
 type UnifiedTimeLog = {
   id: string;
+  originalId: number;
   source: "legacy" | "entry";
   description: string;
   projectId: number;
@@ -37,6 +50,17 @@ type UnifiedTimeLog = {
   notes: string | null;
 };
 
+type TimeLogUpdates = {
+  date?: Date;
+  startTime?: string | null;
+  endTime?: string | null;
+  totalHours?: string;
+  taskDescription?: string;
+  notes?: string | null;
+  type?: "office" | "road";
+  isBillable?: boolean;
+};
+
 const typeOptions = [
   { value: "all", label: "All Types" },
   { value: "road", label: "Road" },
@@ -46,6 +70,8 @@ const typeOptions = [
 export default function TimeLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [editingLog, setEditingLog] = useState<UnifiedTimeLog | null>(null);
+  const { toast } = useToast();
 
   const { data: timeLogs, isLoading: logsLoading } = useQuery<TimeLogWithRelations[]>({
     queryKey: ["/api/time-logs"],
@@ -57,9 +83,38 @@ export default function TimeLogs() {
 
   const isLoading = logsLoading || entriesLoading;
 
+  const updateTimeLogMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: Partial<TimeLog> }) => {
+      return await apiRequest("PATCH", `/api/time-logs/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-logs"] });
+      setEditingLog(null);
+      toast({ title: "Time log updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update time log", variant: "destructive" });
+    },
+  });
+
+  const updateTimeEntryMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: Partial<TimeEntry> }) => {
+      return await apiRequest("PATCH", `/api/time-entries/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      setEditingLog(null);
+      toast({ title: "Time entry updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update time entry", variant: "destructive" });
+    },
+  });
+
   const unifiedLogs: UnifiedTimeLog[] = [
     ...(timeLogs?.map((log) => ({
       id: `log-${log.id}`,
+      originalId: log.id,
       source: "legacy" as const,
       description: log.taskDescription,
       projectId: log.projectId,
@@ -74,6 +129,7 @@ export default function TimeLogs() {
     })) || []),
     ...(timeEntries?.map((entry) => ({
       id: `entry-${entry.id}`,
+      originalId: entry.id,
       source: "entry" as const,
       description: entry.task?.title || "Task",
       projectId: entry.projectId,
@@ -189,10 +245,18 @@ export default function TimeLogs() {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    {log.type && <TaskTypeBadge type={log.type} />}
+                    {log.type && (log.type === "office" || log.type === "road") && <TaskTypeBadge type={log.type} />}
                     <span className="text-sm font-semibold text-foreground whitespace-nowrap">
                       {log.totalHours.toFixed(1)} hrs
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingLog(log)}
+                      data-testid={`button-edit-time-log-${log.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -212,6 +276,208 @@ export default function TimeLogs() {
           </CardContent>
         </Card>
       )}
+
+      <EditTimeLogDialog
+        log={editingLog}
+        onClose={() => setEditingLog(null)}
+        onSave={(updates: TimeLogUpdates) => {
+          if (!editingLog) return;
+          if (editingLog.source === "legacy") {
+            updateTimeLogMutation.mutate({ id: editingLog.originalId, updates });
+          } else {
+            const entryUpdates: Partial<TimeEntry> = {
+              date: updates.date,
+              startTime: updates.startTime,
+              endTime: updates.endTime,
+              totalMinutes: updates.totalHours ? Math.round(parseFloat(updates.totalHours) * 60) : undefined,
+              notes: updates.notes,
+              isBillable: updates.isBillable,
+            };
+            updateTimeEntryMutation.mutate({ id: editingLog.originalId, updates: entryUpdates });
+          }
+        }}
+        isPending={updateTimeLogMutation.isPending || updateTimeEntryMutation.isPending}
+      />
     </div>
+  );
+}
+
+function EditTimeLogDialog({
+  log,
+  onClose,
+  onSave,
+  isPending,
+}: {
+  log: UnifiedTimeLog | null;
+  onClose: () => void;
+  onSave: (updates: TimeLogUpdates) => void;
+  isPending: boolean;
+}) {
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [totalHours, setTotalHours] = useState("");
+  const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
+  const [type, setType] = useState<"office" | "road">("office");
+  const [isBillable, setIsBillable] = useState(true);
+
+  const isLegacy = log?.source === "legacy";
+
+  const handleOpen = () => {
+    if (log) {
+      const dateStr = log.date ? format(new Date(log.date), "yyyy-MM-dd") : "";
+      setDate(dateStr);
+      setStartTime(log.startTime || "");
+      setEndTime(log.endTime || "");
+      setTotalHours(log.totalHours.toFixed(2));
+      setDescription(log.description || "");
+      setNotes(log.notes || "");
+      setType((log.type === "road" ? "road" : "office"));
+      setIsBillable(log.isBillable);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLegacy) {
+      onSave({
+        date: date ? new Date(date) : undefined,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        totalHours: totalHours,
+        taskDescription: description,
+        notes: notes || null,
+        type: type,
+      });
+    } else {
+      onSave({
+        date: date ? new Date(date) : undefined,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        totalHours: totalHours,
+        notes: notes || null,
+        isBillable: isBillable,
+      });
+    }
+  };
+
+  return (
+    <Dialog open={!!log} onOpenChange={(open) => {
+      if (open) handleOpen();
+      else onClose();
+    }}>
+      <DialogContent className="max-w-md" data-testid="dialog-edit-time-log">
+        <DialogHeader>
+          <DialogTitle>Edit Time Log</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-date">Date</Label>
+            <Input
+              id="edit-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              data-testid="input-edit-time-log-date"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-start-time">Start Time</Label>
+              <Input
+                id="edit-start-time"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                data-testid="input-edit-time-log-start-time"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-end-time">End Time</Label>
+              <Input
+                id="edit-end-time"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                data-testid="input-edit-time-log-end-time"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-total-hours">Total Hours</Label>
+            <Input
+              id="edit-total-hours"
+              type="number"
+              step="0.25"
+              min="0"
+              value={totalHours}
+              onChange={(e) => setTotalHours(e.target.value)}
+              data-testid="input-edit-time-log-total-hours"
+            />
+          </div>
+
+          {isLegacy && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  data-testid="textarea-edit-time-log-description"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Type</Label>
+                <Select value={type} onValueChange={(val) => setType(val as "office" | "road")}>
+                  <SelectTrigger data-testid="select-edit-time-log-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="road">Road</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-notes">Notes</Label>
+            <Textarea
+              id="edit-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              data-testid="textarea-edit-time-log-notes"
+            />
+          </div>
+
+          {!isLegacy && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="edit-billable"
+                checked={isBillable}
+                onCheckedChange={setIsBillable}
+                data-testid="switch-edit-time-log-billable"
+              />
+              <Label htmlFor="edit-billable">Billable</Label>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-edit-time-log">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending} data-testid="button-save-edit-time-log">
+              {isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
