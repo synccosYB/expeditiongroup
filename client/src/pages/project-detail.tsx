@@ -67,7 +67,7 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
-import type { Project, Client, Task, Note, TimeLog, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder } from "@shared/schema";
+import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder } from "@shared/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,6 +101,7 @@ type ProjectWithRelations = Project & {
   tasks: TaskWithSubtasks[];
   notes: (Note & { user: User })[];
   timeLogs: (TimeLog & { user: User })[];
+  timeEntries: TimeEntry[];
 };
 
 type ProjectAssociateWithDetails = ProjectAssociate & {
@@ -1516,7 +1517,7 @@ export default function ProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="time-logs" className="gap-2" data-testid="tab-time-logs">
             <Clock className="h-4 w-4" />
-            Time Logs ({project.timeLogs?.length || 0})
+            Time Logs ({(project.timeLogs?.length || 0) + (project.timeEntries?.length || 0)})
           </TabsTrigger>
         </TabsList>
 
@@ -2798,10 +2799,34 @@ export default function ProjectDetail() {
             </Dialog>
           </div>
 
-          {project.timeLogs && project.timeLogs.length > 0 ? (
+          {((project.timeLogs && project.timeLogs.length > 0) || (project.timeEntries && project.timeEntries.length > 0)) ? (
             <div className="space-y-4">
-              {project.timeLogs.map((log) => (
-                <Card key={log.id} data-testid={`time-log-item-${log.id}`}>
+              {project.timeEntries?.map((entry) => {
+                const task = project.tasks?.find(t => t.id === entry.taskId);
+                return (
+                  <Card key={`entry-${entry.id}`} data-testid={`time-entry-item-${entry.id}`}>
+                    <CardContent className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{task?.title || "Task"}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                            <span>{format(new Date(entry.date), "MM/dd/yyyy")}</span>
+                            {entry.startTime && entry.endTime && (
+                              <span>{entry.startTime} - {entry.endTime}</span>
+                            )}
+                            <span className="font-medium text-foreground">{((entry.totalMinutes || 0) / 60).toFixed(1)} hrs</span>
+                            {entry.isBillable && <Badge variant="outline" size="sm">Billable</Badge>}
+                          </div>
+                          {entry.notes && <p className="text-xs text-muted-foreground mt-2">{entry.notes}</p>}
+                        </div>
+                        {task?.locationType && <Badge variant="outline">{task.locationType}</Badge>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              {project.timeLogs?.map((log) => (
+                <Card key={`log-${log.id}`} data-testid={`time-log-item-${log.id}`}>
                   <CardContent className="py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
