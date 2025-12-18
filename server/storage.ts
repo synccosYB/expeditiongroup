@@ -762,9 +762,9 @@ export class DatabaseStorage implements IStorage {
     const allTimeEntries = await timeEntriesQuery;
     const totalMinutesFromEntries = allTimeEntries.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
     
-    // Time logs (legacy system - stores hours)
+    // Time logs (legacy system - stores hours as string in totalHours column)
     let timeLogsQuery = db
-      .select({ hours: timeLogs.hours })
+      .select({ totalHours: timeLogs.totalHours })
       .from(timeLogs);
     
     if (startDate && endDate) {
@@ -779,7 +779,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     const allTimeLogs = await timeLogsQuery;
-    const totalHoursFromLogs = allTimeLogs.reduce((sum, tl) => sum + parseFloat(tl.hours || "0"), 0);
+    const totalHoursFromLogs = allTimeLogs.reduce((sum, tl) => sum + parseFloat(tl.totalHours || "0"), 0);
     
     // Combine: convert time_entries minutes to hours and add time_logs hours
     const totalHours = Math.round(((totalMinutesFromEntries / 60) + totalHoursFromLogs) * 10) / 10;
