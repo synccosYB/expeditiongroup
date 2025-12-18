@@ -387,6 +387,45 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/time-logs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const updateTimeLogSchema = insertTimeLogSchema.partial();
+      const parsed = updateTimeLogSchema.parse(req.body);
+      const timeLog = await storage.updateTimeLog(parseInt(req.params.id), parsed);
+      if (!timeLog) {
+        return res.status(404).json({ message: "Time log not found" });
+      }
+      res.json(timeLog);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating time log:", error);
+      res.status(500).json({ message: "Failed to update time log" });
+    }
+  });
+
+  app.delete("/api/time-logs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deleted = await storage.deleteTimeLog(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Time log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting time log:", error);
+      res.status(500).json({ message: "Failed to delete time log" });
+    }
+  });
+
   app.get("/api/associates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

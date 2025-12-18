@@ -100,6 +100,8 @@ export interface IStorage {
   getTimeLogs(): Promise<(TimeLog & { project: Project })[]>;
   getTimeLogsByProjectId(projectId: number): Promise<TimeLog[]>;
   createTimeLog(timeLog: InsertTimeLog): Promise<TimeLog>;
+  updateTimeLog(id: number, timeLog: Partial<InsertTimeLog>): Promise<TimeLog | undefined>;
+  deleteTimeLog(id: number): Promise<boolean>;
   
   // Associates
   getAssociates(): Promise<Associate[]>;
@@ -532,6 +534,24 @@ export class DatabaseStorage implements IStorage {
   async createTimeLog(timeLog: InsertTimeLog): Promise<TimeLog> {
     const [newTimeLog] = await db.insert(timeLogs).values(timeLog).returning();
     return newTimeLog;
+  }
+
+  async updateTimeLog(id: number, timeLog: Partial<InsertTimeLog>): Promise<TimeLog | undefined> {
+    const processedTimeLog = { ...timeLog };
+    if (typeof timeLog.date === 'string') {
+      processedTimeLog.date = new Date(timeLog.date);
+    }
+    const [updated] = await db
+      .update(timeLogs)
+      .set(processedTimeLog)
+      .where(eq(timeLogs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTimeLog(id: number): Promise<boolean> {
+    const result = await db.delete(timeLogs).where(eq(timeLogs.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Associates
