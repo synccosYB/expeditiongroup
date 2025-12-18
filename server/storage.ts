@@ -741,7 +741,9 @@ export class DatabaseStorage implements IStorage {
     const [activeCount] = await db.select({ count: count() }).from(projects).where(eq(projects.status, "in_progress"));
     const [pendingCount] = await db.select({ count: count() }).from(tasks).where(eq(tasks.status, "todo"));
 
-    // Calculate total hours from time entries with optional date filtering
+    // Calculate total hours from BOTH time_entries and time_logs tables with optional date filtering
+    
+    // Time entries (new system - stores minutes)
     let timeEntriesQuery = db
       .select({ totalMinutes: timeEntries.totalMinutes })
       .from(timeEntries);
@@ -758,8 +760,29 @@ export class DatabaseStorage implements IStorage {
     }
     
     const allTimeEntries = await timeEntriesQuery;
-    const totalMinutes = allTimeEntries.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
-    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    const totalMinutesFromEntries = allTimeEntries.reduce((sum, te) => sum + (te.totalMinutes || 0), 0);
+    
+    // Time logs (legacy system - stores hours)
+    let timeLogsQuery = db
+      .select({ hours: timeLogs.hours })
+      .from(timeLogs);
+    
+    if (startDate && endDate) {
+      timeLogsQuery = timeLogsQuery.where(and(
+        sql`${timeLogs.date} >= ${startDate}`,
+        sql`${timeLogs.date} <= ${endDate}`
+      )) as typeof timeLogsQuery;
+    } else if (startDate) {
+      timeLogsQuery = timeLogsQuery.where(sql`${timeLogs.date} >= ${startDate}`) as typeof timeLogsQuery;
+    } else if (endDate) {
+      timeLogsQuery = timeLogsQuery.where(sql`${timeLogs.date} <= ${endDate}`) as typeof timeLogsQuery;
+    }
+    
+    const allTimeLogs = await timeLogsQuery;
+    const totalHoursFromLogs = allTimeLogs.reduce((sum, tl) => sum + parseFloat(tl.hours || "0"), 0);
+    
+    // Combine: convert time_entries minutes to hours and add time_logs hours
+    const totalHours = Math.round(((totalMinutesFromEntries / 60) + totalHoursFromLogs) * 10) / 10;
 
     const recentProjectsResult = await db
       .select()
