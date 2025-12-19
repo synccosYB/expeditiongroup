@@ -1,10 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ArrowLeft,
   Mail,
@@ -16,10 +22,17 @@ import {
   FileText,
   Clock,
   Calendar,
+  MoreHorizontal,
+  Send,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import type { Client, Project, Associate, Note } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Client, Project, Associate, Note, Invoice, InvoiceItem } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
 interface ProjectWithClient extends Project {
@@ -29,6 +42,18 @@ interface ProjectWithClient extends Project {
 interface NoteWithUser extends Note {
   user?: { firstName?: string; lastName?: string; email?: string };
 }
+
+interface InvoiceWithRelations extends Invoice {
+  project?: Project;
+  items?: InvoiceItem[];
+}
+
+const invoiceStatusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  draft: { label: "Draft", variant: "secondary" },
+  sent: { label: "Sent", variant: "default" },
+  paid: { label: "Paid", variant: "outline" },
+  cancelled: { label: "Cancelled", variant: "destructive" },
+};
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -56,6 +81,26 @@ export default function ClientDetail() {
 
   const { data: allAssociates } = useQuery<Associate[]>({
     queryKey: ["/api/associates"],
+  });
+
+  const { data: invoices } = useQuery<InvoiceWithRelations[]>({
+    queryKey: ["/api/clients", clientId, "invoices"],
+    enabled: !!clientId,
+  });
+
+  const { toast } = useToast();
+
+  const updateInvoiceStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      return await apiRequest("PATCH", `/api/invoices/${id}`, { status });
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice status updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "invoices"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update invoice", description: error.message, variant: "destructive" });
+    },
   });
 
   const isLoading = clientLoading || projectsLoading;
@@ -163,10 +208,14 @@ export default function ClientDetail() {
 
         <div className="lg:col-span-2">
           <Tabs defaultValue="jobs" className="w-full">
-            <TabsList className="grid w-full grid-cols-3" data-testid="tabs-client-sections">
+            <TabsList className="grid w-full grid-cols-4" data-testid="tabs-client-sections">
               <TabsTrigger value="jobs" data-testid="tab-jobs">
                 <FolderKanban className="h-4 w-4 mr-2" />
                 Jobs ({projects?.length || 0})
+              </TabsTrigger>
+              <TabsTrigger value="invoices" data-testid="tab-invoices">
+                <FileText className="h-4 w-4 mr-2" />
+                Invoices ({invoices?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="associates" data-testid="tab-associates">
                 <Users className="h-4 w-4 mr-2" />
@@ -257,6 +306,102 @@ export default function ClientDetail() {
                     <Button size="sm" className="mt-4" asChild>
                       <Link href="/projects">Create Job</Link>
                     </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="invoices" className="mt-4 space-y-4">
+              {invoices && invoices.length > 0 ? (
+                <div className="space-y-3">
+                  {invoices.map((invoice) => {
+                    const statusInfo = invoiceStatusConfig[invoice.status] || { label: invoice.status, variant: "outline" as const };
+                    return (
+                      <Card key={invoice.id} className="hover-elevate" data-testid={`card-invoice-${invoice.id}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium font-mono">{invoice.invoiceNumber}</p>
+                                <Badge variant={statusInfo.variant} className="text-xs">
+                                  {statusInfo.label}
+                                </Badge>
+                              </div>
+                              {invoice.project && (
+                                <Link href={`/projects/${invoice.project.id}`} className="text-sm text-muted-foreground hover:underline">
+                                  {invoice.project.name}
+                                </Link>
+                              )}
+                              <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                                <span>
+                                  {format(new Date(invoice.invoiceDate), "MMM d, yyyy")}
+                                </span>
+                                {invoice.dueDate && (
+                                  <span>
+                                    Due: {format(new Date(invoice.dueDate), "MMM d, yyyy")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <p className="font-semibold text-lg">
+                                ${parseFloat(invoice.totalAmount || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                              </p>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" data-testid={`button-invoice-actions-${invoice.id}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/invoices/${invoice.id}`}>
+                                      <ExternalLink className="h-4 w-4 mr-2" />
+                                      View Details
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  {invoice.status === "draft" && (
+                                    <DropdownMenuItem
+                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" })}
+                                    >
+                                      <Send className="h-4 w-4 mr-2" />
+                                      Mark as Sent
+                                    </DropdownMenuItem>
+                                  )}
+                                  {invoice.status === "sent" && (
+                                    <DropdownMenuItem
+                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" })}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Mark as Paid
+                                    </DropdownMenuItem>
+                                  )}
+                                  {invoice.status !== "cancelled" && invoice.status !== "paid" && (
+                                    <DropdownMenuItem
+                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "cancelled" })}
+                                      className="text-destructive"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Cancel Invoice
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No invoices for this client yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Generate invoices from Time Logs on any project
+                    </p>
                   </CardContent>
                 </Card>
               )}

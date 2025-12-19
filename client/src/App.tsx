@@ -24,7 +24,6 @@ import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Tasks from "@/pages/tasks";
 import TimeLogs from "@/pages/time-logs";
-import Invoices from "@/pages/invoices";
 import Associates from "@/pages/associates";
 import AssociateDetail from "@/pages/associate-detail";
 import ClientPortal, { ClientProjectDetail } from "@/pages/client-portal";
@@ -60,7 +59,6 @@ function AdminRouter() {
       <Route path="/projects/:id" component={ProjectDetail} />
       <Route path="/tasks" component={Tasks} />
       <Route path="/time-logs" component={TimeLogs} />
-      <Route path="/invoices" component={Invoices} />
       <Route path="/associates" component={Associates} />
       <Route path="/associates/:id" component={AssociateDetail} />
       <Route path="/settings" component={SettingsPage} />
