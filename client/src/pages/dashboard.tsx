@@ -95,15 +95,31 @@ export default function Dashboard() {
     queryKey: ["/api/invoices"],
   });
 
+  const { data: allTimeEntries, isLoading: timeEntriesLoading } = useQuery<any[]>({
+    queryKey: ["/api/time-entries"],
+  });
+
   const recentProjects = allProjects?.slice(0, 5);
   const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
 
-  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading;
+  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading || timeEntriesLoading;
 
   // Invoice stats (unpaid = draft + sent, not paid or cancelled)
   const unpaidInvoices = invoices?.filter(i => i.status === "draft" || i.status === "sent") || [];
   const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
   const paidInvoices = invoices?.filter(i => i.status === "paid") || [];
+
+  // Calculate unbilled hours from time entries
+  const billedTimeEntryIds = new Set<number>();
+  invoices?.forEach(invoice => {
+    if (invoice.status !== "cancelled") {
+      invoice.items?.forEach((item: any) => {
+        if (item.timeEntryId) billedTimeEntryIds.add(item.timeEntryId);
+      });
+    }
+  });
+  const unbilledEntries = allTimeEntries?.filter(e => e.isBillable && !billedTimeEntryIds.has(e.id)) || [];
+  const unbilledHours = unbilledEntries.reduce((sum, e) => sum + (e.totalMinutes || 0) / 60, 0);
 
   // Create a map for easy lookup of counts by status
   const statusCountMap = new Map<string, number>();
@@ -290,10 +306,15 @@ export default function Dashboard() {
     printWindow.print();
   };
 
+  const activeClients = allClients?.filter(c => c.status === "active").length ?? 0;
+  const totalProjectsCount = allProjects?.length ?? 0;
+  const overdueCount = overdueTasks?.length ?? 0;
+  
   const statCards = [
     {
       title: "Total Clients",
       value: stats?.totalClients ?? 0,
+      subtitle: `${activeClients} active`,
       icon: Users,
       color: "text-chart-1",
       bgColor: "bg-chart-1/10",
@@ -302,6 +323,7 @@ export default function Dashboard() {
     {
       title: "Active Projects",
       value: stats?.activeProjects ?? 0,
+      subtitle: `${totalProjectsCount} total`,
       icon: FolderKanban,
       color: "text-chart-2",
       bgColor: "bg-chart-2/10",
@@ -310,6 +332,7 @@ export default function Dashboard() {
     {
       title: "Pending Tasks",
       value: stats?.pendingTasks ?? 0,
+      subtitle: `${overdueCount} overdue`,
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
@@ -318,6 +341,7 @@ export default function Dashboard() {
     {
       title: "Total Hours",
       value: stats?.totalHours ?? 0,
+      subtitle: `${unbilledHours.toFixed(1)} unbilled`,
       icon: Clock,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",
