@@ -102,6 +102,11 @@ export default function InvoiceDetail() {
                 className="h-12 dark:invert"
                 data-testid="img-company-logo"
               />
+              <div className="mt-3 text-sm text-muted-foreground space-y-0.5">
+                <p>123 Main Street, Suite 100</p>
+                <p>Monroe, NY 10950</p>
+                <p>(845) 555-1234</p>
+              </div>
             </div>
             <div>
               <h2 className="text-lg font-semibold mb-4">Bill To</h2>
