@@ -91,7 +91,7 @@ export default function Dashboard() {
     queryKey: ["/api/tasks/overdue"],
   });
 
-  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
     queryKey: ["/api/invoices"],
   });
 
