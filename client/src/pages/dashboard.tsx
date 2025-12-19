@@ -109,7 +109,7 @@ export default function Dashboard() {
   const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
   const paidInvoices = invoices?.filter(i => i.status === "paid") || [];
 
-  // Calculate unbilled hours from time entries
+  // Calculate unbilled hours from time entries (all entries not yet on an invoice)
   const billedTimeEntryIds = new Set<number>();
   invoices?.forEach(invoice => {
     if (invoice.status !== "cancelled") {
@@ -118,7 +118,7 @@ export default function Dashboard() {
       });
     }
   });
-  const unbilledEntries = allTimeEntries?.filter(e => e.isBillable && !billedTimeEntryIds.has(e.id)) || [];
+  const unbilledEntries = allTimeEntries?.filter(e => !billedTimeEntryIds.has(e.id)) || [];
   const unbilledHours = unbilledEntries.reduce((sum, e) => sum + (e.totalMinutes || 0) / 60, 0);
 
   // Create a map for easy lookup of counts by status
