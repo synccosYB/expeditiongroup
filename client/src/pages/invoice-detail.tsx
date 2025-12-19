@@ -99,13 +99,9 @@ export default function InvoiceDetail() {
               <img 
                 src={logoUrl} 
                 alt="Expedition Group" 
-                className="h-12 mb-3 dark:invert"
+                className="h-12 dark:invert"
                 data-testid="img-company-logo"
               />
-              <div className="space-y-1 text-sm">
-                <p className="text-muted-foreground">Permit Expediting Services</p>
-                <p className="text-muted-foreground">Orange, Rockland & Sullivan Counties, NY</p>
-              </div>
             </div>
             <div>
               <h2 className="text-lg font-semibold mb-4">Bill To</h2>
