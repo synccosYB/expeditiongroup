@@ -50,17 +50,14 @@ export function InvoiceGenerationDialog({
     format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
   );
 
-  const { data: nextNumber } = useQuery({
+  const { data: nextNumber } = useQuery<{ invoiceNumber: string }>({
     queryKey: ["/api/invoices/next-number"],
     enabled: isOpen,
   });
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/invoices", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/invoices", data);
     },
     onSuccess: () => {
       toast({ title: "Invoice created successfully" });
