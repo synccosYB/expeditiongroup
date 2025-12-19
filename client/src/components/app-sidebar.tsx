@@ -17,6 +17,7 @@ import {
   FolderKanban,
   ClipboardList,
   Clock,
+  FileText,
   UserCog,
   LogOut,
   Settings,
@@ -32,6 +33,7 @@ const adminMenuItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Tasks", url: "/tasks", icon: ClipboardList },
   { title: "Time Logs", url: "/time-logs", icon: Clock },
+  { title: "Invoices", url: "/invoices", icon: FileText },
   { title: "Associates", url: "/associates", icon: UserCog },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
