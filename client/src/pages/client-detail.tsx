@@ -334,7 +334,7 @@ export default function ClientDetail() {
                               )}
                               <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                                 <span>
-                                  {format(new Date(invoice.invoiceDate), "MMM d, yyyy")}
+                                  {invoice.createdAt && format(new Date(invoice.createdAt), "MMM d, yyyy")}
                                 </span>
                                 {invoice.dueDate && (
                                   <span>
@@ -345,7 +345,7 @@ export default function ClientDetail() {
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <p className="font-semibold text-lg">
-                                ${parseFloat(invoice.totalAmount || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                ${parseFloat(invoice.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
                               </p>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
