@@ -20,6 +20,8 @@ import {
   insertChecklistInstanceSchema,
   insertNewsletterSubscriberSchema,
   insertTaskReminderSchema,
+  insertInvoiceSchema,
+  insertInvoiceItemSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -1464,6 +1466,153 @@ export async function registerRoutes(
       }
       console.error("Error serving object:", error);
       res.status(500).json({ message: "Failed to serve object" });
+    }
+  });
+
+  // Invoice routes
+  app.get("/api/invoices", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const invoices = await storage.getInvoices();
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get("/api/invoices/next-number", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const nextNumber = await storage.getNextInvoiceNumber();
+      res.json({ invoiceNumber: nextNumber });
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+      res.status(500).json({ message: "Failed to generate invoice number" });
+    }
+  });
+
+  app.get("/api/invoices/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const invoice = await storage.getInvoice(parseInt(req.params.id));
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  app.get("/api/projects/:projectId/invoices", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const invoices = await storage.getInvoicesByProjectId(parseInt(req.params.projectId));
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching project invoices:", error);
+      res.status(500).json({ message: "Failed to fetch project invoices" });
+    }
+  });
+
+  app.get("/api/clients/:clientId/invoices", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const invoices = await storage.getInvoicesByClientId(parseInt(req.params.clientId));
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching client invoices:", error);
+      res.status(500).json({ message: "Failed to fetch client invoices" });
+    }
+  });
+
+  app.post("/api/invoices", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { items, ...invoiceData } = req.body;
+      const parsedInvoice = insertInvoiceSchema.parse(invoiceData);
+      const parsedItems = z.array(insertInvoiceItemSchema.omit({ invoiceId: true })).parse(items || []);
+      
+      const invoice = await storage.createInvoice(parsedInvoice, parsedItems as any);
+      res.status(201).json(invoice);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  app.patch("/api/invoices/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const updateSchema = z.object({
+        status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
+        notes: z.string().optional(),
+        dueDate: z.string().optional(),
+        paidAt: z.string().optional(),
+      });
+      
+      const parsed = updateSchema.parse(req.body);
+      const updateData: any = { ...parsed };
+      if (parsed.dueDate) updateData.dueDate = new Date(parsed.dueDate);
+      if (parsed.paidAt) updateData.paidAt = new Date(parsed.paidAt);
+      
+      const invoice = await storage.updateInvoice(parseInt(req.params.id), updateData);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  app.delete("/api/invoices/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const deleted = await storage.deleteInvoice(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Failed to delete invoice" });
     }
   });
 

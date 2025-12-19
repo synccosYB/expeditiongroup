@@ -14,6 +14,8 @@ import {
   checklistInstances,
   newsletterSubscribers,
   taskReminders,
+  invoices,
+  invoiceItems,
   type User,
   type UpsertUser,
   type Client,
@@ -43,6 +45,10 @@ import {
   type NewsletterSubscriber,
   type TaskReminder,
   type InsertTaskReminder,
+  type Invoice,
+  type InsertInvoice,
+  type InvoiceItem,
+  type InsertInvoiceItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql, isNull, ne, or, ilike } from "drizzle-orm";
@@ -174,6 +180,16 @@ export interface IStorage {
   createTaskReminder(reminder: InsertTaskReminder): Promise<TaskReminder>;
   updateTaskReminder(id: number, reminder: Partial<InsertTaskReminder>): Promise<TaskReminder | undefined>;
   deleteTaskReminder(id: number): Promise<boolean>;
+  
+  // Invoices
+  getInvoices(): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] })[]>;
+  getInvoicesByProjectId(projectId: number): Promise<(Invoice & { items: InvoiceItem[] })[]>;
+  getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]>;
+  getInvoice(id: number): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] }) | undefined>;
+  createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }>;
+  updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: number): Promise<boolean>;
+  getNextInvoiceNumber(): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -958,6 +974,133 @@ export class DatabaseStorage implements IStorage {
   async deleteTaskReminder(id: number): Promise<boolean> {
     const result = await db.delete(taskReminders).where(eq(taskReminders.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Invoices
+  async getInvoices(): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] })[]> {
+    const invoiceList = await db
+      .select()
+      .from(invoices)
+      .leftJoin(projects, eq(invoices.projectId, projects.id))
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .orderBy(desc(invoices.createdAt));
+    
+    const result = await Promise.all(invoiceList.map(async (r) => {
+      const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
+      return {
+        ...r.invoices,
+        project: r.projects!,
+        client: r.clients!,
+        items,
+      };
+    }));
+    
+    return result;
+  }
+
+  async getInvoicesByProjectId(projectId: number): Promise<(Invoice & { items: InvoiceItem[] })[]> {
+    const invoiceList = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.projectId, projectId))
+      .orderBy(desc(invoices.createdAt));
+    
+    const result = await Promise.all(invoiceList.map(async (inv) => {
+      const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, inv.id));
+      return {
+        ...inv,
+        items,
+      };
+    }));
+    
+    return result;
+  }
+
+  async getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]> {
+    const invoiceList = await db
+      .select()
+      .from(invoices)
+      .leftJoin(projects, eq(invoices.projectId, projects.id))
+      .where(eq(invoices.clientId, clientId))
+      .orderBy(desc(invoices.createdAt));
+    
+    const result = await Promise.all(invoiceList.map(async (r) => {
+      const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
+      return {
+        ...r.invoices,
+        project: r.projects!,
+        items,
+      };
+    }));
+    
+    return result;
+  }
+
+  async getInvoice(id: number): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] }) | undefined> {
+    const [result] = await db
+      .select()
+      .from(invoices)
+      .leftJoin(projects, eq(invoices.projectId, projects.id))
+      .leftJoin(clients, eq(invoices.clientId, clients.id))
+      .where(eq(invoices.id, id));
+    
+    if (!result) return undefined;
+    
+    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+    
+    return {
+      ...result.invoices,
+      project: result.projects!,
+      client: result.clients!,
+      items,
+    };
+  }
+
+  async createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }> {
+    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    
+    const createdItems: InvoiceItem[] = [];
+    for (const item of items) {
+      const [newItem] = await db.insert(invoiceItems).values({ ...item, invoiceId: newInvoice.id }).returning();
+      createdItems.push(newItem);
+    }
+    
+    return {
+      ...newInvoice,
+      items: createdItems,
+    };
+  }
+
+  async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db
+      .update(invoices)
+      .set({ ...invoice, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteInvoice(id: number): Promise<boolean> {
+    const result = await db.delete(invoices).where(eq(invoices.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNextInvoiceNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const [lastInvoice] = await db
+      .select({ invoiceNumber: invoices.invoiceNumber })
+      .from(invoices)
+      .where(sql`${invoices.invoiceNumber} LIKE ${`INV-${currentYear}-%`}`)
+      .orderBy(desc(invoices.invoiceNumber))
+      .limit(1);
+    
+    if (!lastInvoice) {
+      return `INV-${currentYear}-0001`;
+    }
+    
+    const lastNumber = parseInt(lastInvoice.invoiceNumber.split('-')[2] || '0');
+    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
+    return `INV-${currentYear}-${nextNumber}`;
   }
 }
 

@@ -39,12 +39,22 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Data Models
 - **Users**: Authenticated users with roles (admin/client)
-- **Clients**: Business entities that hire permit expediting services
+- **Clients**: Business entities that hire permit expediting services with optional hourlyRate
 - **Projects**: Permit applications linked to clients with status tracking
 - **Tasks**: Work items within projects (road/office types)
 - **Notes**: Communication log entries on projects
-- **Time Logs**: Billable hours tracking per project
+- **Time Logs**: Legacy billable hours tracking per project (description-based, totalHours as varchar)
+- **Time Entries**: New task-based time tracking (totalMinutes, linked to tasks)
+- **Invoices**: Generated invoices from time logs/entries with line items
+- **Invoice Items**: Individual line items referencing time logs, time entries, or custom items
 - **Associates**: External professionals (engineers, architects, surveyors, consultants)
+
+### Invoicing System
+- Invoice number format: INV-YYYY-NNNN (e.g., INV-2024-0001)
+- Invoices can be generated from the Time Logs tab on project detail page
+- Each invoice has a status: draft, sent, paid, cancelled
+- Line items can reference time_logs, time_entries, or be custom items (filing fees, mileage, etc.)
+- Hourly rate defaults to client's configured rate or $75/hour
 
 ### Design System
 The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis on information density and data clarity. Typography uses Inter for UI and JetBrains Mono for timestamps. Layout uses a fixed-width sidebar (w-64) with responsive main content area.

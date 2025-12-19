@@ -89,6 +89,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { InvoiceGenerationDialog } from "@/components/invoice-generation-dialog";
 
 type TaskWithSubtasks = Task & { 
   subtasks?: TaskWithSubtasks[];
@@ -788,6 +789,7 @@ export default function ProjectDetail() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [isChecklistDialogOpen, setIsChecklistDialogOpen] = useState(false);
@@ -2815,18 +2817,25 @@ export default function ProjectDetail() {
         <TabsContent value="time-logs" className="mt-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Time Logs</h2>
-            <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-time-log">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Log Time
-                    </Button>
-                  </DialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Log time spent</TooltipContent>
-              </Tooltip>
+            <div className="flex items-center gap-2">
+              {((project.timeLogs && project.timeLogs.length > 0) || (project.timeEntries && project.timeEntries.length > 0)) && (
+                <Button variant="outline" size="sm" onClick={() => setIsInvoiceDialogOpen(true)} data-testid="button-generate-invoice">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Invoice
+                </Button>
+              )}
+              <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-time-log">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Log Time
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Log time spent</TooltipContent>
+                </Tooltip>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Log Time</DialogTitle>
@@ -2933,6 +2942,7 @@ export default function ProjectDetail() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           {((project.timeLogs && project.timeLogs.length > 0) || (project.timeEntries && project.timeEntries.length > 0)) ? (
@@ -3134,6 +3144,15 @@ export default function ProjectDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Invoice Generation Dialog */}
+      <InvoiceGenerationDialog
+        isOpen={isInvoiceDialogOpen}
+        onClose={() => setIsInvoiceDialogOpen(false)}
+        project={{ ...project, client: project.client }}
+        timeLogs={project.timeLogs || []}
+        timeEntries={project.timeEntries || []}
+      />
     </div>
   );
 }
