@@ -17,7 +17,7 @@ import {
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
 import type { Invoice, InvoiceItem, Project, Client } from "@shared/schema";
-import logoUrl from "@/assets/logo.svg";
+import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 
 interface InvoiceWithRelations extends Invoice {
   project?: Project;
