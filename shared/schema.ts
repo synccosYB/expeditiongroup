@@ -28,6 +28,7 @@ export const associateTypeEnum = pgEnum("associate_type", ["engineer", "architec
 export const documentCategoryEnum = pgEnum("document_category", ["plan", "permit", "survey", "dob_letter", "correspondence", "legal", "photo", "inspection", "other"]);
 export const reminderChannelEnum = pgEnum("reminder_channel", ["email", "sms", "whatsapp"]);
 export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled", "done", "postponed"]);
+export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "cancelled"]);
 
 // Session storage table (IMPORTANT: mandatory for Replit Auth)
 export const sessions = pgTable(
@@ -96,6 +97,7 @@ export const clients = pgTable("clients", {
   billingZip: varchar("billing_zip", { length: 20 }),
   notes: text("notes"),
   status: clientStatusEnum("status").default("active"),
+  hourlyRate: varchar("hourly_rate", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -289,6 +291,38 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Invoices table
+export const invoices = pgTable("invoices", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  invoiceNumber: varchar("invoice_number", { length: 50 }).notNull(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  status: invoiceStatusEnum("status").default("draft").notNull(),
+  hourlyRate: varchar("hourly_rate", { length: 20 }).notNull(),
+  subtotal: varchar("subtotal", { length: 20 }).notNull(),
+  tax: varchar("tax", { length: 20 }),
+  total: varchar("total", { length: 20 }).notNull(),
+  notes: text("notes"),
+  dueDate: timestamp("due_date"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Invoice Items table
+export const invoiceItems = pgTable("invoice_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: varchar("quantity", { length: 20 }).notNull(),
+  unitPrice: varchar("unit_price", { length: 20 }).notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  timeLogId: integer("time_log_id").references(() => timeLogs.id, { onDelete: "set null" }),
+  timeEntryId: integer("time_entry_id").references(() => timeEntries.id, { onDelete: "set null" }),
+  isCustom: boolean("is_custom").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   client: one(clients, {
@@ -464,6 +498,33 @@ export const checklistInstancesRelations = relations(checklistInstances, ({ one 
   }),
 }));
 
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [invoices.projectId],
+    references: [projects.id],
+  }),
+  client: one(clients, {
+    fields: [invoices.clientId],
+    references: [clients.id],
+  }),
+  items: many(invoiceItems),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceItems.invoiceId],
+    references: [invoices.id],
+  }),
+  timeLog: one(timeLogs, {
+    fields: [invoiceItems.timeLogId],
+    references: [timeLogs.id],
+  }),
+  timeEntry: one(timeEntries, {
+    fields: [invoiceItems.timeEntryId],
+    references: [timeEntries.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -510,6 +571,10 @@ export const insertTaskReminderSchema = createInsertSchema(taskReminders).omit({
     return val;
   }, z.date()),
 });
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true, paidAt: true }).extend({
+  dueDate: dateCoercion,
+});
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -542,3 +607,7 @@ export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscrib
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export type InsertTaskReminder = z.infer<typeof insertTaskReminderSchema>;
 export type TaskReminder = typeof taskReminders.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
