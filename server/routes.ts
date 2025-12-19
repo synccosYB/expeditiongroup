@@ -1529,6 +1529,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/projects/:projectId/billed-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const billedItems = await storage.getBilledItemIds(parseInt(req.params.projectId));
+      res.json(billedItems);
+    } catch (error) {
+      console.error("Error fetching billed items:", error);
+      res.status(500).json({ message: "Failed to fetch billed items" });
+    }
+  });
+
   app.get("/api/clients/:clientId/invoices", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

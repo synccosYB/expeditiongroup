@@ -51,7 +51,7 @@ import {
   type InsertInvoiceItem,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, sql, isNull, ne, or, ilike } from "drizzle-orm";
+import { eq, desc, and, count, sql, isNull, ne, or, ilike, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -1101,6 +1101,35 @@ export class DatabaseStorage implements IStorage {
     const lastNumber = parseInt(lastInvoice.invoiceNumber.split('-')[2] || '0');
     const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
     return `INV-${currentYear}-${nextNumber}`;
+  }
+
+  async getBilledItemIds(projectId: number): Promise<{ timeLogIds: number[]; timeEntryIds: number[] }> {
+    const projectInvoices = await db
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(and(
+        eq(invoices.projectId, projectId),
+        ne(invoices.status, 'cancelled')
+      ));
+    
+    if (projectInvoices.length === 0) {
+      return { timeLogIds: [], timeEntryIds: [] };
+    }
+
+    const invoiceIds = projectInvoices.map(i => i.id);
+    const items = await db
+      .select({ timeLogId: invoiceItems.timeLogId, timeEntryId: invoiceItems.timeEntryId })
+      .from(invoiceItems)
+      .where(inArray(invoiceItems.invoiceId, invoiceIds));
+
+    const timeLogIds = items
+      .filter(item => item.timeLogId !== null)
+      .map(item => item.timeLogId as number);
+    const timeEntryIds = items
+      .filter(item => item.timeEntryId !== null)
+      .map(item => item.timeEntryId as number);
+
+    return { timeLogIds, timeEntryIds };
   }
 }
 

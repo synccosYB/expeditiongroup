@@ -33,6 +33,11 @@ interface CustomLineItem {
   unitPrice: string;
 }
 
+interface BilledItems {
+  timeLogIds: number[];
+  timeEntryIds: number[];
+}
+
 export function InvoiceGenerationDialog({
   isOpen,
   onClose,
@@ -55,6 +60,21 @@ export function InvoiceGenerationDialog({
     enabled: isOpen,
   });
 
+  const { data: billedItems } = useQuery<BilledItems>({
+    queryKey: ["/api/projects", project.id, "billed-items"],
+    enabled: isOpen,
+  });
+
+  const unbilledTimeLogs = useMemo(() => {
+    if (!billedItems) return timeLogs;
+    return timeLogs.filter((log) => !billedItems.timeLogIds.includes(log.id));
+  }, [timeLogs, billedItems]);
+
+  const unbilledTimeEntries = useMemo(() => {
+    if (!billedItems) return timeEntries;
+    return timeEntries.filter((entry) => !billedItems.timeEntryIds.includes(entry.id));
+  }, [timeEntries, billedItems]);
+
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/invoices", data);
@@ -62,7 +82,9 @@ export function InvoiceGenerationDialog({
     onSuccess: () => {
       toast({ title: "Invoice created successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", String(project.id)] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", project.id, "billed-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", project.clientId, "invoices"] });
       onClose();
       resetForm();
     },
@@ -79,11 +101,11 @@ export function InvoiceGenerationDialog({
   };
 
   const selectAllTimeLogs = () => {
-    setSelectedTimeLogs(new Set(timeLogs.map((l) => l.id)));
+    setSelectedTimeLogs(new Set(unbilledTimeLogs.map((l) => l.id)));
   };
 
   const selectAllTimeEntries = () => {
-    const billableEntries = timeEntries.filter((e) => e.isBillable !== false);
+    const billableEntries = unbilledTimeEntries.filter((e) => e.isBillable !== false);
     setSelectedTimeEntries(new Set(billableEntries.map((e) => e.id)));
   };
 
@@ -185,9 +207,11 @@ export function InvoiceGenerationDialog({
     });
   };
 
-  const hasTimeLogs = timeLogs.length > 0;
-  const hasTimeEntries = timeEntries.length > 0;
-  const hasBillableEntries = timeEntries.some((e) => e.isBillable !== false);
+  const hasUnbilledTimeLogs = unbilledTimeLogs.length > 0;
+  const hasUnbilledTimeEntries = unbilledTimeEntries.length > 0;
+  const hasBillableEntries = unbilledTimeEntries.some((e) => e.isBillable !== false);
+  const billedTimeLogsCount = billedItems?.timeLogIds.length || 0;
+  const billedTimeEntriesCount = billedItems?.timeEntryIds.length || 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -234,12 +258,12 @@ export function InvoiceGenerationDialog({
             </div>
           </div>
 
-          {(hasTimeLogs || hasTimeEntries) && (
+          {(hasUnbilledTimeLogs || hasUnbilledTimeEntries) ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Select Time Entries</Label>
                 <div className="flex gap-2">
-                  {hasTimeLogs && (
+                  {hasUnbilledTimeLogs && (
                     <Button variant="outline" size="sm" onClick={selectAllTimeLogs} data-testid="button-select-all-logs">
                       Select All Logs
                     </Button>
@@ -263,7 +287,7 @@ export function InvoiceGenerationDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {timeEntries.filter((e) => e.isBillable !== false).map((entry) => (
+                    {unbilledTimeEntries.filter((e) => e.isBillable !== false).map((entry) => (
                       <tr key={`entry-${entry.id}`} className="border-t">
                         <td className="p-2">
                           <Checkbox
@@ -282,7 +306,7 @@ export function InvoiceGenerationDialog({
                         <td className="p-2 text-right">{((entry.totalMinutes || 0) / 60).toFixed(2)}</td>
                       </tr>
                     ))}
-                    {timeLogs.map((log) => (
+                    {unbilledTimeLogs.map((log) => (
                       <tr key={`log-${log.id}`} className="border-t">
                         <td className="p-2">
                           <Checkbox
@@ -304,8 +328,22 @@ export function InvoiceGenerationDialog({
                   </tbody>
                 </table>
               </div>
+              {(billedTimeLogsCount > 0 || billedTimeEntriesCount > 0) && (
+                <p className="text-xs text-muted-foreground">
+                  {billedTimeLogsCount + billedTimeEntriesCount} item(s) already billed and not shown
+                </p>
+              )}
             </div>
-          )}
+          ) : (timeLogs.length > 0 || timeEntries.length > 0) ? (
+            <div className="p-4 border rounded-md bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">
+                All time entries have already been billed
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                You can still add custom line items below
+              </p>
+            </div>
+          ) : null}
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
