@@ -124,12 +124,18 @@ export default function TimeLogs() {
         throw new Error("Project or client not found");
       }
       
+      // Get next invoice number
+      const nextNumberRes = await fetch("/api/invoices/next-number", { credentials: "include" });
+      if (!nextNumberRes.ok) throw new Error("Failed to get invoice number");
+      const { invoiceNumber } = await nextNumberRes.json();
+      
       const hourlyRate = project.client.hourlyRate || "75";
       const hours = log.totalHours;
       const amount = (hours * parseFloat(hourlyRate)).toFixed(2);
       const dateStr = format(new Date(log.date), "MM/dd/yyyy");
       
       const invoiceData = {
+        invoiceNumber,
         projectId: log.projectId,
         clientId: project.clientId,
         status: "draft",
