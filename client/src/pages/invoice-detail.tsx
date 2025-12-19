@@ -94,36 +94,36 @@ export default function InvoiceDetail() {
 
       <Card className="print:shadow-none print:border-0">
         <CardContent className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div className="flex justify-between gap-8 mb-8">
             <div>
               <img 
                 src={logoUrl} 
                 alt="Expedition Group" 
-                className="h-12 dark:invert"
+                className="h-12 dark:invert print:filter-none"
                 data-testid="img-company-logo"
               />
-              <div className="mt-3 text-sm text-muted-foreground space-y-0.5">
+              <div className="mt-3 text-sm text-muted-foreground space-y-0.5 print:text-gray-600">
                 <p>123 Main Street, Suite 100</p>
                 <p>Monroe, NY 10950</p>
                 <p>(845) 555-1234</p>
               </div>
             </div>
-            <div>
+            <div className="text-right">
               <h2 className="text-lg font-semibold mb-4">Bill To</h2>
               {invoice.client && (
                 <div className="space-y-1 text-sm">
                   <p className="font-medium">{invoice.client.name}</p>
                   {invoice.client.company && (
-                    <p className="text-muted-foreground">{invoice.client.company}</p>
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.company}</p>
                   )}
                   {invoice.client.address && (
-                    <p className="text-muted-foreground">{invoice.client.address}</p>
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.address}</p>
                   )}
                   {invoice.client.email && (
-                    <p className="text-muted-foreground">{invoice.client.email}</p>
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.email}</p>
                   )}
                   {invoice.client.phone && (
-                    <p className="text-muted-foreground">{invoice.client.phone}</p>
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.phone}</p>
                   )}
                 </div>
               )}
