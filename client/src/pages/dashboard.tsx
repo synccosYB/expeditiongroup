@@ -20,10 +20,12 @@ import {
   Printer,
   Filter,
   X,
+  FileText,
+  DollarSign,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import type { Project, Task, Client } from "@shared/schema";
+import type { Project, Task, Client, Invoice } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
 interface DashboardStats {
@@ -89,10 +91,20 @@ export default function Dashboard() {
     queryKey: ["/api/tasks/overdue"],
   });
 
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({
+    queryKey: ["/api/invoices"],
+  });
+
   const recentProjects = allProjects?.slice(0, 5);
   const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
 
-  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading;
+  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading;
+
+  // Invoice stats
+  const unpaidInvoices = invoices?.filter(i => i.status === "sent") || [];
+  const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+  const draftInvoices = invoices?.filter(i => i.status === "draft") || [];
+  const paidInvoices = invoices?.filter(i => i.status === "paid") || [];
 
   // Create a map for easy lookup of counts by status
   const statusCountMap = new Map<string, number>();
@@ -126,6 +138,10 @@ export default function Dashboard() {
         break;
       case "hours":
         reportTitle = "Total Hours Report";
+        break;
+      case "invoices":
+        reportTitle = "Unpaid Invoices Report";
+        reportData = unpaidInvoices;
         break;
     }
 
@@ -198,6 +214,28 @@ export default function Dashboard() {
           <p><strong>Total Hours:</strong> ${stats?.totalHours ?? 0} hours</p>
         </div>
       `;
+    } else if (reportType === "invoices") {
+      tableContent = `
+        <div class="summary">
+          <p><strong>Unpaid Invoices:</strong> ${unpaidInvoices.length}</p>
+          <p><strong>Total Outstanding:</strong> $${unpaidTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Invoice #</th><th>Status</th><th>Date</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            ${unpaidInvoices.map((inv: any) => `
+              <tr>
+                <td>${inv.invoiceNumber}</td>
+                <td>${inv.status}</td>
+                <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "-"}</td>
+                <td>$${parseFloat(inv.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
     }
 
     printWindow.document.write(`
@@ -261,6 +299,15 @@ export default function Dashboard() {
       bgColor: "bg-chart-4/10",
       reportType: "hours",
     },
+    {
+      title: "Unpaid Invoices",
+      value: unpaidInvoices.length,
+      subtitle: `$${unpaidTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      icon: DollarSign,
+      color: "text-chart-5",
+      bgColor: "bg-chart-5/10",
+      reportType: "invoices",
+    },
   ];
 
   const clearDateFilters = () => {
@@ -312,7 +359,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card 
             key={stat.title} 
@@ -330,8 +377,15 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-2">
-                <div className="text-2xl font-bold text-foreground">
-                  {stat.value}
+                <div>
+                  <div className="text-2xl font-bold text-foreground">
+                    {stat.value}
+                  </div>
+                  {"subtitle" in stat && stat.subtitle && (
+                    <div className="text-sm text-muted-foreground">
+                      {stat.subtitle}
+                    </div>
+                  )}
                 </div>
                 <Printer className="h-4 w-4 text-muted-foreground" />
               </div>
