@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, Clock, ExternalLink, Calendar, CheckCircle, Pencil } from "lucide-react";
+import { Search, Clock, ExternalLink, Calendar, CheckCircle, Pencil, FileText, Loader2 } from "lucide-react";
 import { TaskTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { TimeLog, TimeEntry, Project, User, Task } from "@shared/schema";
+import type { TimeLog, TimeEntry, Project, User, Task, Client, Invoice } from "@shared/schema";
 import { format } from "date-fns";
 import { formatTimeRange12h } from "@/lib/dateUtils";
 
@@ -71,7 +71,9 @@ export default function TimeLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [editingLog, setEditingLog] = useState<UnifiedTimeLog | null>(null);
+  const [generatingInvoiceFor, setGeneratingInvoiceFor] = useState<string | null>(null);
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const { data: timeLogs, isLoading: logsLoading } = useQuery<TimeLogWithRelations[]>({
     queryKey: ["/api/time-logs"],
@@ -79,6 +81,10 @@ export default function TimeLogs() {
 
   const { data: timeEntries, isLoading: entriesLoading } = useQuery<TimeEntryWithRelations[]>({
     queryKey: ["/api/time-entries"],
+  });
+
+  const { data: projects } = useQuery<(Project & { client: Client })[]>({
+    queryKey: ["/api/projects"],
   });
 
   const isLoading = logsLoading || entriesLoading;
@@ -110,6 +116,59 @@ export default function TimeLogs() {
       toast({ title: "Failed to update time entry", variant: "destructive" });
     },
   });
+
+  const generateInvoiceMutation = useMutation({
+    mutationFn: async (log: UnifiedTimeLog) => {
+      const project = projects?.find(p => p.id === log.projectId);
+      if (!project?.client) {
+        throw new Error("Project or client not found");
+      }
+      
+      const hourlyRate = project.client.hourlyRate || "75";
+      const hours = log.totalHours;
+      const amount = (hours * parseFloat(hourlyRate)).toFixed(2);
+      const dateStr = format(new Date(log.date), "MM/dd/yyyy");
+      
+      const invoiceData = {
+        projectId: log.projectId,
+        clientId: project.clientId,
+        status: "draft",
+        hourlyRate,
+        subtotal: amount,
+        total: amount,
+        items: [{
+          description: `${dateStr} - ${log.description}`,
+          quantity: hours.toFixed(2),
+          unitPrice: hourlyRate,
+          amount,
+          timeLogId: log.source === "legacy" ? log.originalId : null,
+          timeEntryId: log.source === "entry" ? log.originalId : null,
+          isCustom: false,
+        }],
+      };
+      
+      const response = await apiRequest("POST", "/api/invoices", invoiceData);
+      return response.json();
+    },
+    onSuccess: (invoice: Invoice) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Invoice generated successfully" });
+      navigate(`/invoices/${invoice.id}`);
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || "Failed to generate invoice", variant: "destructive" });
+      setGeneratingInvoiceFor(null);
+    },
+  });
+
+  const handleGenerateInvoice = (log: UnifiedTimeLog) => {
+    if (!log.isBillable) {
+      toast({ title: "This time log is not billable", variant: "destructive" });
+      return;
+    }
+    setGeneratingInvoiceFor(log.id);
+    generateInvoiceMutation.mutate(log);
+  };
 
   const unifiedLogs: UnifiedTimeLog[] = [
     ...(timeLogs?.map((log) => ({
@@ -244,11 +303,27 @@ export default function TimeLogs() {
                       <p className="text-xs text-muted-foreground mt-2">{log.notes}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {log.type && (log.type === "office" || log.type === "road") && <TaskTypeBadge type={log.type} />}
                     <span className="text-sm font-semibold text-foreground whitespace-nowrap">
                       {log.totalHours.toFixed(1)} hrs
                     </span>
+                    {log.isBillable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleGenerateInvoice(log)}
+                        disabled={generatingInvoiceFor === log.id}
+                        data-testid={`button-generate-invoice-${log.id}`}
+                        title="Generate Invoice"
+                      >
+                        {generatingInvoiceFor === log.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
