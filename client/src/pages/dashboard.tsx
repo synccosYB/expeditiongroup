@@ -100,10 +100,9 @@ export default function Dashboard() {
 
   const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading;
 
-  // Invoice stats
-  const unpaidInvoices = invoices?.filter(i => i.status === "sent") || [];
+  // Invoice stats (unpaid = draft + sent, not paid or cancelled)
+  const unpaidInvoices = invoices?.filter(i => i.status === "draft" || i.status === "sent") || [];
   const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
-  const draftInvoices = invoices?.filter(i => i.status === "draft") || [];
   const paidInvoices = invoices?.filter(i => i.status === "paid") || [];
 
   // Create a map for easy lookup of counts by status
