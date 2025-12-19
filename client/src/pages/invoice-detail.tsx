@@ -106,9 +106,10 @@ export default function InvoiceDetail() {
                 data-testid="img-company-logo"
               />
               <div className="mt-3 text-sm text-muted-foreground space-y-0.5 print:text-gray-600">
-                <p>123 Main Street, Suite 100</p>
-                <p>Monroe, NY 10950</p>
-                <p>(845) 555-1234</p>
+                <p>17 Sandybrook Drive</p>
+                <p>Spring Valley, NY 10977</p>
+                <p>(845) 212-2040</p>
+                <p>Info@expeditiongroupny.com</p>
               </div>
             </div>
             <div className="text-right">
