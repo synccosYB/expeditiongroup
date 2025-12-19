@@ -42,7 +42,10 @@ export default function InvoiceDetail() {
   });
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = invoice?.invoiceNumber || "Invoice";
     window.print();
+    document.title = originalTitle;
   };
 
   if (isLoading) {

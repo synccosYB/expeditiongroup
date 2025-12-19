@@ -87,6 +87,22 @@ export default function TimeLogs() {
     queryKey: ["/api/projects"],
   });
 
+  const { data: invoices } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
+    queryKey: ["/api/invoices"],
+  });
+
+  // Build sets of already-billed time log/entry IDs (excluding cancelled invoices)
+  const billedTimeLogIds = new Set<number>();
+  const billedTimeEntryIds = new Set<number>();
+  invoices?.forEach(invoice => {
+    if (invoice.status !== "cancelled") {
+      invoice.items?.forEach(item => {
+        if (item.timeLogId) billedTimeLogIds.add(item.timeLogId);
+        if (item.timeEntryId) billedTimeEntryIds.add(item.timeEntryId);
+      });
+    }
+  });
+
   const isLoading = logsLoading || entriesLoading;
 
   const updateTimeLogMutation = useMutation({
@@ -314,22 +330,36 @@ export default function TimeLogs() {
                     <span className="text-sm font-semibold text-foreground whitespace-nowrap">
                       {log.totalHours.toFixed(1)} hrs
                     </span>
-                    {log.isBillable && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleGenerateInvoice(log)}
-                        disabled={generatingInvoiceFor === log.id}
-                        data-testid={`button-generate-invoice-${log.id}`}
-                        title="Generate Invoice"
-                      >
-                        {generatingInvoiceFor === log.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FileText className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
+                    {log.isBillable && (() => {
+                      const isAlreadyBilled = log.source === "legacy" 
+                        ? billedTimeLogIds.has(log.originalId)
+                        : billedTimeEntryIds.has(log.originalId);
+                      
+                      if (isAlreadyBilled) {
+                        return (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            Billed
+                          </Badge>
+                        );
+                      }
+                      
+                      return (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleGenerateInvoice(log)}
+                          disabled={generatingInvoiceFor === log.id}
+                          data-testid={`button-generate-invoice-${log.id}`}
+                          title="Generate Invoice"
+                        >
+                          {generatingInvoiceFor === log.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                        </Button>
+                      );
+                    })()}
                     <Button
                       variant="ghost"
                       size="icon"
