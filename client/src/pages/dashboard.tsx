@@ -139,7 +139,7 @@ export default function Dashboard() {
         reportTitle = "Total Hours Report";
         break;
       case "invoices":
-        reportTitle = "Unpaid Invoices Report";
+        reportTitle = "Invoices Report";
         reportData = unpaidInvoices;
         break;
     }
@@ -214,26 +214,51 @@ export default function Dashboard() {
         </div>
       `;
     } else if (reportType === "invoices") {
+      const draftInvoices = invoices?.filter(i => i.status === "draft") || [];
+      const sentInvoices = invoices?.filter(i => i.status === "sent") || [];
+      const paidInvoicesList = invoices?.filter(i => i.status === "paid") || [];
+      
+      const draftTotal = draftInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+      const sentTotal = sentInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+      const paidTotal = paidInvoicesList.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+      
+      const renderInvoiceTable = (invList: any[], sectionTitle: string, total: number) => {
+        if (invList.length === 0) return "";
+        return `
+          <h2 style="margin-top: 30px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 8px;">${sectionTitle} (${invList.length})</h2>
+          <table>
+            <thead>
+              <tr><th>Invoice #</th><th>Project</th><th>Date</th><th>Due Date</th><th>Amount</th></tr>
+            </thead>
+            <tbody>
+              ${invList.map((inv: any) => `
+                <tr>
+                  <td>${inv.invoiceNumber}</td>
+                  <td>${inv.project?.name ?? "-"}</td>
+                  <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "-"}</td>
+                  <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-"}</td>
+                  <td>$${parseFloat(inv.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                </tr>
+              `).join("")}
+              <tr style="font-weight: bold; background: #f0f0f0;">
+                <td colspan="4" style="text-align: right;">Subtotal:</td>
+                <td>$${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      };
+      
       tableContent = `
         <div class="summary">
-          <p><strong>Unpaid Invoices:</strong> ${unpaidInvoices.length}</p>
-          <p><strong>Total Outstanding:</strong> $${unpaidTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <p><strong>Total Invoices:</strong> ${(draftInvoices.length + sentInvoices.length + paidInvoicesList.length)}</p>
+          <p><strong>Draft:</strong> ${draftInvoices.length} ($${draftTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</p>
+          <p><strong>Sent:</strong> ${sentInvoices.length} ($${sentTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</p>
+          <p><strong>Paid:</strong> ${paidInvoicesList.length} ($${paidTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</p>
         </div>
-        <table>
-          <thead>
-            <tr><th>Invoice #</th><th>Status</th><th>Date</th><th>Amount</th></tr>
-          </thead>
-          <tbody>
-            ${unpaidInvoices.map((inv: any) => `
-              <tr>
-                <td>${inv.invoiceNumber}</td>
-                <td>${inv.status}</td>
-                <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "-"}</td>
-                <td>$${parseFloat(inv.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+        ${renderInvoiceTable(draftInvoices, "Draft Invoices", draftTotal)}
+        ${renderInvoiceTable(sentInvoices, "Sent Invoices", sentTotal)}
+        ${renderInvoiceTable(paidInvoicesList, "Paid Invoices", paidTotal)}
       `;
     }
 
@@ -299,9 +324,9 @@ export default function Dashboard() {
       reportType: "hours",
     },
     {
-      title: "Unpaid Invoices",
-      value: unpaidInvoices.length,
-      subtitle: `$${unpaidTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      title: "Invoices",
+      value: invoices?.filter(i => i.status !== "cancelled").length ?? 0,
+      subtitle: `${unpaidInvoices.length} unpaid`,
       icon: DollarSign,
       color: "text-chart-5",
       bgColor: "bg-chart-5/10",
