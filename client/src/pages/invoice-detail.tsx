@@ -17,6 +17,7 @@ import {
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
 import type { Invoice, InvoiceItem, Project, Client } from "@shared/schema";
+import logoUrl from "@/assets/logo.svg";
 
 interface InvoiceWithRelations extends Invoice {
   project?: Project;
@@ -95,9 +96,13 @@ export default function InvoiceDetail() {
         <CardContent className="p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <div>
-              <h2 className="text-lg font-semibold mb-4">From</h2>
+              <img 
+                src={logoUrl} 
+                alt="Expedition Group" 
+                className="h-12 mb-3 dark:invert"
+                data-testid="img-company-logo"
+              />
               <div className="space-y-1 text-sm">
-                <p className="font-medium">Expedition Group</p>
                 <p className="text-muted-foreground">Permit Expediting Services</p>
                 <p className="text-muted-foreground">Orange, Rockland & Sullivan Counties, NY</p>
               </div>
