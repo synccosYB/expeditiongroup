@@ -327,28 +327,44 @@
 
 /* Print styles */
 @media print {
-  /* Hide sidebar and navigation elements */
+  /* Hide sidebar, navigation, header, and utility elements */
   [data-sidebar],
   [data-testid="button-sidebar-toggle"],
-  header,
-  nav,
+  aside,
   .print\\:hidden {
     display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
   }
   
-  /* Reset background and ensure content is visible */
-  body {
+  /* Reset everything to print-friendly defaults */
+  html, body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
   
-  /* Make main content full width */
+  /* Override flex layout to make main content full width */
+  body > div,
+  body > div > div,
+  [style*="--sidebar-width"] > div {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* Make main content take full width */
   main {
     margin: 0 !important;
     padding: 20px !important;
     width: 100% !important;
     max-width: 100% !important;
+    overflow: visible !important;
   }
   
   /* Ensure colors print correctly */

@@ -94,7 +94,7 @@ function AuthenticatedLayout() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 p-3 border-b bg-background shrink-0">
+          <header className="flex items-center justify-between gap-4 p-3 border-b bg-background shrink-0 print:hidden">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             {isAdmin && <GlobalSearch />}
             <div className="flex items-center gap-2">
