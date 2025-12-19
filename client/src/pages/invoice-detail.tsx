@@ -219,24 +219,37 @@ export default function InvoiceDetail() {
 
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
+          body {
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .print\\:hidden {
             display: none !important;
           }
-          [data-testid="table-invoice-items"],
-          [data-testid="table-invoice-items"] * {
-            visibility: visible;
+          [class*="space-y-6"] {
+            margin: 0 !important;
+            padding: 20px !important;
           }
-          .space-y-6 > * {
-            visibility: visible;
+          [class*="CardContent"] {
+            padding: 0 !important;
           }
-          .space-y-6 {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+          [class*="bg-muted"] {
+            background-color: #f5f5f5 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          [class*="text-muted-foreground"] {
+            color: #666 !important;
+          }
+          .dark\\:invert {
+            filter: none !important;
+          }
+          table {
+            border-collapse: collapse;
+          }
+          th, td {
+            border-bottom: 1px solid #ddd;
           }
         }
       `}</style>

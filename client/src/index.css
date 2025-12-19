@@ -324,3 +324,45 @@
 .uppy-dashboard-container .uppy-Dashboard-dropFilesHereHint {
   color: hsl(var(--muted-foreground));
 }
+
+/* Print styles */
+@media print {
+  /* Hide sidebar and navigation elements */
+  [data-sidebar],
+  [data-testid="button-sidebar-toggle"],
+  header,
+  nav,
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Reset background and ensure content is visible */
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Make main content full width */
+  main {
+    margin: 0 !important;
+    padding: 20px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Remove card shadows and borders for cleaner print */
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+  
+  .print\\:border-0 {
+    border: none !important;
+  }
+}
