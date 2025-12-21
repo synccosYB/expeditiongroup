@@ -1,21 +1,35 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   Building2,
   Calendar,
   FileText,
   Printer,
+  Trash2,
   Mail,
   Phone,
   MapPin,
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceItem, Project, Client } from "@shared/schema";
 import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 
@@ -35,10 +49,26 @@ const invoiceStatusConfig: Record<string, { label: string; variant: "default" | 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const invoiceId = parseInt(id || "0");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const { data: invoice, isLoading } = useQuery<InvoiceWithRelations>({
     queryKey: ["/api/invoices", invoiceId],
     enabled: !!invoiceId,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/invoices/${invoiceId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Invoice deleted successfully" });
+      setLocation(invoice?.clientId ? `/clients/${invoice.clientId}` : "/clients");
+    },
+    onError: () => {
+      toast({ title: "Failed to delete invoice", variant: "destructive" });
+    },
   });
 
   const handlePrint = () => {
@@ -92,6 +122,32 @@ export default function InvoiceDetail() {
             <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" data-testid="button-delete-invoice">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete invoice {invoice.invoiceNumber}? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteMutation.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  data-testid="button-confirm-delete"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
