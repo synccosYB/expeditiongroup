@@ -13,9 +13,10 @@ import "@uppy/dashboard/css/style.min.css";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onGetUploadParameters: (file?: { size: number }) => Promise<{
+  onGetUploadParameters: (file?: { size: number; type?: string }) => Promise<{
     method: "PUT";
     url: string;
+    headers?: Record<string, string>;
   }>;
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
@@ -60,7 +61,7 @@ export function ObjectUploader({
         shouldUseMultipart: false,
         getUploadParameters: async (file) => {
           try {
-            return await onGetUploadParameters({ size: file.size || 0 });
+            return await onGetUploadParameters({ size: file.size || 0, type: file.type || undefined });
           } catch (error: any) {
             if (error?.code === "STORAGE_LIMIT_EXCEEDED") {
               setShowModal(false);

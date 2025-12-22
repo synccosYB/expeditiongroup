@@ -2052,6 +2052,7 @@ export default function ProjectDetail() {
                                     maxNumberOfFiles={1}
                                     onGetUploadParameters={async (file) => {
                                       const category = documentForm.getValues("category") || "other";
+                                      const fileType = file?.type || "application/octet-stream";
                                       const res = await fetch(`/api/projects/${id}/documents/upload`, {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
@@ -2072,7 +2073,13 @@ export default function ProjectDetail() {
                                       setPendingFileSize(file?.size || null);
                                       pendingUploadRef.current = { path: data.objectPath, size: file?.size || null };
                                       setIsUploadComplete(false);
-                                      return { method: "PUT" as const, url: data.uploadUrl };
+                                      return { 
+                                        method: "PUT" as const, 
+                                        url: data.uploadUrl,
+                                        headers: {
+                                          "Content-Type": fileType,
+                                        },
+                                      };
                                     }}
                                     onComplete={(result) => {
                                       if (result.successful && result.successful.length > 0) {
