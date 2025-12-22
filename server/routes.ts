@@ -1378,7 +1378,7 @@ export async function registerRoutes(
   });
 
   // Storage Usage
-  const STORAGE_LIMIT_BYTES = 10 * 1024 * 1024; // 10MB
+  const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1GB
 
   app.get("/api/storage/usage", isAuthenticated, async (req: any, res) => {
     try {
