@@ -80,8 +80,21 @@ export function ObjectUploader({
       });
 
     uppy.on("complete", (result) => {
+      console.log("Uppy upload complete:", result);
       onComplete?.(result);
       setShowModal(false);
+    });
+
+    uppy.on("error", (error) => {
+      console.error("Uppy error:", error);
+    });
+
+    uppy.on("upload-error", (file, error, response) => {
+      console.error("Uppy upload-error:", file?.name, error, response);
+    });
+
+    uppy.on("upload-success", (file, response) => {
+      console.log("Uppy upload-success:", file?.name, response);
     });
 
     uppyRef.current = uppy;
