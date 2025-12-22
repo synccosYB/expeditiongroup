@@ -805,6 +805,7 @@ export default function ProjectDetail() {
   const [isUploadComplete, setIsUploadComplete] = useState(false);
   const [pendingUploadPath, setPendingUploadPath] = useState<string>("");
   const [pendingFileSize, setPendingFileSize] = useState<number | null>(null);
+  const pendingUploadRef = useRef<{ path: string; size: number | null }>({ path: "", size: null });
   const [selectedCategory, setSelectedCategory] = useState<string>("other");
   const [deletingDocument, setDeletingDocument] = useState<Document | null>(null);
   const [deletingFolder, setDeletingFolder] = useState<Folder | null>(null);
@@ -2069,14 +2070,16 @@ export default function ProjectDetail() {
                                       const data = await res.json();
                                       setPendingUploadPath(data.objectPath);
                                       setPendingFileSize(file?.size || null);
+                                      pendingUploadRef.current = { path: data.objectPath, size: file?.size || null };
                                       setIsUploadComplete(false);
                                       return { method: "PUT" as const, url: data.uploadUrl };
                                     }}
                                     onComplete={(result) => {
                                       if (result.successful && result.successful.length > 0) {
-                                        setUploadedFilePath(pendingUploadPath);
-                                        documentForm.setValue("storagePath", pendingUploadPath);
-                                        documentForm.setValue("fileSize", pendingFileSize);
+                                        const { path, size } = pendingUploadRef.current;
+                                        setUploadedFilePath(path);
+                                        documentForm.setValue("storagePath", path);
+                                        documentForm.setValue("fileSize", size);
                                         setIsUploadComplete(true);
                                         toast({ title: "File uploaded successfully" });
                                       }
