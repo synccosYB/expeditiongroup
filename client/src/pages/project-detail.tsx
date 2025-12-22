@@ -88,7 +88,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ObjectUploader } from "@/components/ObjectUploader";
+import { SimpleFileUploader } from "@/components/SimpleFileUploader";
 import { InvoiceGenerationDialog } from "@/components/invoice-generation-dialog";
 
 type TaskWithSubtasks = Task & { 
@@ -2048,8 +2048,7 @@ export default function ProjectDetail() {
                                     </Tooltip>
                                   </div>
                                 ) : (
-                                  <ObjectUploader
-                                    maxNumberOfFiles={1}
+                                  <SimpleFileUploader
                                     onGetUploadParameters={async (file) => {
                                       const category = documentForm.getValues("category") || "other";
                                       const fileType = file?.type || "application/octet-stream";
@@ -2072,7 +2071,6 @@ export default function ProjectDetail() {
                                       setPendingUploadPath(data.objectPath);
                                       setPendingFileSize(file?.size || null);
                                       pendingUploadRef.current = { path: data.objectPath, size: file?.size || null };
-                                      setIsUploadComplete(false);
                                       return { 
                                         method: "PUT" as const, 
                                         url: data.uploadUrl,
@@ -2081,17 +2079,9 @@ export default function ProjectDetail() {
                                         },
                                       };
                                     }}
-                                    onComplete={(result) => {
-                                      console.log("Upload result - successful:", result.successful?.length, "failed:", result.failed?.length);
+                                    onUploadComplete={(file) => {
                                       const { path, size } = pendingUploadRef.current;
-                                      
-                                      if (result.failed && result.failed.length > 0) {
-                                        console.error("Upload failed:", result.failed);
-                                        toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
-                                        return;
-                                      }
-                                      
-                                      if (result.successful && result.successful.length > 0 && path) {
+                                      if (path) {
                                         setUploadedFilePath(path);
                                         documentForm.setValue("storagePath", path);
                                         documentForm.setValue("fileSize", size);
@@ -2102,7 +2092,7 @@ export default function ProjectDetail() {
                                   >
                                     <Upload className="h-4 w-4 mr-2" />
                                     Choose File
-                                  </ObjectUploader>
+                                  </SimpleFileUploader>
                                 )}
                               </div>
                             </FormControl>
