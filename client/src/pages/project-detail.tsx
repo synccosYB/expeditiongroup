@@ -2082,9 +2082,16 @@ export default function ProjectDetail() {
                                       };
                                     }}
                                     onComplete={(result) => {
-                                      console.log("Upload result:", result.successful?.length, result.failed?.length);
+                                      console.log("Upload result - successful:", result.successful?.length, "failed:", result.failed?.length);
                                       const { path, size } = pendingUploadRef.current;
-                                      if (path) {
+                                      
+                                      if (result.failed && result.failed.length > 0) {
+                                        console.error("Upload failed:", result.failed);
+                                        toast({ title: "Upload failed", description: "Please try again", variant: "destructive" });
+                                        return;
+                                      }
+                                      
+                                      if (result.successful && result.successful.length > 0 && path) {
                                         setUploadedFilePath(path);
                                         documentForm.setValue("storagePath", path);
                                         documentForm.setValue("fileSize", size);
