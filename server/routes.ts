@@ -1462,8 +1462,19 @@ export async function registerRoutes(
       const objectPath = req.path;
       const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
       
-      // Check if user is authenticated and has access
+      // Check if user is authenticated
       const userId = req.session?.userId?.toString();
+      
+      // Admins can always access all objects
+      if (userId) {
+        const user = await storage.getUser(userId);
+        if (user?.role === "admin") {
+          await objectStorageService.downloadObject(objectFile, res);
+          return;
+        }
+      }
+      
+      // For non-admin users, check ACL
       const canAccess = await objectStorageService.canAccessObjectEntity({
         userId,
         objectFile,
