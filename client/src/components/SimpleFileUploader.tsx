@@ -173,27 +173,29 @@ export function SimpleFileUploader({
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-sm font-medium break-words" title={selectedFile.name}>{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {(selectedFile.size / 1024).toFixed(1)} KB
                     </p>
                   </div>
-                  {!uploading && !uploadComplete && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleRemoveFile}
-                      data-testid="button-remove-file"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {uploadComplete && (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  )}
+                  <div className="flex-shrink-0">
+                    {!uploading && !uploadComplete && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={handleRemoveFile}
+                        data-testid="button-remove-file"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {uploadComplete && (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    )}
+                  </div>
                 </div>
 
                 {uploading && (
