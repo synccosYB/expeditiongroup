@@ -935,7 +935,9 @@ export class DatabaseStorage implements IStorage {
       .select({ total: sql<number>`COALESCE(SUM(${documents.fileSize}), 0)` })
       .from(documents)
       .where(eq(documents.uploadedByUserId, userId));
-    return result[0]?.total ?? 0;
+    // Ensure we return a number (PostgreSQL may return string for aggregates)
+    const total = result[0]?.total;
+    return typeof total === 'string' ? parseInt(total, 10) : (total ?? 0);
   }
 
   // Task Reminders

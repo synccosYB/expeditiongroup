@@ -1421,8 +1421,10 @@ export async function registerRoutes(
 
       // Check storage limit
       const currentUsage = await storage.getUserStorageUsage(req.session.userId!);
-      const fileSizeNum = typeof fileSize === 'number' ? fileSize : 0;
+      const fileSizeNum = typeof fileSize === 'number' ? fileSize : parseInt(fileSize as string, 10) || 0;
+      console.log(`[Storage Check] User: ${req.session.userId}, Current Usage: ${currentUsage}, File Size: ${fileSizeNum}, Limit: ${STORAGE_LIMIT_BYTES}`);
       if (currentUsage + fileSizeNum > STORAGE_LIMIT_BYTES) {
+        console.log(`[Storage Check] EXCEEDED - Total would be: ${currentUsage + fileSizeNum}`);
         return res.status(413).json({
           message: "Storage limit exceeded",
           code: "STORAGE_LIMIT_EXCEEDED",
