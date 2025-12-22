@@ -2947,8 +2947,9 @@ export default function ProjectDetail() {
                           <FormItem>
                             <FormLabel>Hours *</FormLabel>
                             <FormControl>
-                              <Input placeholder="2.5" {...field} data-testid="input-time-log-hours" />
+                              <Input placeholder="0.02" {...field} data-testid="input-time-log-hours" />
                             </FormControl>
+                            <FormDescription className="text-xs">e.g. 0.02 = 1 min</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
