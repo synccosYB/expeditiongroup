@@ -59,10 +59,14 @@ export function ObjectUploader({
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
-        getUploadParameters: async (file) => {
+        async getUploadParameters(file) {
           try {
-            return await onGetUploadParameters({ size: file.size || 0, type: file.type || undefined });
+            console.log("getUploadParameters called for:", file.name);
+            const params = await onGetUploadParameters({ size: file.size || 0, type: file.type || undefined });
+            console.log("getUploadParameters returning:", params.method, params.url.substring(0, 50) + "...");
+            return params;
           } catch (error: any) {
+            console.error("getUploadParameters error:", error);
             if (error?.code === "STORAGE_LIMIT_EXCEEDED") {
               setShowModal(false);
               setShowLimitExceeded(true);
