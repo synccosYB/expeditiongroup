@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -427,7 +427,8 @@ function EditTimeLogDialog({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [totalHours, setTotalHours] = useState("");
+  const [duration, setDuration] = useState("");
+  const [durationUnit, setDurationUnit] = useState<"minutes" | "hours">("minutes");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [type, setType] = useState<"office" | "road">("office");
@@ -435,13 +436,36 @@ function EditTimeLogDialog({
 
   const isLegacy = log?.source === "legacy";
 
+  useEffect(() => {
+    if (!startTime || !endTime) return;
+    
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return;
+    
+    let startMinutes = startH * 60 + startM;
+    let endMinutes = endH * 60 + endM;
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60;
+    }
+    const diffMinutes = endMinutes - startMinutes;
+    
+    if (durationUnit === "minutes") {
+      setDuration(diffMinutes.toString());
+    } else {
+      setDuration((diffMinutes / 60).toFixed(2));
+    }
+  }, [startTime, endTime, durationUnit]);
+
   const handleOpen = () => {
     if (log) {
       const dateStr = log.date ? format(new Date(log.date), "yyyy-MM-dd") : "";
       setDate(dateStr);
       setStartTime(log.startTime || "");
       setEndTime(log.endTime || "");
-      setTotalHours(log.totalHours.toFixed(2));
+      const totalMinutes = Math.round(log.totalHours * 60);
+      setDuration(totalMinutes.toString());
+      setDurationUnit("minutes");
       setDescription(log.description || "");
       setNotes(log.notes || "");
       setType((log.type === "road" ? "road" : "office"));
@@ -451,6 +475,11 @@ function EditTimeLogDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const durationValue = parseFloat(duration) || 0;
+    const totalHours = durationUnit === "minutes" 
+      ? (durationValue / 60).toFixed(2) 
+      : durationValue.toFixed(2);
+    
     if (isLegacy) {
       onSave({
         date: date ? new Date(date) : undefined,
@@ -518,16 +547,27 @@ function EditTimeLogDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-total-hours">Total Hours</Label>
-            <Input
-              id="edit-total-hours"
-              type="number"
-              step="0.25"
-              min="0"
-              value={totalHours}
-              onChange={(e) => setTotalHours(e.target.value)}
-              data-testid="input-edit-time-log-total-hours"
-            />
+            <Label htmlFor="edit-duration">Duration</Label>
+            <div className="flex gap-2">
+              <Input
+                id="edit-duration"
+                type="number"
+                min="0"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="flex-1"
+                data-testid="input-edit-time-log-duration"
+              />
+              <Select value={durationUnit} onValueChange={(val) => setDurationUnit(val as "minutes" | "hours")}>
+                <SelectTrigger className="w-24" data-testid="select-edit-time-log-unit">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minutes">Min</SelectItem>
+                  <SelectItem value="hours">Hrs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {isLegacy && (
