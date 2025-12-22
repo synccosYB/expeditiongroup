@@ -3,8 +3,8 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { z, ZodError } from "zod";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
+import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -775,6 +775,21 @@ export async function registerRoutes(
       const userId = req.session.userId!;
       const parsed = insertDocumentSchema.parse({ ...req.body, projectId: parseInt(req.params.projectId), uploadedByUserId: userId });
       const document = await storage.createDocument(parsed);
+      
+      // Set ACL policy on the uploaded object so it can be accessed
+      if (document.storagePath) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
+          await setObjectAclPolicy(objectFile, {
+            owner: userId,
+            visibility: document.isVisibleToClient ? "public" : "private",
+          });
+        } catch (aclError) {
+          console.error("Error setting ACL policy on document:", aclError);
+          // Don't fail the request - document is created, just ACL failed
+        }
+      }
+      
       res.status(201).json(document);
     } catch (error) {
       if (error instanceof ZodError) {
