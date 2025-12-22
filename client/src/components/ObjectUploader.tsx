@@ -150,7 +150,7 @@ export function ObjectUploader({
               Storage Limit Reached
             </DialogTitle>
             <DialogDescription className="pt-2">
-              You have reached your 10MB storage limit. To upload more files, please contact the administrator.
+              You have reached your 1GB storage limit. To upload more files, please contact the administrator.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
