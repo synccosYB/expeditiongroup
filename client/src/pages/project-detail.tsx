@@ -812,6 +812,7 @@ export default function ProjectDetail() {
   const [movingDocument, setMovingDocument] = useState<Document | null>(null);
   const [moveToFolderId, setMoveToFolderId] = useState<string>("__none__");
   const [editingNote, setEditingNote] = useState<(Note & { user?: User }) | null>(null);
+  const [editingTimeLog, setEditingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
@@ -1171,6 +1172,33 @@ export default function ProjectDetail() {
         return;
       }
       toast({ title: "Error", description: "Failed to add time log", variant: "destructive" });
+    },
+  });
+
+  const updateTimeLogMutation = useMutation({
+    mutationFn: async (data: TimeLogFormData & { id: number }) => {
+      const { id: logId, ...rest } = data;
+      const payload = {
+        ...rest,
+        date: parseLocalDate(rest.date),
+      };
+      return await apiRequest("PATCH", `/api/time-logs/${logId}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Time log updated successfully" });
+      setIsTimeLogDialogOpen(false);
+      setEditingTimeLog(null);
+      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to update time log", variant: "destructive" });
     },
   });
 
@@ -2844,12 +2872,21 @@ export default function ProjectDetail() {
                   </TooltipTrigger>
                   <TooltipContent>Log time spent</TooltipContent>
                 </Tooltip>
-              <DialogContent>
+              <DialogContent onCloseAutoFocus={() => {
+                setEditingTimeLog(null);
+                timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office" });
+              }}>
                 <DialogHeader>
-                  <DialogTitle>Log Time</DialogTitle>
+                  <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
                 </DialogHeader>
                 <Form {...timeLogForm}>
-                  <form onSubmit={timeLogForm.handleSubmit((data) => createTimeLogMutation.mutate(data))} className="space-y-4">
+                  <form onSubmit={timeLogForm.handleSubmit((data) => {
+                    if (editingTimeLog) {
+                      updateTimeLogMutation.mutate({ ...data, id: editingTimeLog.id });
+                    } else {
+                      createTimeLogMutation.mutate(data);
+                    }
+                  })} className="space-y-4">
                     <FormField
                       control={timeLogForm.control}
                       name="date"
@@ -2942,8 +2979,8 @@ export default function ProjectDetail() {
                       <Button type="button" variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={createTimeLogMutation.isPending} data-testid="button-save-time-log">
-                        {createTimeLogMutation.isPending ? "Saving..." : "Log Time"}
+                      <Button type="submit" disabled={createTimeLogMutation.isPending || updateTimeLogMutation.isPending} data-testid="button-save-time-log">
+                        {(createTimeLogMutation.isPending || updateTimeLogMutation.isPending) ? "Saving..." : (editingTimeLog ? "Update" : "Log Time")}
                       </Button>
                     </div>
                   </form>
@@ -2994,7 +3031,28 @@ export default function ProjectDetail() {
                           <span>{log.user?.firstName || log.user?.email}</span>
                         </div>
                       </div>
-                      <Badge variant="outline">{log.type}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{log.type}</Badge>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingTimeLog(log);
+                            timeLogForm.reset({
+                              date: format(new Date(log.date), "yyyy-MM-dd"),
+                              taskDescription: log.taskDescription,
+                              type: log.type as "road" | "office",
+                              startTime: log.startTime || "",
+                              endTime: log.endTime || "",
+                              totalHours: log.totalHours,
+                            });
+                            setIsTimeLogDialogOpen(true);
+                          }}
+                          data-testid={`button-edit-time-log-${log.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
