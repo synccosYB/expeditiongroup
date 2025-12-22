@@ -142,7 +142,8 @@ const timeLogFormSchema = z.object({
   taskDescription: z.string().min(1, "Description is required"),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
-  totalHours: z.string().min(1, "Hours is required"),
+  duration: z.string().min(1, "Duration is required"),
+  durationUnit: z.enum(["minutes", "hours"]).default("hours"),
   type: z.enum(["office", "road"]).default("office"),
   notes: z.string().optional(),
 });
@@ -923,7 +924,8 @@ export default function ProjectDetail() {
       taskDescription: "",
       startTime: "",
       endTime: "",
-      totalHours: "",
+      duration: "",
+      durationUnit: "minutes",
       type: "office",
       notes: "",
     },
@@ -931,6 +933,7 @@ export default function ProjectDetail() {
 
   const watchedStartTime = timeLogForm.watch("startTime");
   const watchedEndTime = timeLogForm.watch("endTime");
+  const watchedDurationUnit = timeLogForm.watch("durationUnit");
 
   useEffect(() => {
     if (!watchedStartTime || !watchedEndTime) return;
@@ -945,10 +948,13 @@ export default function ProjectDetail() {
       endMinutes += 24 * 60;
     }
     const diffMinutes = endMinutes - startMinutes;
-    const hours = (diffMinutes / 60).toFixed(2);
     
-    timeLogForm.setValue("totalHours", hours, { shouldValidate: true });
-  }, [watchedStartTime, watchedEndTime, timeLogForm]);
+    if (watchedDurationUnit === "minutes") {
+      timeLogForm.setValue("duration", diffMinutes.toString(), { shouldValidate: true });
+    } else {
+      timeLogForm.setValue("duration", (diffMinutes / 60).toFixed(2), { shouldValidate: true });
+    }
+  }, [watchedStartTime, watchedEndTime, watchedDurationUnit, timeLogForm]);
 
   const folderForm = useForm<FolderFormData>({
     resolver: zodResolver(folderFormSchema),
@@ -1150,8 +1156,18 @@ export default function ProjectDetail() {
 
   const createTimeLogMutation = useMutation({
     mutationFn: async (data: TimeLogFormData) => {
+      const durationValue = parseFloat(data.duration) || 0;
+      const totalHours = data.durationUnit === "minutes" 
+        ? (durationValue / 60).toFixed(2) 
+        : durationValue.toFixed(2);
+      
       const payload = {
-        ...data,
+        taskDescription: data.taskDescription,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        totalHours,
+        type: data.type,
+        notes: data.notes,
         projectId: parseInt(id!),
         userId: user?.id,
         date: parseLocalDate(data.date),
@@ -1163,7 +1179,7 @@ export default function ProjectDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Time log added successfully" });
       setIsTimeLogDialogOpen(false);
-      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office" });
+      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -1178,8 +1194,18 @@ export default function ProjectDetail() {
   const updateTimeLogMutation = useMutation({
     mutationFn: async (data: TimeLogFormData & { id: number }) => {
       const { id: logId, ...rest } = data;
+      const durationValue = parseFloat(rest.duration) || 0;
+      const totalHours = rest.durationUnit === "minutes" 
+        ? (durationValue / 60).toFixed(2) 
+        : durationValue.toFixed(2);
+      
       const payload = {
-        ...rest,
+        taskDescription: rest.taskDescription,
+        startTime: rest.startTime,
+        endTime: rest.endTime,
+        totalHours,
+        type: rest.type,
+        notes: rest.notes,
         date: parseLocalDate(rest.date),
       };
       return await apiRequest("PATCH", `/api/time-logs/${logId}`, payload);
@@ -1190,7 +1216,7 @@ export default function ProjectDetail() {
       toast({ title: "Time log updated successfully" });
       setIsTimeLogDialogOpen(false);
       setEditingTimeLog(null);
-      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office" });
+      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -2874,7 +2900,7 @@ export default function ProjectDetail() {
                 </Tooltip>
               <DialogContent onCloseAutoFocus={() => {
                 setEditingTimeLog(null);
-                timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office" });
+                timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
               }}>
                 <DialogHeader>
                   <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
@@ -2942,14 +2968,27 @@ export default function ProjectDetail() {
                       />
                       <FormField
                         control={timeLogForm.control}
-                        name="totalHours"
+                        name="duration"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Hours *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="0.02" {...field} data-testid="input-time-log-hours" />
-                            </FormControl>
-                            <FormDescription className="text-xs">e.g. 0.02 = 1 min</FormDescription>
+                            <FormLabel>Duration *</FormLabel>
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input placeholder="30" {...field} className="flex-1" data-testid="input-time-log-duration" />
+                              </FormControl>
+                              <Select
+                                value={timeLogForm.watch("durationUnit")}
+                                onValueChange={(value: "minutes" | "hours") => timeLogForm.setValue("durationUnit", value)}
+                              >
+                                <SelectTrigger className="w-24" data-testid="select-time-log-unit">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="minutes">Min</SelectItem>
+                                  <SelectItem value="hours">Hrs</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -3039,13 +3078,16 @@ export default function ProjectDetail() {
                           variant="ghost"
                           onClick={() => {
                             setEditingTimeLog(log);
+                            const hoursValue = parseFloat(log.totalHours) || 0;
+                            const totalMinutes = Math.round(hoursValue * 60);
                             timeLogForm.reset({
                               date: format(new Date(log.date), "yyyy-MM-dd"),
                               taskDescription: log.taskDescription,
                               type: log.type as "road" | "office",
                               startTime: log.startTime || "",
                               endTime: log.endTime || "",
-                              totalHours: log.totalHours,
+                              duration: totalMinutes.toString(),
+                              durationUnit: "minutes",
                             });
                             setIsTimeLogDialogOpen(true);
                           }}
