@@ -54,7 +54,7 @@ export function ObjectUploader({
         maxNumberOfFiles,
         maxFileSize,
       },
-      autoProceed: false,
+      autoProceed: true,
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
