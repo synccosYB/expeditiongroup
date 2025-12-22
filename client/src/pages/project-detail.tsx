@@ -814,6 +814,7 @@ export default function ProjectDetail() {
   const [moveToFolderId, setMoveToFolderId] = useState<string>("__none__");
   const [editingNote, setEditingNote] = useState<(Note & { user?: User }) | null>(null);
   const [editingTimeLog, setEditingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
+  const [deletingTimeLog, setDeletingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
@@ -1225,6 +1226,26 @@ export default function ProjectDetail() {
         return;
       }
       toast({ title: "Error", description: "Failed to update time log", variant: "destructive" });
+    },
+  });
+
+  const deleteTimeLogMutation = useMutation({
+    mutationFn: async (logId: number) => {
+      return await apiRequest("DELETE", `/api/time-logs/${logId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Time log deleted successfully" });
+      setDeletingTimeLog(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to delete time log", variant: "destructive" });
     },
   });
 
@@ -3095,6 +3116,14 @@ export default function ProjectDetail() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDeletingTimeLog(log)}
+                          data-testid={`button-delete-time-log-${log.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -3137,6 +3166,27 @@ export default function ProjectDetail() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteTaskMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletingTimeLog} onOpenChange={() => setDeletingTimeLog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Time Log</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this time log? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingTimeLog && deleteTimeLogMutation.mutate(deletingTimeLog.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-time-log"
+            >
+              {deleteTimeLogMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
