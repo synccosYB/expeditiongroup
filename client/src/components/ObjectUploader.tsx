@@ -80,6 +80,14 @@ export function ObjectUploader({
         height: 300,
       });
 
+    uppy.on("file-added", (file) => {
+      console.log("Uppy file-added:", file.name, file.type, file.size);
+    });
+
+    uppy.on("upload", (data) => {
+      console.log("Uppy upload starting:", data.fileIDs);
+    });
+
     uppy.on("complete", (result) => {
       console.log("Uppy upload complete:", result);
       onComplete?.(result);
@@ -96,6 +104,10 @@ export function ObjectUploader({
 
     uppy.on("upload-success", (file, response) => {
       console.log("Uppy upload-success:", file?.name, response);
+    });
+    
+    uppy.on("upload-progress", (file, progress) => {
+      console.log("Uppy upload-progress:", file?.name, progress.bytesUploaded, "/", progress.bytesTotal);
     });
 
     uppyRef.current = uppy;
