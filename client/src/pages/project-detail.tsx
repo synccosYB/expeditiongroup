@@ -2082,8 +2082,9 @@ export default function ProjectDetail() {
                                       };
                                     }}
                                     onComplete={(result) => {
-                                      if (result.successful && result.successful.length > 0) {
-                                        const { path, size } = pendingUploadRef.current;
+                                      console.log("Upload result:", result.successful?.length, result.failed?.length);
+                                      const { path, size } = pendingUploadRef.current;
+                                      if (path) {
                                         setUploadedFilePath(path);
                                         documentForm.setValue("storagePath", path);
                                         documentForm.setValue("fileSize", size);
