@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project, Client, Task, Note, User, Document } from "@shared/schema";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type ProjectWithRelations = Project & {
   client: Client;
@@ -112,8 +113,8 @@ export default function ClientPortal() {
                     </div>
                   </div>
                   {todo.dueDate && (
-                    <Badge variant={isPast(new Date(todo.dueDate)) ? "destructive" : "outline"} className="shrink-0">
-                      {format(new Date(todo.dueDate), "MM/dd/yyyy")}
+                    <Badge variant={isPast(parseLocalDateFromISO(todo.dueDate)!) ? "destructive" : "outline"} className="shrink-0">
+                      {format(parseLocalDateFromISO(todo.dueDate)!, "MM/dd/yyyy")}
                     </Badge>
                   )}
                 </div>
@@ -191,7 +192,7 @@ function ProjectCard({ project, onView }: { project: ProjectWithRelations; onVie
           {project.startDate && (
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              <span>{format(new Date(project.startDate), "MM/dd/yyyy")}</span>
+              <span>{format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}</span>
             </div>
           )}
         </div>
@@ -402,8 +403,8 @@ export function ClientProjectDetail() {
                           {task.dueDate && (
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              Due: {format(new Date(task.dueDate), "MM/dd/yyyy")}
-                              {isPast(new Date(task.dueDate)) && task.status !== "done" && (
+                              Due: {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
+                              {isPast(parseLocalDateFromISO(task.dueDate)!) && task.status !== "done" && (
                                 <Badge variant="destructive" className="ml-2">Overdue</Badge>
                               )}
                             </p>
@@ -459,7 +460,7 @@ export function ClientProjectDetail() {
                         )}
                         {task.dueDate && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            Due: {format(new Date(task.dueDate), "MM/dd/yyyy")}
+                            Due: {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
                           </p>
                         )}
                       </div>
@@ -494,7 +495,7 @@ export function ClientProjectDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{doc.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {doc.createdAt && format(new Date(doc.createdAt), "MM/dd/yyyy")}
+                          {doc.createdAt && format(parseLocalDateFromISO(doc.createdAt)!, "MM/dd/yyyy")}
                           {doc.category && ` - ${doc.category}`}
                         </p>
                       </div>

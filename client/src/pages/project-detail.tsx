@@ -63,7 +63,7 @@ import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/sta
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
-import { parseLocalDate, formatTimeRange12h } from "@/lib/dateUtils";
+import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
@@ -709,7 +709,7 @@ function TaskHierarchyItem({
             {task.dueDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(task.dueDate), "MM/dd/yyyy")}
+                {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
               </span>
             )}
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
@@ -1465,7 +1465,7 @@ export default function ProjectDetail() {
         parentTaskId: task.parentTaskId,
         assigneeId: task.assigneeId,
         relatedAssociateId: task.relatedAssociateId,
-        dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+        dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
       });
     } else {
       setEditingTask(null);
@@ -1654,7 +1654,7 @@ export default function ProjectDetail() {
               <div>
                 <p className="text-xs text-muted-foreground">Start Date</p>
                 <p className="text-sm font-medium">
-                  {format(new Date(project.startDate), "MM/dd/yyyy")}
+                  {format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}
                 </p>
               </div>
             </CardContent>

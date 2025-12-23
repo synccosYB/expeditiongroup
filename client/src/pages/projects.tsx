@@ -47,7 +47,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
 import type { Project, Client } from "@shared/schema";
 import {
   DropdownMenu,
@@ -260,8 +260,8 @@ export default function Projects() {
         jurisdiction: (project as any).jurisdiction || "",
         jurisdictionAddress: (project as any).jurisdictionAddress || "",
         status: project.status,
-        startDate: project.startDate ? format(new Date(project.startDate), "yyyy-MM-dd") : "",
-        targetEndDate: project.targetEndDate ? format(new Date(project.targetEndDate), "yyyy-MM-dd") : "",
+        startDate: formatDateForInput(project.startDate),
+        targetEndDate: formatDateForInput(project.targetEndDate),
       });
     } else {
       setEditingProject(null);
@@ -693,7 +693,7 @@ export default function Projects() {
                   {project.startDate && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Started {format(new Date(project.startDate), "MM/dd/yyyy")}</span>
+                      <span>Started {format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}</span>
                     </div>
                   )}
                 </div>

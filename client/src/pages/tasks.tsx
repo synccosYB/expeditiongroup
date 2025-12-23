@@ -51,7 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 import type { Task, Project, User } from "@shared/schema";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
@@ -200,7 +200,7 @@ function TaskHierarchyItem({
                 {task.dueDate && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(task.dueDate), "MM/dd/yyyy")}
+                    {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
                   </span>
                 )}
                 <Badge variant="outline" size="sm">{task.locationType || 'office'}</Badge>

@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Project, Associate, Note, Invoice, InvoiceItem } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 interface ProjectWithClient extends Project {
   client: Client;
@@ -334,11 +335,11 @@ export default function ClientDetail() {
                               )}
                               <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                                 <span>
-                                  {invoice.createdAt && format(new Date(invoice.createdAt), "MMM d, yyyy")}
+                                  {invoice.createdAt && format(parseLocalDateFromISO(invoice.createdAt)!, "MMM d, yyyy")}
                                 </span>
                                 {invoice.dueDate && (
                                   <span>
-                                    Due: {format(new Date(invoice.dueDate), "MMM d, yyyy")}
+                                    Due: {format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy")}
                                   </span>
                                 )}
                               </div>
