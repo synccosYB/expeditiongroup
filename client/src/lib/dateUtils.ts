@@ -54,3 +54,75 @@ export function formatTimeRange12h(startTime: string | null | undefined, endTime
   if (!startTime || !endTime) return "";
   return `${formatTime12h(startTime)} - ${formatTime12h(endTime)}`;
 }
+
+/**
+ * Format a datetime (timestamp with timezone) for display in the user's local timezone.
+ * Use this for timestamps that have time components (e.g., reminder scheduledAt).
+ * The input should be an ISO string from the server (e.g., "2024-12-25T14:00:00.000Z").
+ */
+export function formatDateTimeLocal(dateTimeString: string | Date | null | undefined, formatStr: string = "MMM d, yyyy h:mm a"): string {
+  if (!dateTimeString) return "";
+  
+  // Create a Date object which will be in local timezone
+  const date = typeof dateTimeString === 'string' ? new Date(dateTimeString) : dateTimeString;
+  
+  // Check for invalid dates
+  if (isNaN(date.getTime())) return "";
+  
+  // Import format dynamically to avoid circular dependencies
+  // Using native Intl.DateTimeFormat for consistent local timezone handling
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+  
+  return new Intl.DateTimeFormat('en-US', options).format(date);
+}
+
+/**
+ * Format a datetime for detailed display (includes more detail).
+ * Use this for full datetime display in detail views.
+ */
+export function formatDateTimeLocalFull(dateTimeString: string | Date | null | undefined): string {
+  if (!dateTimeString) return "";
+  
+  const date = typeof dateTimeString === 'string' ? new Date(dateTimeString) : dateTimeString;
+  
+  if (isNaN(date.getTime())) return "";
+  
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+  
+  return new Intl.DateTimeFormat('en-US', options).format(date);
+}
+
+/**
+ * Format a datetime-local input value for pre-filling input fields.
+ * Returns format: "YYYY-MM-DDTHH:mm" in local timezone.
+ */
+export function formatDateTimeForInput(dateTimeString: string | Date | null | undefined): string {
+  if (!dateTimeString) return "";
+  
+  const date = typeof dateTimeString === 'string' ? new Date(dateTimeString) : dateTimeString;
+  
+  if (isNaN(date.getTime())) return "";
+  
+  // Format in local timezone for datetime-local input
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}

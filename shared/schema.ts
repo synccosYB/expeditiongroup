@@ -274,14 +274,14 @@ export const taskReminders = pgTable("task_reminders", {
   channel: reminderChannelEnum("channel").notNull(),
   recipientEmail: varchar("recipient_email", { length: 255 }),
   recipientPhone: varchar("recipient_phone", { length: 50 }),
-  scheduledAt: timestamp("scheduled_at").notNull(),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   message: text("message"),
   status: reminderStatusEnum("status").default("pending").notNull(),
-  sentAt: timestamp("sent_at"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
   errorMessage: text("error_message"),
   actionNote: text("action_note"),
-  actionAt: timestamp("action_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  actionAt: timestamp("action_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 // Newsletter Subscribers table

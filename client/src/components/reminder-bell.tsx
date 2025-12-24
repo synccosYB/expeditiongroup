@@ -32,7 +32,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { formatDateTimeLocal, formatDateTimeLocalFull } from "@/lib/dateUtils";
 import type { TaskReminder, Task, Project } from "@shared/schema";
 
 type ReminderWithDetails = TaskReminder & { task: Task; project: Project };
@@ -167,7 +167,7 @@ export function ReminderBell() {
                           <span>{reminder.recipientEmail || reminder.recipientPhone}</span>
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {format(new Date(reminder.scheduledAt), "MMM d, yyyy h:mm a")}
+                          {formatDateTimeLocal(reminder.scheduledAt)}
                         </div>
                         {reminder.message && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -358,7 +358,7 @@ export function ReminderBell() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Scheduled</Label>
-                  <p className="text-sm">{format(new Date(viewReminder.scheduledAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                  <p className="text-sm">{formatDateTimeLocalFull(viewReminder.scheduledAt)}</p>
                 </div>
                 {viewReminder.message && (
                   <div>
@@ -375,12 +375,12 @@ export function ReminderBell() {
                 {viewReminder.actionAt && (
                   <div>
                     <Label className="text-xs text-muted-foreground">Actioned At</Label>
-                    <p className="text-sm">{format(new Date(viewReminder.actionAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                    <p className="text-sm">{formatDateTimeLocalFull(viewReminder.actionAt)}</p>
                   </div>
                 )}
                 <div>
                   <Label className="text-xs text-muted-foreground">Created</Label>
-                  <p className="text-sm">{format(new Date(viewReminder.createdAt), "MMMM d, yyyy 'at' h:mm a")}</p>
+                  <p className="text-sm">{formatDateTimeLocalFull(viewReminder.createdAt)}</p>
                 </div>
               </div>
               {viewReminder.status === "pending" && (

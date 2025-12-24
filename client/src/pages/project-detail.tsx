@@ -63,7 +63,7 @@ import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/sta
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
-import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
+import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
@@ -337,7 +337,7 @@ function ReminderDialog({
                           {reminder.channel === "email" ? reminder.recipientEmail : reminder.recipientPhone}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(reminder.scheduledAt), "MMM d, yyyy h:mm a")}
+                          {formatDateTimeLocal(reminder.scheduledAt)}
                         </p>
                       </div>
                     </div>
@@ -381,7 +381,7 @@ function ReminderDialog({
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Scheduled</p>
-                          <p className="text-sm">{format(new Date(reminder.scheduledAt), "PPpp")}</p>
+                          <p className="text-sm">{formatDateTimeLocalFull(reminder.scheduledAt)}</p>
                         </div>
                       </div>
                       {reminder.message && (
@@ -393,7 +393,7 @@ function ReminderDialog({
                       {reminder.sentAt && (
                         <div>
                           <p className="text-xs text-muted-foreground">Sent At</p>
-                          <p className="text-sm">{format(new Date(reminder.sentAt), "PPpp")}</p>
+                          <p className="text-sm">{formatDateTimeLocalFull(reminder.sentAt)}</p>
                         </div>
                       )}
                       {reminder.failureReason && (
