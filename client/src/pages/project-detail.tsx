@@ -626,6 +626,7 @@ function TaskHierarchyItem({
   onDelete, 
   onToggle,
   onReminder,
+  onAddTimeLog,
   expandedTasks,
   toggleExpand,
   reminderCounts,
@@ -636,6 +637,7 @@ function TaskHierarchyItem({
   onDelete: (task: Task) => void;
   onToggle: (task: Task) => void;
   onReminder: (task: Task) => void;
+  onAddTimeLog: (task: Task) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
@@ -752,6 +754,10 @@ function TaskHierarchyItem({
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddTimeLog(task)} data-testid={`button-add-time-log-${task.id}`}>
+                <Clock className="h-4 w-4 mr-2" />
+                Add Time Log
+              </DropdownMenuItem>
               <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -771,6 +777,7 @@ function TaskHierarchyItem({
               onDelete={onDelete}
               onToggle={onToggle}
               onReminder={onReminder}
+              onAddTimeLog={onAddTimeLog}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
@@ -1976,6 +1983,16 @@ export default function ProjectDetail() {
                   onDelete={setDeletingTask}
                   onToggle={toggleTaskStatus}
                   onReminder={(task) => setReminderTaskId(task.id)}
+                  onAddTimeLog={(task) => {
+                    timeLogForm.reset({
+                      date: format(new Date(), "yyyy-MM-dd"),
+                      type: task.locationType || "office",
+                      durationUnit: "minutes",
+                      duration: "",
+                      taskDescription: task.title,
+                    });
+                    setIsTimeLogDialogOpen(true);
+                  }}
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
                   reminderCounts={taskReminderCounts}
