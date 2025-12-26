@@ -1991,6 +1991,7 @@ export default function ProjectDetail() {
                       duration: "",
                       taskDescription: task.title,
                     });
+                    setActiveTab("time-logs");
                     setIsTimeLogDialogOpen(true);
                   }}
                   expandedTasks={expandedTasks}
