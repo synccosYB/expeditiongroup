@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,10 +55,18 @@ export function InvoiceGenerationDialog({
     format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
   );
 
-  const { data: nextNumber } = useQuery<{ invoiceNumber: string }>({
+  const { data: nextNumber, refetch: refetchNextNumber } = useQuery<{ invoiceNumber: string }>({
     queryKey: ["/api/invoices/next-number"],
     enabled: isOpen,
+    staleTime: 0,
+    gcTime: 0,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      refetchNextNumber();
+    }
+  }, [isOpen, refetchNextNumber]);
 
   const { data: billedItems } = useQuery<BilledItems>({
     queryKey: ["/api/projects", project.id, "billed-items"],
@@ -84,6 +92,7 @@ export function InvoiceGenerationDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/projects", String(project.id)] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects", project.id, "billed-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices/next-number"] });
       queryClient.invalidateQueries({ queryKey: ["/api/clients", project.clientId, "invoices"] });
       onClose();
       resetForm();
