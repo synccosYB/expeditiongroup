@@ -22,7 +22,7 @@ import { AssociateTypeBadge, StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import type { Associate, Project, Task } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
-import { parseLocalDateFromISO } from "@/lib/dateUtils";
+import { parseLocalDateFromISO, isDateOverdue } from "@/lib/dateUtils";
 
 interface AssociateWithRelations extends Associate {
   projects: Project[];
@@ -222,7 +222,7 @@ export default function AssociateDetail() {
 }
 
 function TaskCard({ task }: { task: Task & { project?: Project } }) {
-  const isOverdue = task.dueDate && parseLocalDateFromISO(task.dueDate)! < new Date() && task.status !== "done";
+  const isOverdue = task.status !== "done" && task.status !== "cancelled" && isDateOverdue(task.dueDate);
 
   return (
     <Link href={`/projects/${task.projectId}`}>
