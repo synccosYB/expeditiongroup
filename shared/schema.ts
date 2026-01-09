@@ -195,6 +195,18 @@ export const timeLogs = pgTable("time_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Daily Activity Logs table
+export const dailyActivityLogs = pgTable("daily_activity_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  date: timestamp("date").notNull(),
+  summary: text("summary").notNull(),
+  details: text("details"),
+  hoursWorked: varchar("hours_worked", { length: 10 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Associates table
 export const associates = pgTable("associates", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -440,6 +452,13 @@ export const timeLogsRelations = relations(timeLogs, ({ one }) => ({
   }),
 }));
 
+export const dailyActivityLogsRelations = relations(dailyActivityLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyActivityLogs.userId],
+    references: [users.id],
+  }),
+}));
+
 export const associatesRelations = relations(associates, ({ many }) => ({
   tasks: many(tasks),
   projectAssociates: many(projectAssociates),
@@ -575,6 +594,9 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true,
   dueDate: dateCoercion,
 });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
+export const insertDailyActivityLogSchema = createInsertSchema(dailyActivityLogs).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  date: requiredDateCoercion,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -611,3 +633,5 @@ export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type InsertDailyActivityLog = z.infer<typeof insertDailyActivityLogSchema>;
+export type DailyActivityLog = typeof dailyActivityLogs.$inferSelect;
