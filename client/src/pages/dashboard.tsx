@@ -22,9 +22,11 @@ import {
   X,
   FileText,
   DollarSign,
+  NotebookPen,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
+import { DailyActivityDialog } from "@/components/daily-activity-dialog";
 import type { Project, Task, Client, Invoice } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -53,6 +55,7 @@ const STATUS_PIPELINE_ORDER = [
 export default function Dashboard() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  const [dailyActivityDialogOpen, setDailyActivityDialogOpen] = useState(false);
 
   const statsQueryKey = startDate || endDate 
     ? ["/api/dashboard/stats", { startDate, endDate }]
@@ -373,6 +376,14 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
+          <Button
+            onClick={() => setDailyActivityDialogOpen(true)}
+            className="gap-2"
+            data-testid="button-log-daily-activity"
+          >
+            <NotebookPen className="h-4 w-4" />
+            Log Daily Activity
+          </Button>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Filter Hours:</span>
@@ -622,6 +633,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <DailyActivityDialog
+        isOpen={dailyActivityDialogOpen}
+        onClose={() => setDailyActivityDialogOpen(false)}
+      />
     </div>
   );
 }
