@@ -16,6 +16,7 @@ import {
   taskReminders,
   invoices,
   invoiceItems,
+  dailyActivityLogs,
   type User,
   type UpsertUser,
   type Client,
@@ -49,6 +50,8 @@ import {
   type InsertInvoice,
   type InvoiceItem,
   type InsertInvoiceItem,
+  type DailyActivityLog,
+  type InsertDailyActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql, isNull, ne, or, ilike, inArray } from "drizzle-orm";
@@ -190,6 +193,13 @@ export interface IStorage {
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
   getNextInvoiceNumber(): Promise<string>;
+  
+  // Daily Activity Logs
+  getDailyActivityLogs(userId?: string): Promise<DailyActivityLog[]>;
+  getDailyActivityLog(id: number): Promise<DailyActivityLog | undefined>;
+  createDailyActivityLog(log: InsertDailyActivityLog): Promise<DailyActivityLog>;
+  updateDailyActivityLog(id: number, log: Partial<InsertDailyActivityLog>): Promise<DailyActivityLog | undefined>;
+  deleteDailyActivityLog(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1132,6 +1142,45 @@ export class DatabaseStorage implements IStorage {
       .map(item => item.timeEntryId as number);
 
     return { timeLogIds, timeEntryIds };
+  }
+
+  // Daily Activity Logs
+  async getDailyActivityLogs(userId?: string): Promise<DailyActivityLog[]> {
+    if (userId) {
+      return await db
+        .select()
+        .from(dailyActivityLogs)
+        .where(eq(dailyActivityLogs.userId, userId))
+        .orderBy(desc(dailyActivityLogs.date));
+    }
+    return await db
+      .select()
+      .from(dailyActivityLogs)
+      .orderBy(desc(dailyActivityLogs.date));
+  }
+
+  async getDailyActivityLog(id: number): Promise<DailyActivityLog | undefined> {
+    const [log] = await db.select().from(dailyActivityLogs).where(eq(dailyActivityLogs.id, id));
+    return log;
+  }
+
+  async createDailyActivityLog(log: InsertDailyActivityLog): Promise<DailyActivityLog> {
+    const [newLog] = await db.insert(dailyActivityLogs).values(log).returning();
+    return newLog;
+  }
+
+  async updateDailyActivityLog(id: number, log: Partial<InsertDailyActivityLog>): Promise<DailyActivityLog | undefined> {
+    const [updated] = await db
+      .update(dailyActivityLogs)
+      .set({ ...log, updatedAt: new Date() })
+      .where(eq(dailyActivityLogs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDailyActivityLog(id: number): Promise<boolean> {
+    const result = await db.delete(dailyActivityLogs).where(eq(dailyActivityLogs.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

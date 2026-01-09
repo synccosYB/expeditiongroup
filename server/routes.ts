@@ -22,6 +22,7 @@ import {
   insertTaskReminderSchema,
   insertInvoiceSchema,
   insertInvoiceItemSchema,
+  insertDailyActivityLogSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -1655,6 +1656,78 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting invoice:", error);
       res.status(500).json({ message: "Failed to delete invoice" });
+    }
+  });
+
+  // Daily Activity Logs
+  app.get("/api/daily-activity-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const logs = await storage.getDailyActivityLogs();
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching daily activity logs:", error);
+      res.status(500).json({ message: "Failed to fetch daily activity logs" });
+    }
+  });
+
+  app.post("/api/daily-activity-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const userId = req.session.userId!;
+      const parsed = insertDailyActivityLogSchema.parse({ ...req.body, userId });
+      const log = await storage.createDailyActivityLog(parsed);
+      res.status(201).json(log);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating daily activity log:", error);
+      res.status(500).json({ message: "Failed to create daily activity log" });
+    }
+  });
+
+  app.patch("/api/daily-activity-logs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertDailyActivityLogSchema.partial().parse(req.body);
+      const log = await storage.updateDailyActivityLog(parseInt(req.params.id), parsed);
+      if (!log) {
+        return res.status(404).json({ message: "Daily activity log not found" });
+      }
+      res.json(log);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating daily activity log:", error);
+      res.status(500).json({ message: "Failed to update daily activity log" });
+    }
+  });
+
+  app.delete("/api/daily-activity-logs/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deleted = await storage.deleteDailyActivityLog(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Daily activity log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting daily activity log:", error);
+      res.status(500).json({ message: "Failed to delete daily activity log" });
     }
   });
 
