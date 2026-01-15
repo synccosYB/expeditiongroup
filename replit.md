@@ -72,10 +72,12 @@ Preferred communication style: Simple, everyday language.
   - Conditional fields that appear based on selections
   - JSON fields for arrays (proximityFeatures, referralAgencies, boardsApprovals)
   - Draft saving and submission workflow
+  - Form validation using insertIntakeApplicationSchema with required ownerName field
+  - Automatic step navigation to validation errors on submit
 - Status workflow: draft → submitted → under_review → approved/rejected
 - Database: intake_applications table with 100+ fields
 - API Routes: GET/POST /api/intake-applications, GET/PATCH/DELETE /api/intake-applications/:id
-- Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view/edit)
+- Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view read-only), /intake/:id/edit (edit)
 
 ### Daily Activity Logs
 - Log Daily Activity dialog accessible from dashboard

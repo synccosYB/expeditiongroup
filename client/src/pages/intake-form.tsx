@@ -203,12 +203,48 @@ export default function IntakeForm() {
     },
   });
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const data = form.getValues();
+    if (!data.ownerName || data.ownerName.trim() === "") {
+      toast({ title: "Owner name is required to save", variant: "destructive" });
+      setCurrentStep(1);
+      return;
+    }
     saveMutation.mutate({ ...data, status: "draft" });
   };
 
-  const handleSubmitApplication = () => {
+  const getStepForField = (fieldName: string): number => {
+    const baseField = fieldName.split(".")[0];
+    
+    const step1Fields = ["ownerName", "hasSecondOwner", "secondOwnerName", "businessName", "homeNumber", "cellNumber", "email", "alternateEmail", "currentAddress", "mailingAddress", "mailingAddressSameAsCurrent", "dateOfBirth", "ssOrFid", "secondOwnerBusinessName", "secondOwnerHomeNumber", "secondOwnerCellNumber", "secondOwnerEmail", "secondOwnerAlternateEmail", "secondOwnerCurrentAddress", "secondOwnerMailingAddress", "secondOwnerMailingAddressSameAsCurrent", "secondOwnerDateOfBirth", "secondOwnerSsOrFid"];
+    const step2Fields = ["projectName", "section", "block", "lot", "currentZoning", "locationSide", "locationStreet", "locationFeet", "locationOf", "locationTown", "locationVillage", "acreageOfParcel", "zoningDistrict", "schoolDistrict", "postalDistrict", "fireDistrict", "ambulanceDistrict", "waterDistrict", "sewerDistrict"];
+    const step3Fields = ["needDemolishHouse", "wellBeingDone", "temporaryElectricGasNeeded", "varianceFromSubdivision", "openSpaceOffered", "openSpaceAmount", "subdivisionType", "totalBuildingSize", "proposedAddition", "numberOfDwellingUnits", "specialPermitUse"];
+    const step4Fields = ["hasSlopesGreaterThan25", "slopesDetails", "hasStreams", "streamsNames", "hasWetlands", "wetlandsDetails"];
+    const step5Fields = ["hasBeenReviewedBefore", "projectHistoryNarrative", "abuttingPropertiesTaxMap", "proximityFeatures", "referralAgencies", "adjacentMunicipality"];
+    const step6Fields = ["boardsApprovals", "numberOfLots", "nydecApplicationNeeded", "usacoaApplicationNeeded", "status"];
+    
+    if (step1Fields.includes(baseField)) return 1;
+    if (step2Fields.includes(baseField)) return 2;
+    if (step3Fields.includes(baseField)) return 3;
+    if (step4Fields.includes(baseField)) return 4;
+    if (step5Fields.includes(baseField)) return 5;
+    if (step6Fields.includes(baseField)) return 6;
+    return 1;
+  };
+
+  const handleSubmitApplication = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      const errors = form.formState.errors;
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length > 0) {
+        const firstErrorField = errorKeys[0];
+        const targetStep = getStepForField(firstErrorField);
+        setCurrentStep(targetStep);
+        toast({ title: `Please fix validation errors in ${STEPS[targetStep - 1].title}`, variant: "destructive" });
+      }
+      return;
+    }
     const data = form.getValues();
     saveMutation.mutate({ ...data, status: "submitted" });
   };
