@@ -56,6 +56,15 @@ Preferred communication style: Simple, everyday language.
 - Line items can reference time_logs, time_entries, or be custom items (filing fees, mileage, etc.)
 - Hourly rate defaults to client's configured rate or $75/hour
 
+### Daily Activity Logs
+- Log Daily Activity dialog accessible from dashboard
+- "Generate from Activity" button auto-populates fields from application data:
+  - Time entries and time logs for hours worked calculation
+  - Tasks completed, documents processed, notes added
+  - Audit log entries for key actions
+- Endpoint: GET /api/daily-activity-logs/generate?date=YYYY-MM-DD
+- Admin-only feature
+
 ### Design System
 The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis on information density and data clarity. Typography uses Inter for UI and JetBrains Mono for timestamps. Layout uses a fixed-width sidebar (w-64) with responsive main content area.
 

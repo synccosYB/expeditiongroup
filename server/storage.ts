@@ -66,7 +66,7 @@ import {
   type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, count, sql, isNull, ne, or, ilike, inArray } from "drizzle-orm";
+import { eq, desc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -236,6 +236,14 @@ export interface IStorage {
   getAuditLogsByUserId(userId: string): Promise<AuditLog[]>;
   getAuditLogsByClientId(clientId: number): Promise<AuditLog[]>;
   getRecentActivityByClientId(clientId: number, limit?: number): Promise<AuditLog[]>;
+  
+  // Date Range Queries for Activity Generation
+  getTimeEntriesForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]>;
+  getTimeLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeLog[]>;
+  getNotesCreatedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Note[]>;
+  getDocumentsProcessedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Document[]>;
+  getTasksCompletedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Task[]>;
+  getAuditLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<AuditLog[]>;
   
   // Client Portal specific queries
   getClientVisibleProjects(clientId: number): Promise<(Project & { client: Client })[]>;
@@ -1432,6 +1440,80 @@ export class DatabaseStorage implements IStorage {
       ...r.notes,
       user: r.users || undefined,
     }));
+  }
+
+  // Date Range Queries for Activity Generation
+  async getTimeEntriesForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]> {
+    return await db
+      .select()
+      .from(timeEntries)
+      .where(and(
+        eq(timeEntries.userId, userId),
+        gte(timeEntries.date, startDate),
+        lte(timeEntries.date, endDate)
+      ))
+      .orderBy(desc(timeEntries.date));
+  }
+
+  async getTimeLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeLog[]> {
+    return await db
+      .select()
+      .from(timeLogs)
+      .where(and(
+        eq(timeLogs.userId, userId),
+        gte(timeLogs.date, startDate),
+        lte(timeLogs.date, endDate)
+      ))
+      .orderBy(desc(timeLogs.date));
+  }
+
+  async getNotesCreatedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Note[]> {
+    return await db
+      .select()
+      .from(notes)
+      .where(and(
+        eq(notes.userId, userId),
+        gte(notes.createdAt, startDate),
+        lte(notes.createdAt, endDate)
+      ))
+      .orderBy(desc(notes.createdAt));
+  }
+
+  async getDocumentsProcessedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(and(
+        eq(documents.uploadedByUserId, userId),
+        gte(documents.createdAt, startDate),
+        lte(documents.createdAt, endDate)
+      ))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getTasksCompletedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(
+        eq(tasks.assigneeId, userId),
+        isNotNull(tasks.completedAt),
+        gte(tasks.completedAt, startDate),
+        lte(tasks.completedAt, endDate)
+      ))
+      .orderBy(desc(tasks.completedAt));
+  }
+
+  async getAuditLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(and(
+        eq(auditLogs.userId, userId),
+        gte(auditLogs.createdAt, startDate),
+        lte(auditLogs.createdAt, endDate)
+      ))
+      .orderBy(desc(auditLogs.createdAt));
   }
 }
 

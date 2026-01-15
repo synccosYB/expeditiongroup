@@ -14,11 +14,24 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { Clock, FileText, Loader2 } from "lucide-react";
+import { Clock, FileText, Loader2, Sparkles } from "lucide-react";
 
 interface DailyActivityDialogProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface GeneratedActivity {
+  summary: string;
+  details: string;
+  hoursWorked: string;
+  stats: {
+    timeEntriesCount: number;
+    tasksCompletedCount: number;
+    documentsProcessedCount: number;
+    notesCreatedCount: number;
+    totalMinutes: number;
+  };
 }
 
 export function DailyActivityDialog({
@@ -63,6 +76,50 @@ export function DailyActivityDialog({
     },
   });
 
+  const generateMutation = useMutation({
+    mutationFn: async (selectedDate: string): Promise<GeneratedActivity> => {
+      const response = await fetch(`/api/daily-activity-logs/generate?date=${selectedDate}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to generate activity");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setSummary(data.summary);
+      setDetails(data.details);
+      setHoursWorked(data.hoursWorked);
+      
+      const { stats } = data;
+      const hasActivity = stats.timeEntriesCount > 0 || stats.tasksCompletedCount > 0 || 
+                          stats.documentsProcessedCount > 0 || stats.notesCreatedCount > 0;
+      
+      if (hasActivity) {
+        toast({
+          title: "Activity generated",
+          description: `Found ${stats.timeEntriesCount} time entries, ${stats.tasksCompletedCount} tasks, ${stats.documentsProcessedCount} documents, ${stats.notesCreatedCount} notes`,
+        });
+      } else {
+        toast({
+          title: "No activity found",
+          description: "No tracked activity for the selected date. You can still enter details manually.",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate activity",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerate = () => {
+    generateMutation.mutate(date);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!summary.trim()) {
@@ -93,9 +150,26 @@ export function DailyActivityDialog({
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="activity-date" className="text-sm font-medium">
-                Date
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="activity-date" className="text-sm font-medium">
+                  Date
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={generateMutation.isPending}
+                  data-testid="button-generate-activity"
+                >
+                  {generateMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Generate from Activity
+                </Button>
+              </div>
               <Input
                 id="activity-date"
                 type="date"
@@ -128,10 +202,10 @@ export function DailyActivityDialog({
               <Textarea
                 id="activity-details"
                 placeholder="Describe your activities in more detail..."
-                rows={5}
+                rows={8}
                 value={details}
                 onChange={(e) => setDetails(e.target.value)}
-                className="resize-none"
+                className="resize-none font-mono text-sm"
                 data-testid="input-activity-details"
               />
               <p className="text-xs text-muted-foreground">

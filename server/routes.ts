@@ -2319,5 +2319,157 @@ export async function registerRoutes(
     }
   });
 
+  // Generate daily activity from app data
+  app.get("/api/daily-activity-logs/generate", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const dateParam = req.query.date as string;
+      if (!dateParam) {
+        return res.status(400).json({ message: "Date parameter required" });
+      }
+      
+      const userId = req.session.userId!;
+      const targetDate = new Date(dateParam);
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      // Gather activity data from various sources
+      const [timeEntries, timeLogs, notesCreated, documentsProcessed, tasksCompleted, auditLogEntries] = await Promise.all([
+        storage.getTimeEntriesForDateRange(userId, startOfDay, endOfDay),
+        storage.getTimeLogsForDateRange(userId, startOfDay, endOfDay),
+        storage.getNotesCreatedForDateRange(userId, startOfDay, endOfDay),
+        storage.getDocumentsProcessedForDateRange(userId, startOfDay, endOfDay),
+        storage.getTasksCompletedForDateRange(userId, startOfDay, endOfDay),
+        storage.getAuditLogsForDateRange(userId, startOfDay, endOfDay),
+      ]);
+      
+      // Calculate total hours worked
+      let totalMinutes = 0;
+      timeEntries.forEach((entry: any) => {
+        totalMinutes += entry.totalMinutes || 0;
+      });
+      timeLogs.forEach((log: any) => {
+        const hours = parseFloat(log.totalHours || "0");
+        totalMinutes += hours * 60;
+      });
+      const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
+      
+      // Generate summary
+      const summaryParts: string[] = [];
+      if (timeEntries.length > 0 || timeLogs.length > 0) {
+        summaryParts.push(`Logged ${(timeEntries.length + timeLogs.length)} time entries`);
+      }
+      if (tasksCompleted.length > 0) {
+        summaryParts.push(`Completed ${tasksCompleted.length} tasks`);
+      }
+      if (documentsProcessed.length > 0) {
+        summaryParts.push(`Processed ${documentsProcessed.length} documents`);
+      }
+      if (notesCreated.length > 0) {
+        summaryParts.push(`Added ${notesCreated.length} notes`);
+      }
+      
+      const summary = summaryParts.length > 0 
+        ? summaryParts.join(", ")
+        : "No tracked activity for this date";
+      
+      // Generate detailed breakdown
+      const detailLines: string[] = [];
+      
+      // Time entries details
+      if (timeEntries.length > 0) {
+        detailLines.push("TIME ENTRIES:");
+        for (const entry of timeEntries) {
+          const task = await storage.getTask(entry.taskId);
+          const project = await storage.getProject(entry.projectId);
+          const minutes = entry.totalMinutes || 0;
+          const hrs = Math.floor(minutes / 60);
+          const mins = minutes % 60;
+          const duration = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+          detailLines.push(`• ${project?.name || "Unknown Project"} - ${task?.title || "Task"}: ${duration}${entry.notes ? ` (${entry.notes})` : ""}`);
+        }
+      }
+      
+      // Time logs details (legacy)
+      if (timeLogs.length > 0) {
+        if (detailLines.length > 0) detailLines.push("");
+        detailLines.push("TIME LOGS:");
+        for (const log of timeLogs) {
+          const project = await storage.getProject(log.projectId);
+          detailLines.push(`• ${project?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+        }
+      }
+      
+      // Tasks completed
+      if (tasksCompleted.length > 0) {
+        if (detailLines.length > 0) detailLines.push("");
+        detailLines.push("TASKS COMPLETED:");
+        for (const task of tasksCompleted) {
+          const project = await storage.getProject(task.projectId);
+          detailLines.push(`• ${project?.name || "Unknown"}: ${task.title}`);
+        }
+      }
+      
+      // Documents processed
+      if (documentsProcessed.length > 0) {
+        if (detailLines.length > 0) detailLines.push("");
+        detailLines.push("DOCUMENTS PROCESSED:");
+        for (const doc of documentsProcessed) {
+          const project = await storage.getProject(doc.projectId);
+          const status = doc.documentStatus || "uploaded";
+          detailLines.push(`• ${project?.name || "Unknown"}: ${doc.fileName} (${status})`);
+        }
+      }
+      
+      // Notes added
+      if (notesCreated.length > 0) {
+        if (detailLines.length > 0) detailLines.push("");
+        detailLines.push("NOTES ADDED:");
+        for (const note of notesCreated) {
+          const preview = note.content.substring(0, 60) + (note.content.length > 60 ? "..." : "");
+          detailLines.push(`• ${preview}`);
+        }
+      }
+      
+      // Key actions from audit log
+      const significantActions = auditLogEntries.filter((log: any) => 
+        ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
+      );
+      if (significantActions.length > 0) {
+        if (detailLines.length > 0) detailLines.push("");
+        detailLines.push("KEY ACTIONS:");
+        for (const action of significantActions.slice(0, 10)) {
+          if (action.description) {
+            detailLines.push(`• ${action.description}`);
+          }
+        }
+      }
+      
+      const details = detailLines.join("\n");
+      
+      res.json({
+        summary,
+        details,
+        hoursWorked,
+        stats: {
+          timeEntriesCount: timeEntries.length + timeLogs.length,
+          tasksCompletedCount: tasksCompleted.length,
+          documentsProcessedCount: documentsProcessed.length,
+          notesCreatedCount: notesCreated.length,
+          totalMinutes,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating daily activity:", error);
+      res.status(500).json({ message: "Failed to generate daily activity" });
+    }
+  });
+
   return httpServer;
 }
