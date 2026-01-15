@@ -27,6 +27,7 @@ import {
   insertProjectMilestoneSchema,
   insertDocumentRequestSchema,
   insertAuditLogSchema,
+  insertIntakeApplicationSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -2759,6 +2760,98 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error linking portal user:", error);
       res.status(500).json({ message: "Failed to link user" });
+    }
+  });
+
+  // ============ Intake Applications ============
+  
+  app.get("/api/intake-applications", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const applications = await storage.getIntakeApplications();
+      res.json(applications);
+    } catch (error) {
+      console.error("Error fetching intake applications:", error);
+      res.status(500).json({ message: "Failed to fetch intake applications" });
+    }
+  });
+
+  app.get("/api/intake-applications/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const application = await storage.getIntakeApplication(parseInt(req.params.id));
+      if (!application) {
+        return res.status(404).json({ message: "Intake application not found" });
+      }
+      res.json(application);
+    } catch (error) {
+      console.error("Error fetching intake application:", error);
+      res.status(500).json({ message: "Failed to fetch intake application" });
+    }
+  });
+
+  app.post("/api/intake-applications", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertIntakeApplicationSchema.parse({
+        ...req.body,
+        createdByUserId: user.id,
+      });
+      const application = await storage.createIntakeApplication(parsed);
+      res.status(201).json(application);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating intake application:", error);
+      res.status(500).json({ message: "Failed to create intake application" });
+    }
+  });
+
+  app.patch("/api/intake-applications/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertIntakeApplicationSchema.partial().parse(req.body);
+      const application = await storage.updateIntakeApplication(parseInt(req.params.id), parsed);
+      if (!application) {
+        return res.status(404).json({ message: "Intake application not found" });
+      }
+      res.json(application);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating intake application:", error);
+      res.status(500).json({ message: "Failed to update intake application" });
+    }
+  });
+
+  app.delete("/api/intake-applications/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteIntakeApplication(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Intake application not found" });
+      }
+      res.json({ message: "Intake application deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting intake application:", error);
+      res.status(500).json({ message: "Failed to delete intake application" });
     }
   });
 

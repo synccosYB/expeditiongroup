@@ -64,6 +64,19 @@ Preferred communication style: Simple, everyday language.
 - Projects: View-only project status with task timeline
 - Task status values: "todo", "waiting", "in_progress", "done", "cancelled"
 
+### Intake Applications (Permit Application Intake)
+- Multi-step wizard form (6 steps) for comprehensive permit application intake
+- Steps: Applicant Info → Project Info → Project Details → Site Characteristics → History & Proximity → Boards & Approvals
+- Features:
+  - Second owner toggle functionality
+  - Conditional fields that appear based on selections
+  - JSON fields for arrays (proximityFeatures, referralAgencies, boardsApprovals)
+  - Draft saving and submission workflow
+- Status workflow: draft → submitted → under_review → approved/rejected
+- Database: intake_applications table with 100+ fields
+- API Routes: GET/POST /api/intake-applications, GET/PATCH/DELETE /api/intake-applications/:id
+- Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view/edit)
+
 ### Daily Activity Logs
 - Log Daily Activity dialog accessible from dashboard
 - "Generate from Activity" button auto-populates fields from application data:

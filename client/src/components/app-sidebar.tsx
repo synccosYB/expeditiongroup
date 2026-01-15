@@ -21,6 +21,7 @@ import {
   LogOut,
   Settings,
   FileText,
+  FilePlus2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +30,7 @@ import logoIcon from "@/assets/logo-checkbox-icon.svg";
 
 const adminMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Intake", url: "/intake", icon: FilePlus2 },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Tasks", url: "/tasks", icon: ClipboardList },

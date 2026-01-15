@@ -36,6 +36,9 @@ import SettingsPage from "@/pages/settings";
 import ActivityLogs from "@/pages/activity-logs";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
+import Intake from "@/pages/intake";
+import IntakeForm from "@/pages/intake-form";
+import IntakeView from "@/pages/intake-view";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -55,6 +58,10 @@ function AdminRouter() {
       <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/auth" component={Dashboard} />
+      <Route path="/intake" component={Intake} />
+      <Route path="/intake/new" component={IntakeForm} />
+      <Route path="/intake/:id" component={IntakeView} />
+      <Route path="/intake/:id/edit" component={IntakeForm} />
       <Route path="/clients" component={Clients} />
       <Route path="/clients/:id" component={ClientDetail} />
       <Route path="/projects" component={Projects} />
