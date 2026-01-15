@@ -245,10 +245,12 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateProjectSchema.parse(req.body);
+      console.log("[DEBUG] Updating project:", req.params.id, "with data:", JSON.stringify(parsed));
       const project = await storage.updateProject(parseInt(req.params.id), parsed);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
+      console.log("[DEBUG] Project updated, isVisibleToClient:", project.isVisibleToClient);
       res.json(project);
     } catch (error) {
       if (error instanceof ZodError) {
