@@ -2644,5 +2644,97 @@ export async function registerRoutes(
     }
   });
 
+  // Admin diagnostic endpoint to find and fix unlinked portal users
+  app.get("/api/admin/portal-diagnostics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const allUsers = await storage.getAllUsers();
+      const allClients = await storage.getClients();
+      
+      // Find client users without a valid clientId
+      const unlinkedUsers = allUsers.filter(u => 
+        u.role === "client" && (!u.clientId || !allClients.find(c => c.id === u.clientId))
+      );
+      
+      // Find clients without portal users
+      const clientsWithoutPortal = allClients.filter(c =>
+        !allUsers.find(u => u.clientId === c.id && u.role === "client")
+      );
+      
+      // Get linked portal users with stats
+      const linkedPortalUsers = allUsers
+        .filter(u => u.role === "client" && u.clientId)
+        .map(u => {
+          const client = allClients.find(c => c.id === u.clientId);
+          return {
+            userId: u.id,
+            email: u.email,
+            name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+            clientId: u.clientId,
+            clientName: client?.name || 'Unknown',
+          };
+        });
+
+      res.json({
+        summary: {
+          totalPortalUsers: allUsers.filter(u => u.role === "client").length,
+          linkedUsers: linkedPortalUsers.length,
+          unlinkedUsers: unlinkedUsers.length,
+          clientsWithoutPortal: clientsWithoutPortal.length,
+        },
+        unlinkedUsers: unlinkedUsers.map(u => ({
+          id: u.id,
+          email: u.email,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          clientId: u.clientId,
+        })),
+        clientsWithoutPortal: clientsWithoutPortal.map(c => ({
+          id: c.id,
+          name: c.name,
+          email: c.email,
+        })),
+        linkedPortalUsers,
+      });
+    } catch (error) {
+      console.error("Error fetching portal diagnostics:", error);
+      res.status(500).json({ message: "Failed to fetch diagnostics" });
+    }
+  });
+
+  // Admin endpoint to manually link a portal user to a client
+  app.post("/api/admin/link-portal-user", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { userId, clientId } = req.body;
+      if (!userId || !clientId) {
+        return res.status(400).json({ message: "userId and clientId are required" });
+      }
+
+      const linkedUser = await storage.linkUserToClient(userId, clientId);
+      if (!linkedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Ensure portal settings exist
+      await storage.upsertClientPortalSettings({ clientId });
+
+      res.json({ 
+        message: "User linked successfully",
+        user: { id: linkedUser.id, email: linkedUser.email, clientId: linkedUser.clientId }
+      });
+    } catch (error) {
+      console.error("Error linking portal user:", error);
+      res.status(500).json({ message: "Failed to link user" });
+    }
+  });
+
   return httpServer;
 }
