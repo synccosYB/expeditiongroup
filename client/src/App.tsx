@@ -33,6 +33,7 @@ import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
 import ForConstructionManagers from "@/pages/for-construction-managers";
 import SettingsPage from "@/pages/settings";
+import ActivityLogs from "@/pages/activity-logs";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,6 +64,7 @@ function AdminRouter() {
       <Route path="/invoices/:id" component={InvoiceDetail} />
       <Route path="/associates" component={Associates} />
       <Route path="/associates/:id" component={AssociateDetail} />
+      <Route path="/activity-logs" component={ActivityLogs} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

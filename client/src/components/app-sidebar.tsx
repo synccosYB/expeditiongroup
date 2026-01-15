@@ -20,6 +20,7 @@ import {
   UserCog,
   LogOut,
   Settings,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ const adminMenuItems = [
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Tasks", url: "/tasks", icon: ClipboardList },
   { title: "Time Logs", url: "/time-logs", icon: Clock },
+  { title: "Activity Logs", url: "/activity-logs", icon: FileText },
   { title: "Associates", url: "/associates", icon: UserCog },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
