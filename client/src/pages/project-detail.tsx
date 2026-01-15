@@ -633,6 +633,7 @@ function TaskHierarchyItem({
   expandedTasks,
   toggleExpand,
   reminderCounts,
+  taskNotes,
 }: { 
   task: TaskWithSubtasks; 
   level?: number;
@@ -644,6 +645,7 @@ function TaskHierarchyItem({
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
+  taskNotes?: (Note & { user: User })[];
 }) {
   const reminderCount = reminderCounts?.get(task.id) ?? 0;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -719,6 +721,27 @@ function TaskHierarchyItem({
             )}
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
           </div>
+          {taskNotes && taskNotes.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border space-y-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MessageSquare className="h-3 w-3" />
+                <span>{taskNotes.length} note{taskNotes.length > 1 ? 's' : ''}</span>
+              </div>
+              {taskNotes.map((note) => (
+                <div key={note.id} className="text-xs bg-muted/50 rounded p-2" data-testid={`task-note-${note.id}`}>
+                  <p className="text-foreground whitespace-pre-wrap line-clamp-2">{note.content}</p>
+                  <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                    <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
+                    <span>-</span>
+                    <span>{format(new Date(note.createdAt!), "MM/dd/yyyy")}</span>
+                    {note.isVisibleToClient && (
+                      <Badge variant="outline" size="sm">Visible</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <Tooltip>
@@ -784,6 +807,7 @@ function TaskHierarchyItem({
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
+              taskNotes={taskNotes?.filter(n => n.taskId === subtask.id)}
             />
           ))}
         </div>
@@ -823,6 +847,7 @@ export default function ProjectDetail() {
   const [movingDocument, setMovingDocument] = useState<Document | null>(null);
   const [moveToFolderId, setMoveToFolderId] = useState<string>("__none__");
   const [editingNote, setEditingNote] = useState<(Note & { user?: User }) | null>(null);
+  const [deletingNote, setDeletingNote] = useState<(Note & { user?: User }) | null>(null);
   const [editingTimeLog, setEditingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
   const [deletingTimeLog, setDeletingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
 
@@ -2064,6 +2089,7 @@ export default function ProjectDetail() {
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
                   reminderCounts={taskReminderCounts}
+                  taskNotes={project.notes?.filter(n => n.taskId === task.id)}
                 />
               ))}
             </div>
@@ -2943,33 +2969,78 @@ export default function ProjectDetail() {
 
           {project.notes && project.notes.length > 0 ? (
             <div className="space-y-4">
-              {project.notes.map((note) => (
-                <Card key={note.id} data-testid={`note-item-${note.id}`}>
-                  <CardContent className="py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap">
-                          <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
-                          <span>-</span>
-                          <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
-                          {note.isVisibleToClient && (
-                            <Badge variant="outline" size="sm">Visible to client</Badge>
+              {project.notes.map((note) => {
+                const linkedTask = note.taskId ? project.tasks?.find(t => t.id === note.taskId) : null;
+                const linkedAssociate = note.associateId ? projectAssociates?.find(pa => pa.associate.id === note.associateId)?.associate : null;
+                const linkedClient = note.clientId && project.client?.id === note.clientId ? project.client : null;
+                
+                return (
+                  <Card key={note.id} data-testid={`note-item-${note.id}`}>
+                    <CardContent className="py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap">
+                            <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
+                            <span>-</span>
+                            <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
+                            {note.isVisibleToClient && (
+                              <Badge variant="outline" size="sm">Visible to client</Badge>
+                            )}
+                          </div>
+                          {(linkedTask || linkedAssociate || linkedClient) && (
+                            <div className="flex items-center gap-2 mt-2 text-xs flex-wrap">
+                              {linkedTask && (
+                                <Badge variant="secondary" size="sm" className="gap-1">
+                                  <ClipboardList className="h-3 w-3" />
+                                  Task: {linkedTask.title}
+                                </Badge>
+                              )}
+                              {linkedAssociate && (
+                                <Badge variant="secondary" size="sm" className="gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {linkedAssociate.name}
+                                </Badge>
+                              )}
+                              {linkedClient && (
+                                <Badge variant="secondary" size="sm" className="gap-1">
+                                  <Users className="h-3 w-3" />
+                                  Client: {linkedClient.name}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              data-testid={`button-note-menu-${note.id}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditingNote(note)} data-testid={`button-edit-note-${note.id}`}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive" 
+                              onClick={() => setDeletingNote(note)}
+                              data-testid={`button-delete-note-${note.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setEditingNote(note)}
-                        data-testid={`button-edit-note-${note.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Card>
@@ -2998,6 +3069,31 @@ export default function ProjectDetail() {
             }}
             isPending={updateNoteMutation.isPending}
           />
+
+          <AlertDialog open={!!deletingNote} onOpenChange={(open) => !open && setDeletingNote(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this note? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (deletingNote) {
+                      deleteNoteMutation.mutate(deletingNote.id);
+                      setDeletingNote(null);
+                    }
+                  }}
+                  data-testid="button-confirm-delete-note"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Time Logs Tab */}
