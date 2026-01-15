@@ -25,7 +25,7 @@ import {
   DollarSign,
   Flag,
 } from "lucide-react";
-import { StatusBadge, TaskTypeBadge, PriorityBadge } from "@/components/status-badge";
+import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/hooks/useAuth";
@@ -88,7 +88,6 @@ export default function ClientPortal() {
 
   const activeProjects = projects?.filter(p => 
     p.status === "in_progress" || 
-    p.status === "pending" || 
     p.status === "intake" || 
     p.status === "waiting_on_client" ||
     p.status === "with_dob" ||
@@ -189,7 +188,7 @@ export default function ClientPortal() {
           {invoices && invoices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {invoices.slice(0, 6).map((invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice} />
+                <InvoiceCard key={invoice.id} invoice={invoice} onView={() => setLocation(`/invoice/${invoice.id}`)} />
               ))}
             </div>
           ) : (
@@ -250,10 +249,10 @@ function ProjectCard({ project, onView }: { project: ProjectWithRelations; onVie
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-          {project.propertyAddress && (
+          {project.address && (
             <div className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
-              <span className="truncate max-w-[150px]">{project.propertyAddress}</span>
+              <span className="truncate max-w-[150px]">{project.address}</span>
             </div>
           )}
           {project.startDate && (
@@ -288,7 +287,7 @@ function ProjectCard({ project, onView }: { project: ProjectWithRelations; onVie
   );
 }
 
-function InvoiceCard({ invoice }: { invoice: InvoiceWithProject }) {
+function InvoiceCard({ invoice, onView }: { invoice: InvoiceWithProject; onView: () => void }) {
   const getStatusInfo = (status: string) => {
     switch (status) {
       case "paid":
@@ -320,7 +319,7 @@ function InvoiceCard({ invoice }: { invoice: InvoiceWithProject }) {
             {statusInfo.label}
           </Badge>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-muted-foreground">
             {invoice.dueDate && (
               <span className="flex items-center gap-1">
@@ -333,6 +332,10 @@ function InvoiceCard({ invoice }: { invoice: InvoiceWithProject }) {
             ${Number(invoice.total || 0).toLocaleString()}
           </p>
         </div>
+        <Button variant="outline" size="sm" className="w-full" onClick={onView} data-testid={`button-view-invoice-${invoice.id}`}>
+          View Invoice
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
       </CardContent>
     </Card>
   );
@@ -390,7 +393,7 @@ export function ClientProjectDetail() {
   }
 
   const tasksByStatus = {
-    pending: project.tasks?.filter(t => t.status === "pending" || t.status === "waiting_on_client") || [],
+    pending: project.tasks?.filter(t => t.status === "todo" || t.status === "waiting") || [],
     inProgress: project.tasks?.filter(t => t.status === "in_progress") || [],
     completed: project.tasks?.filter(t => t.status === "done") || [],
   };
@@ -409,10 +412,10 @@ export function ClientProjectDetail() {
           <h1 className="text-3xl font-semibold text-foreground" data-testid="text-project-name">{project.name}</h1>
           <StatusBadge status={project.status} type="project" />
         </div>
-        {project.propertyAddress && (
+        {project.address && (
           <p className="text-muted-foreground mt-1 flex items-center gap-1">
             <MapPin className="h-4 w-4" />
-            {project.propertyAddress}
+            {project.address}
           </p>
         )}
       </div>
@@ -516,7 +519,7 @@ export function ClientProjectDetail() {
                         <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 border-background ${
                           task.status === "done" ? "bg-chart-2" :
                           task.status === "in_progress" ? "bg-chart-4" :
-                          task.status === "waiting_on_client" ? "bg-chart-3" :
+                          task.status === "waiting" ? "bg-chart-3" :
                           "bg-muted-foreground"
                         }`} />
                         <div className="flex-1 min-w-0">
@@ -563,7 +566,7 @@ export function ClientProjectDetail() {
                     <div className="flex items-start gap-3">
                       {task.status === "done" ? (
                         <CheckCircle2 className="h-5 w-5 mt-0.5 text-chart-2" />
-                      ) : task.status === "waiting_on_client" ? (
+                      ) : task.status === "waiting" ? (
                         <AlertCircle className="h-5 w-5 mt-0.5 text-chart-3" />
                       ) : task.status === "in_progress" ? (
                         <Clock className="h-5 w-5 mt-0.5 text-chart-4" />
@@ -575,7 +578,7 @@ export function ClientProjectDetail() {
                           <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
                             {task.title}
                           </p>
-                          <TaskTypeBadge type={task.type} />
+                          {task.locationType && <TaskTypeBadge type={task.locationType} />}
                           <StatusBadge status={task.status} type="task" />
                           {task.requiresClientUpload && task.status !== "done" && (
                             <Badge variant="outline" className="border-chart-3 text-chart-3">
@@ -622,16 +625,16 @@ export function ClientProjectDetail() {
                         <FileText className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{doc.name}</p>
+                        <p className="font-medium truncate">{doc.fileName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {doc.createdAt && format(parseLocalDateFromISO(doc.createdAt)!, "MM/dd/yyyy")}
+                          {doc.createdAt && format(new Date(doc.createdAt), "MM/dd/yyyy")}
                           {doc.category && ` - ${doc.category}`}
                         </p>
                       </div>
-                      {doc.fileUrl && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                            View
+                      {doc.storagePath && (
+                        <Button variant="outline" size="sm" asChild data-testid={`button-download-document-${doc.id}`}>
+                          <a href={doc.storagePath} target="_blank" rel="noopener noreferrer" download={doc.fileName}>
+                            Download
                           </a>
                         </Button>
                       )}
@@ -708,6 +711,203 @@ export function ClientProjectDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Client Invoice Detail Component
+interface InvoiceWithDetails {
+  id: number;
+  invoiceNumber: string;
+  clientId: number;
+  projectId: number | null;
+  status: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  subtotal: string | null;
+  tax: string | null;
+  total: string | null;
+  notes: string | null;
+  project: Project | null;
+  client: Client;
+  items: InvoiceItem[];
+}
+
+interface InvoiceItem {
+  id: number;
+  description: string | null;
+  quantity: string | null;
+  rate: string | null;
+  amount: string | null;
+}
+
+export function ClientInvoiceDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
+
+  const { data: invoice, isLoading, error } = useQuery<InvoiceWithDetails>({
+    queryKey: ["/api/client/invoices", id],
+    enabled: !!id,
+  });
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/")} data-testid="button-back-to-portal">
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back to Dashboard
+        </Button>
+        <Card data-testid="card-invoice-not-found">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <FileText className="h-12 w-12 mb-4 opacity-50" />
+            <p className="text-lg font-medium mb-1" data-testid="text-invoice-not-found-title">Invoice Not Found</p>
+            <p className="text-sm" data-testid="text-invoice-not-found-message">This invoice may not be available or access is restricted.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "paid":
+        return { label: "Paid", variant: "default" as const, className: "bg-chart-2 text-white" };
+      case "sent":
+        return { label: "Awaiting Payment", variant: "outline" as const, className: "border-chart-3 text-chart-3" };
+      case "cancelled":
+        return { label: "Cancelled", variant: "secondary" as const, className: "" };
+      default:
+        return { label: "Draft", variant: "secondary" as const, className: "" };
+    }
+  };
+
+  const statusInfo = getStatusInfo(invoice.status);
+
+  return (
+    <div className="space-y-6" data-testid="client-invoice-detail">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/")} data-testid="button-back-to-portal">
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Back
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold font-mono" data-testid="text-invoice-number">{invoice.invoiceNumber}</h1>
+          {invoice.project && (
+            <p className="text-muted-foreground" data-testid="text-invoice-project">{invoice.project.name}</p>
+          )}
+        </div>
+        <Badge variant={statusInfo.variant} className={statusInfo.className} data-testid="badge-invoice-status">
+          {statusInfo.label}
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card data-testid="card-issue-date">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Issue Date</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium" data-testid="text-issue-date">
+              {invoice.issueDate ? format(parseLocalDateFromISO(invoice.issueDate)!, "MMMM d, yyyy") : "-"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-due-date">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Due Date</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium" data-testid="text-due-date">
+              {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMMM d, yyyy") : "-"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card data-testid="card-total-amount">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Amount</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold" data-testid="text-total-amount">
+              ${Number(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card data-testid="card-invoice-items">
+        <CardHeader>
+          <CardTitle>Invoice Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {invoice.items && invoice.items.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-invoice-items">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium">Description</th>
+                    <th className="text-right py-3 px-2 font-medium">Qty</th>
+                    <th className="text-right py-3 px-2 font-medium">Rate</th>
+                    <th className="text-right py-3 px-2 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoice.items.map((item) => (
+                    <tr key={item.id} className="border-b last:border-0" data-testid={`row-invoice-item-${item.id}`}>
+                      <td className="py-3 px-2" data-testid={`text-item-description-${item.id}`}>{item.description || "-"}</td>
+                      <td className="text-right py-3 px-2" data-testid={`text-item-quantity-${item.id}`}>{item.quantity || "-"}</td>
+                      <td className="text-right py-3 px-2" data-testid={`text-item-rate-${item.id}`}>
+                        {item.rate ? `$${Number(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "-"}
+                      </td>
+                      <td className="text-right py-3 px-2 font-medium" data-testid={`text-item-amount-${item.id}`}>
+                        ${Number(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t">
+                    <td colSpan={3} className="text-right py-3 px-2 font-medium">Subtotal</td>
+                    <td className="text-right py-3 px-2 font-medium" data-testid="text-subtotal">
+                      ${Number(invoice.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                  {invoice.tax && Number(invoice.tax) > 0 && (
+                    <tr>
+                      <td colSpan={3} className="text-right py-2 px-2 text-muted-foreground">Tax</td>
+                      <td className="text-right py-2 px-2 text-muted-foreground" data-testid="text-tax">
+                        ${Number(invoice.tax).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="text-lg">
+                    <td colSpan={3} className="text-right py-3 px-2 font-bold">Total</td>
+                    <td className="text-right py-3 px-2 font-bold" data-testid="text-invoice-total">
+                      ${Number(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8" data-testid="text-no-invoice-items">No items on this invoice</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {invoice.notes && (
+        <Card data-testid="card-invoice-notes">
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap" data-testid="text-invoice-notes">{invoice.notes}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

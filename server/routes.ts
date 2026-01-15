@@ -646,6 +646,30 @@ export async function registerRoutes(
     }
   });
 
+  // Client Portal - Get single invoice details
+  app.get("/api/client/invoices/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showInvoices) {
+        return res.status(403).json({ message: "Invoice access is not enabled" });
+      }
+      const invoiceId = parseInt(req.params.id);
+      // getInvoice returns invoice with project, client, and items included
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice || invoice.clientId !== user.clientId || !invoice.isVisibleToClient) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching client invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
   // Time Entries
   app.get("/api/time-entries", isAuthenticated, async (req: any, res) => {
     try {

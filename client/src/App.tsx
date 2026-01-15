@@ -27,7 +27,7 @@ import TimeLogs from "@/pages/time-logs";
 import InvoiceDetail from "@/pages/invoice-detail";
 import Associates from "@/pages/associates";
 import AssociateDetail from "@/pages/associate-detail";
-import ClientPortal, { ClientProjectDetail } from "@/pages/client-portal";
+import ClientPortal, { ClientProjectDetail, ClientInvoiceDetail } from "@/pages/client-portal";
 import ForGeneralContractors from "@/pages/for-general-contractors";
 import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
@@ -78,6 +78,7 @@ function ClientRouter() {
       <Route path="/dashboard" component={ClientPortal} />
       <Route path="/auth" component={ClientPortal} />
       <Route path="/project/:id" component={ClientProjectDetail} />
+      <Route path="/invoice/:id" component={ClientInvoiceDetail} />
       <Route component={NotFound} />
     </Switch>
   );

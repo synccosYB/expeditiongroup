@@ -55,6 +55,14 @@ Preferred communication style: Simple, everyday language.
 - Each invoice has a status: draft, sent, paid, cancelled
 - Line items can reference time_logs, time_entries, or be custom items (filing fees, mileage, etc.)
 - Hourly rate defaults to client's configured rate or $75/hour
+- Client portal: Clients can view invoices via `/invoice/:id` route with detailed line items
+
+### Client Portal Features
+- Documents: Clients can view and download documents via `/objects/*` endpoint (uses storagePath field)
+- Invoices: Viewable via "View Invoice" button, shows line items, subtotal, tax, total
+- Messages: Clients see notes marked as `isVisibleToClient=true`
+- Projects: View-only project status with task timeline
+- Task status values: "todo", "waiting", "in_progress", "done", "cancelled"
 
 ### Daily Activity Logs
 - Log Daily Activity dialog accessible from dashboard
