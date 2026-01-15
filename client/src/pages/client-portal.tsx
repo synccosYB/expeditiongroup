@@ -21,6 +21,9 @@ import {
   Send,
   Clock,
   AlertTriangle,
+  Receipt,
+  DollarSign,
+  Flag,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, PriorityBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -28,7 +31,7 @@ import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Project, Client, Task, Note, User, Document } from "@shared/schema";
+import type { Project, Client, Task, Note, User, Document, Invoice, ClientPortalSettings } from "@shared/schema";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
@@ -55,25 +58,39 @@ function getStatusTimelineColor(status: string) {
   }
 }
 
+type InvoiceWithProject = Invoice & { project?: Project };
+
 export default function ClientPortal() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
+  const { data: portalSettings, isLoading: settingsLoading } = useQuery<ClientPortalSettings>({
+    queryKey: ["/api/client/portal-settings"],
+  });
+
   const { data: projects, isLoading: projectsLoading } = useQuery<ProjectWithRelations[]>({
     queryKey: ["/api/client/projects"],
+    enabled: !!portalSettings?.showProjects,
+  });
+
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<InvoiceWithProject[]>({
+    queryKey: ["/api/client/invoices"],
+    enabled: !!portalSettings?.showInvoices,
   });
 
   const { data: clientTodos } = useQuery<ClientTodo[]>({
     queryKey: ["/api/client/todos"],
   });
 
-  if (projectsLoading) {
+  if (settingsLoading || projectsLoading) {
     return <DashboardSkeleton />;
   }
 
   const activeProjects = projects?.filter(p => p.status === "in_progress" || p.status === "pending") || [];
   const completedProjects = projects?.filter(p => p.status === "completed") || [];
   const pendingTodos = clientTodos?.filter(t => t.status !== "done") || [];
+  const unpaidInvoices = invoices?.filter(inv => inv.status === "sent") || [];
+  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -129,7 +146,7 @@ export default function ClientPortal() {
         </Card>
       )}
 
-      {activeProjects.length > 0 && (
+      {portalSettings?.showProjects && activeProjects.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Active Projects</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -140,7 +157,7 @@ export default function ClientPortal() {
         </div>
       )}
 
-      {completedProjects.length > 0 && (
+      {portalSettings?.showProjects && completedProjects.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-muted-foreground">Completed Projects</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -151,7 +168,38 @@ export default function ClientPortal() {
         </div>
       )}
 
-      {(!projects || projects.length === 0) && (
+      {portalSettings?.showInvoices && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Invoices</h2>
+            {totalOutstanding > 0 && (
+              <Badge variant="outline" className="text-chart-3 border-chart-3">
+                <DollarSign className="h-3 w-3 mr-1" />
+                ${totalOutstanding.toLocaleString()} outstanding
+              </Badge>
+            )}
+          </div>
+          {invoices && invoices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {invoices.slice(0, 6).map((invoice) => (
+                <InvoiceCard key={invoice.id} invoice={invoice} />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <EmptyState
+                  icon={Receipt}
+                  title="No invoices yet"
+                  description="Your invoices will appear here once they are created"
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {portalSettings?.showProjects && (!projects || projects.length === 0) && (
         <Card>
           <CardContent className="p-0">
             <EmptyState
@@ -159,6 +207,18 @@ export default function ClientPortal() {
               title="No projects yet"
               description="Your projects will appear here once they are created"
             />
+          </CardContent>
+        </Card>
+      )}
+      
+      {!portalSettings?.showProjects && !portalSettings?.showInvoices && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Flag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Welcome to your Portal</h3>
+            <p className="text-sm text-muted-foreground">
+              Your administrator is setting up your portal. Check back soon for updates.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -221,10 +281,64 @@ function ProjectCard({ project, onView }: { project: ProjectWithRelations; onVie
   );
 }
 
+function InvoiceCard({ invoice }: { invoice: InvoiceWithProject }) {
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "paid":
+        return { label: "Paid", variant: "default" as const, className: "bg-chart-2 text-white" };
+      case "sent":
+        return { label: "Awaiting Payment", variant: "outline" as const, className: "border-chart-3 text-chart-3" };
+      case "cancelled":
+        return { label: "Cancelled", variant: "secondary" as const, className: "" };
+      default:
+        return { label: "Draft", variant: "secondary" as const, className: "" };
+    }
+  };
+
+  const statusInfo = getStatusInfo(invoice.status);
+
+  return (
+    <Card className="hover-elevate" data-testid={`card-client-invoice-${invoice.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="min-w-0">
+            <p className="font-medium font-mono">{invoice.invoiceNumber}</p>
+            {invoice.project && (
+              <p className="text-sm text-muted-foreground truncate">
+                {invoice.project.name}
+              </p>
+            )}
+          </div>
+          <Badge variant={statusInfo.variant} className={statusInfo.className}>
+            {statusInfo.label}
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            {invoice.dueDate && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Due {format(parseLocalDateFromISO(invoice.dueDate)!, "MM/dd/yyyy")}
+              </span>
+            )}
+          </div>
+          <p className="text-lg font-semibold">
+            ${Number(invoice.total || 0).toLocaleString()}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ClientProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [newNote, setNewNote] = useState("");
+
+  const { data: portalSettings } = useQuery<ClientPortalSettings>({
+    queryKey: ["/api/client/portal-settings"],
+  });
 
   const { data: project, isLoading } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/client/projects", id],
@@ -233,7 +347,7 @@ export function ClientProjectDetail() {
 
   const { data: documents } = useQuery<Document[]>({
     queryKey: ["/api/client/projects", id, "documents"],
-    enabled: !!id,
+    enabled: !!id && !!portalSettings?.showDocuments,
   });
 
   const addNoteMutation = useMutation({
@@ -351,24 +465,32 @@ export function ClientProjectDetail() {
         </Card>
       </div>
 
-      <Tabs defaultValue="timeline">
+      <Tabs defaultValue={portalSettings?.showTimeline ? "timeline" : portalSettings?.showMilestones ? "tasks" : portalSettings?.showDocuments ? "documents" : portalSettings?.showMessages ? "messages" : "timeline"}>
         <TabsList>
-          <TabsTrigger value="timeline" className="gap-2" data-testid="tab-timeline">
-            <Clock className="h-4 w-4" />
-            Timeline
-          </TabsTrigger>
-          <TabsTrigger value="tasks" className="gap-2" data-testid="tab-tasks">
-            <ClipboardList className="h-4 w-4" />
-            Tasks ({project.tasks?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2" data-testid="tab-documents">
-            <FileText className="h-4 w-4" />
-            Documents ({documents?.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
-            <MessageSquare className="h-4 w-4" />
-            Messages ({project.notes?.length || 0})
-          </TabsTrigger>
+          {portalSettings?.showTimeline && (
+            <TabsTrigger value="timeline" className="gap-2" data-testid="tab-timeline">
+              <Clock className="h-4 w-4" />
+              Timeline
+            </TabsTrigger>
+          )}
+          {portalSettings?.showMilestones && (
+            <TabsTrigger value="tasks" className="gap-2" data-testid="tab-tasks">
+              <ClipboardList className="h-4 w-4" />
+              Tasks ({project.tasks?.length || 0})
+            </TabsTrigger>
+          )}
+          {portalSettings?.showDocuments && (
+            <TabsTrigger value="documents" className="gap-2" data-testid="tab-documents">
+              <FileText className="h-4 w-4" />
+              Documents ({documents?.length || 0})
+            </TabsTrigger>
+          )}
+          {portalSettings?.showMessages && (
+            <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
+              <MessageSquare className="h-4 w-4" />
+              Messages ({project.notes?.length || 0})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="timeline" className="mt-6">

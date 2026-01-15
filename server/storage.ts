@@ -17,6 +17,10 @@ import {
   invoices,
   invoiceItems,
   dailyActivityLogs,
+  clientPortalSettings,
+  projectMilestones,
+  documentRequests,
+  auditLogs,
   type User,
   type UpsertUser,
   type Client,
@@ -52,6 +56,14 @@ import {
   type InsertInvoiceItem,
   type DailyActivityLog,
   type InsertDailyActivityLog,
+  type ClientPortalSettings,
+  type InsertClientPortalSettings,
+  type ProjectMilestone,
+  type InsertProjectMilestone,
+  type DocumentRequest,
+  type InsertDocumentRequest,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql, isNull, ne, or, ilike, inArray } from "drizzle-orm";
@@ -200,6 +212,36 @@ export interface IStorage {
   createDailyActivityLog(log: InsertDailyActivityLog): Promise<DailyActivityLog>;
   updateDailyActivityLog(id: number, log: Partial<InsertDailyActivityLog>): Promise<DailyActivityLog | undefined>;
   deleteDailyActivityLog(id: number): Promise<boolean>;
+  
+  // Client Portal Settings
+  getClientPortalSettings(clientId: number): Promise<ClientPortalSettings | undefined>;
+  upsertClientPortalSettings(settings: InsertClientPortalSettings): Promise<ClientPortalSettings>;
+  
+  // Project Milestones
+  getMilestonesByProjectId(projectId: number): Promise<ProjectMilestone[]>;
+  getClientVisibleMilestones(projectId: number): Promise<ProjectMilestone[]>;
+  createMilestone(milestone: InsertProjectMilestone): Promise<ProjectMilestone>;
+  updateMilestone(id: number, milestone: Partial<InsertProjectMilestone>): Promise<ProjectMilestone | undefined>;
+  deleteMilestone(id: number): Promise<boolean>;
+  
+  // Document Requests
+  getDocumentRequestsByProjectId(projectId: number): Promise<DocumentRequest[]>;
+  getDocumentRequestsByClientId(clientId: number): Promise<(DocumentRequest & { project: Project })[]>;
+  createDocumentRequest(request: InsertDocumentRequest): Promise<DocumentRequest>;
+  updateDocumentRequest(id: number, request: Partial<InsertDocumentRequest>): Promise<DocumentRequest | undefined>;
+  deleteDocumentRequest(id: number): Promise<boolean>;
+  
+  // Audit Logs
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogsByUserId(userId: string): Promise<AuditLog[]>;
+  getAuditLogsByClientId(clientId: number): Promise<AuditLog[]>;
+  getRecentActivityByClientId(clientId: number, limit?: number): Promise<AuditLog[]>;
+  
+  // Client Portal specific queries
+  getClientVisibleProjects(clientId: number): Promise<(Project & { client: Client })[]>;
+  getClientVisibleDocuments(projectId: number): Promise<Document[]>;
+  getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]>;
+  getClientVisibleNotes(projectId: number): Promise<(Note & { user?: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1181,6 +1223,215 @@ export class DatabaseStorage implements IStorage {
   async deleteDailyActivityLog(id: number): Promise<boolean> {
     const result = await db.delete(dailyActivityLogs).where(eq(dailyActivityLogs.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Client Portal Settings
+  async getClientPortalSettings(clientId: number): Promise<ClientPortalSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(clientPortalSettings)
+      .where(eq(clientPortalSettings.clientId, clientId));
+    return settings;
+  }
+
+  async upsertClientPortalSettings(settings: InsertClientPortalSettings): Promise<ClientPortalSettings> {
+    const [result] = await db
+      .insert(clientPortalSettings)
+      .values(settings)
+      .onConflictDoUpdate({
+        target: clientPortalSettings.clientId,
+        set: {
+          ...settings,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Project Milestones
+  async getMilestonesByProjectId(projectId: number): Promise<ProjectMilestone[]> {
+    return await db
+      .select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.projectId, projectId))
+      .orderBy(projectMilestones.orderIndex);
+  }
+
+  async getClientVisibleMilestones(projectId: number): Promise<ProjectMilestone[]> {
+    return await db
+      .select()
+      .from(projectMilestones)
+      .where(and(
+        eq(projectMilestones.projectId, projectId),
+        eq(projectMilestones.isVisibleToClient, true)
+      ))
+      .orderBy(projectMilestones.orderIndex);
+  }
+
+  async createMilestone(milestone: InsertProjectMilestone): Promise<ProjectMilestone> {
+    const [newMilestone] = await db.insert(projectMilestones).values(milestone).returning();
+    return newMilestone;
+  }
+
+  async updateMilestone(id: number, milestone: Partial<InsertProjectMilestone>): Promise<ProjectMilestone | undefined> {
+    const updateData: any = { ...milestone, updatedAt: new Date() };
+    if (milestone.isCompleted && !milestone.completedAt) {
+      updateData.completedAt = new Date();
+    }
+    const [updated] = await db
+      .update(projectMilestones)
+      .set(updateData)
+      .where(eq(projectMilestones.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMilestone(id: number): Promise<boolean> {
+    const result = await db.delete(projectMilestones).where(eq(projectMilestones.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Document Requests
+  async getDocumentRequestsByProjectId(projectId: number): Promise<DocumentRequest[]> {
+    return await db
+      .select()
+      .from(documentRequests)
+      .where(eq(documentRequests.projectId, projectId))
+      .orderBy(desc(documentRequests.createdAt));
+  }
+
+  async getDocumentRequestsByClientId(clientId: number): Promise<(DocumentRequest & { project: Project })[]> {
+    const result = await db
+      .select()
+      .from(documentRequests)
+      .leftJoin(projects, eq(documentRequests.projectId, projects.id))
+      .where(eq(documentRequests.clientId, clientId))
+      .orderBy(desc(documentRequests.createdAt));
+    
+    return result.map(r => ({
+      ...r.document_requests,
+      project: r.projects!,
+    }));
+  }
+
+  async createDocumentRequest(request: InsertDocumentRequest): Promise<DocumentRequest> {
+    const [newRequest] = await db.insert(documentRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async updateDocumentRequest(id: number, request: Partial<InsertDocumentRequest>): Promise<DocumentRequest | undefined> {
+    const [updated] = await db
+      .update(documentRequests)
+      .set({ ...request, updatedAt: new Date() })
+      .where(eq(documentRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDocumentRequest(id: number): Promise<boolean> {
+    const result = await db.delete(documentRequests).where(eq(documentRequests.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Audit Logs
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getAuditLogsByUserId(userId: string): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.userId, userId))
+      .orderBy(desc(auditLogs.createdAt));
+  }
+
+  async getAuditLogsByClientId(clientId: number): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.clientId, clientId))
+      .orderBy(desc(auditLogs.createdAt));
+  }
+
+  async getRecentActivityByClientId(clientId: number, limit: number = 20): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.clientId, clientId))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+  }
+
+  // Client Portal specific queries
+  async getClientVisibleProjects(clientId: number): Promise<(Project & { client: Client })[]> {
+    const result = await db
+      .select()
+      .from(projects)
+      .leftJoin(clients, eq(projects.clientId, clients.id))
+      .where(and(
+        eq(projects.clientId, clientId),
+        eq(projects.isVisibleToClient, true)
+      ))
+      .orderBy(desc(projects.createdAt));
+    
+    return result.map(r => ({
+      ...r.projects,
+      client: r.clients!,
+    }));
+  }
+
+  async getClientVisibleDocuments(projectId: number): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(and(
+        eq(documents.projectId, projectId),
+        eq(documents.isVisibleToClient, true)
+      ))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]> {
+    const invoiceList = await db
+      .select()
+      .from(invoices)
+      .leftJoin(projects, eq(invoices.projectId, projects.id))
+      .where(and(
+        eq(invoices.clientId, clientId),
+        eq(invoices.isVisibleToClient, true)
+      ))
+      .orderBy(desc(invoices.createdAt));
+    
+    const result = await Promise.all(invoiceList.map(async (r) => {
+      const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
+      return {
+        ...r.invoices,
+        project: r.projects!,
+        items,
+      };
+    }));
+    
+    return result;
+  }
+
+  async getClientVisibleNotes(projectId: number): Promise<(Note & { user?: User })[]> {
+    const result = await db
+      .select()
+      .from(notes)
+      .leftJoin(users, eq(notes.userId, users.id))
+      .where(and(
+        eq(notes.projectId, projectId),
+        eq(notes.isVisibleToClient, true)
+      ))
+      .orderBy(desc(notes.createdAt));
+    
+    return result.map(r => ({
+      ...r.notes,
+      user: r.users || undefined,
+    }));
   }
 }
 

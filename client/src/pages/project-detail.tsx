@@ -29,6 +29,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,6 +59,8 @@ import {
   MessageCircle,
   X,
   FolderInput,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -885,6 +888,42 @@ export default function ProjectDetail() {
     taskReminderCounts.set(reminder.taskId, count + 1);
   });
 
+  const updateProjectVisibilityMutation = useMutation({
+    mutationFn: async (isVisibleToClient: boolean) => {
+      return await apiRequest("PATCH", `/api/projects/${id}`, { isVisibleToClient });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      toast({ title: "Project visibility updated" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
+    },
+  });
+
+  const updateDocumentVisibilityMutation = useMutation({
+    mutationFn: async ({ docId, isVisibleToClient }: { docId: number; isVisibleToClient: boolean }) => {
+      return await apiRequest("PATCH", `/api/documents/${docId}`, { isVisibleToClient });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "documents"] });
+      toast({ title: "Document visibility updated" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
+    },
+  });
+
   const taskForm = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
@@ -1621,6 +1660,34 @@ export default function ProjectDetail() {
                 {project.priority}
               </Badge>
             )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer ${
+                    project.isVisibleToClient 
+                      ? 'bg-green-500/10 text-green-600 border border-green-500/30' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                  onClick={() => updateProjectVisibilityMutation.mutate(!project.isVisibleToClient)}
+                  data-testid="toggle-project-visibility"
+                >
+                  {project.isVisibleToClient ? (
+                    <Eye className="h-4 w-4" />
+                  ) : (
+                    <EyeOff className="h-4 w-4" />
+                  )}
+                  <span className="text-xs font-medium">
+                    {project.isVisibleToClient ? 'Visible to Client' : 'Hidden from Client'}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {project.isVisibleToClient 
+                  ? 'Click to hide this project from the client portal'
+                  : 'Click to make this project visible in the client portal'
+                }
+              </TooltipContent>
+            </Tooltip>
           </div>
           <p className="text-muted-foreground mt-1">
             <Link href={`/clients/${project.clientId}`} className="hover:underline">
@@ -2356,6 +2423,25 @@ export default function ProjectDetail() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => updateDocumentVisibilityMutation.mutate({ 
+                            docId: doc.id, 
+                            isVisibleToClient: !doc.isVisibleToClient 
+                          })}
+                          data-testid={`button-toggle-visibility-document-${doc.id}`}
+                        >
+                          {doc.isVisibleToClient ? (
+                            <>
+                              <EyeOff className="h-4 w-4 mr-2" />
+                              Hide from Client
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4 mr-2" />
+                              Show to Client
+                            </>
+                          )}
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => {
                             setMovingDocument(doc);

@@ -23,6 +23,10 @@ import {
   insertInvoiceSchema,
   insertInvoiceItemSchema,
   insertDailyActivityLogSchema,
+  insertClientPortalSettingsSchema,
+  insertProjectMilestoneSchema,
+  insertDocumentRequestSchema,
+  insertAuditLogSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -550,14 +554,36 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/client/portal-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      let settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings) {
+        settings = await storage.upsertClientPortalSettings({ clientId: user.clientId });
+      }
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching client portal settings:", error);
+      res.status(500).json({ message: "Failed to fetch portal settings" });
+    }
+  });
+
   app.get("/api/client/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
-      const projects = await storage.getProjectsByClientId(user.clientId);
-      res.json(projects);
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showProjects) {
+        return res.json([]);
+      }
+      const allProjects = await storage.getProjectsByClientId(user.clientId);
+      const visibleProjects = allProjects.filter(p => p.isVisibleToClient);
+      res.json(visibleProjects);
     } catch (error) {
       console.error("Error fetching client projects:", error);
       res.status(500).json({ message: "Failed to fetch projects" });
@@ -571,13 +597,32 @@ export async function registerRoutes(
         return res.status(403).json({ message: "No client access" });
       }
       const project = await storage.getProject(parseInt(req.params.id));
-      if (!project || project.clientId !== user.clientId) {
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
         return res.status(404).json({ message: "Project not found" });
       }
       res.json(project);
     } catch (error) {
       console.error("Error fetching client project:", error);
       res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
+  app.get("/api/client/invoices", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showInvoices) {
+        return res.json([]);
+      }
+      const allInvoices = await storage.getInvoicesByClientId(user.clientId);
+      const visibleInvoices = allInvoices.filter(inv => inv.isVisibleToClient);
+      res.json(visibleInvoices);
+    } catch (error) {
+      console.error("Error fetching client invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
@@ -1237,8 +1282,12 @@ export async function registerRoutes(
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showDocuments) {
+        return res.json([]);
+      }
       const project = await storage.getProject(parseInt(req.params.id));
-      if (!project || project.clientId !== user.clientId) {
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
         return res.status(404).json({ message: "Project not found" });
       }
       const documents = await storage.getDocumentsByProjectId(parseInt(req.params.id));
@@ -1247,6 +1296,342 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching client documents:", error);
       res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  // Client Portal - Upload document
+  app.post("/api/client/projects/:id/documents/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.allowDocumentUpload) {
+        return res.status(403).json({ message: "Document upload is not enabled for your account" });
+      }
+      
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const client = await storage.getClient(user.clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const { category = "client_upload", fileName, fileSize } = req.body;
+
+      // Sanitize names for folder path
+      const sanitize = (str: string) => str?.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase() || "unknown";
+      const clientSlug = `${client.id}-${sanitize(client.name)}`;
+      const projectSlug = `${project.id}-${sanitize(project.name)}`;
+      
+      // Build folder path for client uploads
+      const folderPath = `clients/${clientSlug}/projects/${projectSlug}/client_uploads`;
+
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL(folderPath);
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadUrl);
+
+      res.json({
+        uploadUrl,
+        objectPath,
+        folderPath,
+      });
+    } catch (error) {
+      console.error("Error generating client upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Client Portal - Create document record after upload
+  app.post("/api/client/projects/:id/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.allowDocumentUpload) {
+        return res.status(403).json({ message: "Document upload is not enabled for your account" });
+      }
+      
+      const projectId = parseInt(req.params.id);
+      const project = await storage.getProject(projectId);
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const { fileName, storagePath, fileType, fileSize, category = "client_upload", notes } = req.body;
+
+      const document = await storage.createDocument({
+        projectId,
+        uploadedByClientId: user.clientId,
+        fileName,
+        storagePath,
+        fileType,
+        fileSize,
+        category: category as any,
+        notes,
+        isVisibleToClient: true, // Client uploads are visible to themselves
+        documentStatus: "uploaded", // Start with uploaded status
+      });
+
+      // Log the document upload
+      await storage.createAuditLog({
+        clientId: user.clientId,
+        action: "document_uploaded",
+        entityType: "document",
+        entityId: document.id,
+        details: JSON.stringify({
+          fileName: document.fileName,
+          projectId,
+        }),
+        isVisibleToClient: true,
+      });
+
+      res.status(201).json(document);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating client document:", error);
+      res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  // Admin - Create document request
+  app.post("/api/projects/:projectId/document-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const requestSchema = z.object({
+        documentType: z.string().min(1),
+        description: z.string().optional(),
+        isRequired: z.boolean().optional(),
+        dueDate: z.string().optional(),
+      });
+
+      const parsed = requestSchema.parse(req.body);
+      
+      const documentRequest = await storage.createDocumentRequest({
+        projectId,
+        clientId: project.clientId,
+        requestedByUserId: req.session.userId,
+        documentType: parsed.documentType,
+        description: parsed.description,
+        isRequired: parsed.isRequired ?? true,
+        dueDate: parsed.dueDate ? new Date(parsed.dueDate) : undefined,
+      });
+
+      res.status(201).json(documentRequest);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating document request:", error);
+      res.status(500).json({ message: "Failed to create document request" });
+    }
+  });
+
+  // Admin - Get document requests for a project
+  app.get("/api/projects/:projectId/document-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const projectId = parseInt(req.params.projectId);
+      const requests = await storage.getDocumentRequestsByProjectId(projectId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching document requests:", error);
+      res.status(500).json({ message: "Failed to fetch document requests" });
+    }
+  });
+
+  // Admin - Update document request
+  app.patch("/api/document-requests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const updateSchema = z.object({
+        isFulfilled: z.boolean().optional(),
+        fulfilledDocumentId: z.number().optional(),
+      });
+
+      const parsed = updateSchema.parse(req.body);
+      const updated = await storage.updateDocumentRequest(parseInt(req.params.id), parsed);
+      if (!updated) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating document request:", error);
+      res.status(500).json({ message: "Failed to update document request" });
+    }
+  });
+
+  // Client Portal - Get document requests
+  app.get("/api/client/document-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const requests = await storage.getDocumentRequestsByClientId(user.clientId);
+      // Only return requests for visible projects
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showDocuments) {
+        return res.json([]);
+      }
+
+      const visibleRequests = [];
+      for (const req of requests) {
+        const project = await storage.getProject(req.projectId);
+        if (project?.isVisibleToClient) {
+          visibleRequests.push(req);
+        }
+      }
+      
+      res.json(visibleRequests);
+    } catch (error) {
+      console.error("Error fetching client document requests:", error);
+      res.status(500).json({ message: "Failed to fetch document requests" });
+    }
+  });
+
+  // Admin - Review document (accept/reject)
+  app.patch("/api/documents/:id/review", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      const reviewSchema = z.object({
+        documentStatus: z.enum(["under_review", "accepted", "rejected"]),
+        rejectionReason: z.string().optional(),
+      });
+
+      const parsed = reviewSchema.parse(req.body);
+      
+      const updateData: any = {
+        documentStatus: parsed.documentStatus,
+        reviewedByUserId: req.session.userId,
+        reviewedAt: new Date(),
+      };
+
+      if (parsed.documentStatus === "rejected" && parsed.rejectionReason) {
+        updateData.rejectionReason = parsed.rejectionReason;
+      } else {
+        updateData.rejectionReason = null;
+      }
+
+      const updatedDocument = await storage.updateDocument(documentId, updateData);
+
+      // Log the document review action
+      const project = await storage.getProject(document.projectId);
+      if (project) {
+        await storage.createAuditLog({
+          userId: req.session.userId,
+          clientId: project.clientId,
+          action: parsed.documentStatus === "accepted" ? "document_accepted" : 
+                  parsed.documentStatus === "rejected" ? "document_rejected" : "document_reviewed",
+          entityType: "document",
+          entityId: documentId,
+          details: JSON.stringify({
+            fileName: document.fileName,
+            status: parsed.documentStatus,
+            rejectionReason: parsed.rejectionReason,
+          }),
+          isVisibleToClient: true,
+        });
+      }
+
+      res.json(updatedDocument);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error reviewing document:", error);
+      res.status(500).json({ message: "Failed to review document" });
+    }
+  });
+
+  // Admin - Get audit logs for a client
+  app.get("/api/clients/:clientId/audit-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const clientId = parseInt(req.params.clientId);
+      const logs = await storage.getAuditLogsByClientId(clientId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Admin - Get all audit logs for a user
+  app.get("/api/audit-logs/user/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const logs = await storage.getAuditLogsByUserId(req.params.userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Client Portal - Get activity feed (visible audit logs)
+  app.get("/api/client/activity", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const logs = await storage.getClientVisibleAuditLogs(user.clientId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching client activity:", error);
+      res.status(500).json({ message: "Failed to fetch activity" });
     }
   });
 
@@ -1586,6 +1971,208 @@ export async function registerRoutes(
     }
   });
 
+  // Client Portal Settings
+  app.get("/api/clients/:clientId/portal-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const clientId = parseInt(req.params.clientId);
+      let settings = await storage.getClientPortalSettings(clientId);
+      if (!settings) {
+        settings = await storage.upsertClientPortalSettings({ clientId });
+      }
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching client portal settings:", error);
+      res.status(500).json({ message: "Failed to fetch client portal settings" });
+    }
+  });
+
+  app.put("/api/clients/:clientId/portal-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const clientId = parseInt(req.params.clientId);
+      const updateSchema = z.object({
+        showProjects: z.boolean().optional(),
+        showDocuments: z.boolean().optional(),
+        showInvoices: z.boolean().optional(),
+        showMessages: z.boolean().optional(),
+        showMilestones: z.boolean().optional(),
+        showTimeline: z.boolean().optional(),
+        allowDocumentUpload: z.boolean().optional(),
+      });
+      const parsed = updateSchema.parse(req.body);
+      const settings = await storage.upsertClientPortalSettings({ clientId, ...parsed });
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating client portal settings:", error);
+      res.status(500).json({ message: "Failed to update client portal settings" });
+    }
+  });
+
+  // Project Milestones
+  app.get("/api/projects/:projectId/milestones", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const milestones = await storage.getMilestonesByProjectId(parseInt(req.params.projectId));
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching milestones:", error);
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
+  app.post("/api/projects/:projectId/milestones", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.projectId);
+      const parsed = insertProjectMilestoneSchema.parse({ ...req.body, projectId });
+      const milestone = await storage.createMilestone(parsed);
+      res.status(201).json(milestone);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating milestone:", error);
+      res.status(500).json({ message: "Failed to create milestone" });
+    }
+  });
+
+  app.patch("/api/milestones/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const updateSchema = insertProjectMilestoneSchema.partial();
+      const parsed = updateSchema.parse(req.body);
+      const milestone = await storage.updateMilestone(parseInt(req.params.id), parsed);
+      if (!milestone) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+      res.json(milestone);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating milestone:", error);
+      res.status(500).json({ message: "Failed to update milestone" });
+    }
+  });
+
+  app.delete("/api/milestones/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deleted = await storage.deleteMilestone(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Milestone not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting milestone:", error);
+      res.status(500).json({ message: "Failed to delete milestone" });
+    }
+  });
+
+  // Document Requests
+  app.get("/api/projects/:projectId/document-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const requests = await storage.getDocumentRequestsByProjectId(parseInt(req.params.projectId));
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching document requests:", error);
+      res.status(500).json({ message: "Failed to fetch document requests" });
+    }
+  });
+
+  app.post("/api/projects/:projectId/document-requests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.projectId);
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      const parsed = insertDocumentRequestSchema.parse({
+        ...req.body,
+        projectId,
+        clientId: project.clientId,
+        requestedByUserId: req.session.userId,
+      });
+      const request = await storage.createDocumentRequest(parsed);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating document request:", error);
+      res.status(500).json({ message: "Failed to create document request" });
+    }
+  });
+
+  app.patch("/api/document-requests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const updateSchema = insertDocumentRequestSchema.partial();
+      const parsed = updateSchema.parse(req.body);
+      const request = await storage.updateDocumentRequest(parseInt(req.params.id), parsed);
+      if (!request) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating document request:", error);
+      res.status(500).json({ message: "Failed to update document request" });
+    }
+  });
+
+  app.delete("/api/document-requests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deleted = await storage.deleteDocumentRequest(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Document request not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting document request:", error);
+      res.status(500).json({ message: "Failed to delete document request" });
+    }
+  });
+
   app.post("/api/invoices", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -1620,6 +2207,7 @@ export async function registerRoutes(
         notes: z.string().optional(),
         dueDate: z.string().optional(),
         paidAt: z.string().optional(),
+        isVisibleToClient: z.boolean().optional(),
       });
       
       const parsed = updateSchema.parse(req.body);

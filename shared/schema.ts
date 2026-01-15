@@ -30,6 +30,10 @@ export const reminderChannelEnum = pgEnum("reminder_channel", ["email", "sms", "
 export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled", "done", "postponed"]);
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "cancelled"]);
 
+// Client Portal enums
+export const documentStatusEnum = pgEnum("document_status", ["uploaded", "under_review", "accepted", "rejected"]);
+export const auditActionEnum = pgEnum("audit_action", ["login", "logout", "upload", "download", "view", "create", "update", "delete", "status_change", "document_uploaded", "document_reviewed", "document_accepted", "document_rejected"]);
+
 // Session storage table (IMPORTANT: mandatory for Replit Auth)
 export const sessions = pgTable(
   "sessions",
@@ -119,6 +123,7 @@ export const projects = pgTable("projects", {
   jobType: projectTypeEnum("job_type").default("other"),
   status: projectStatusEnum("status").default("intake").notNull(),
   priority: projectPriorityEnum("priority").default("normal"),
+  isVisibleToClient: boolean("is_visible_to_client").default(false),
   internalCode: varchar("internal_code", { length: 50 }),
   assignedAdminId: varchar("assigned_admin_id").references(() => users.id),
   startDate: timestamp("start_date"),
@@ -253,7 +258,11 @@ export const documents = pgTable("documents", {
   fileSize: integer("file_size"),
   category: documentCategoryEnum("category").default("other"),
   tags: text("tags"),
-  isVisibleToClient: boolean("is_visible_to_client").default(true),
+  isVisibleToClient: boolean("is_visible_to_client").default(false),
+  documentStatus: documentStatusEnum("document_status").default("uploaded"),
+  rejectionReason: text("rejection_reason"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -317,6 +326,7 @@ export const invoices = pgTable("invoices", {
   notes: text("notes"),
   dueDate: timestamp("due_date"),
   paidAt: timestamp("paid_at"),
+  isVisibleToClient: boolean("is_visible_to_client").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -332,6 +342,67 @@ export const invoiceItems = pgTable("invoice_items", {
   timeLogId: integer("time_log_id").references(() => timeLogs.id, { onDelete: "set null" }),
   timeEntryId: integer("time_entry_id").references(() => timeEntries.id, { onDelete: "set null" }),
   isCustom: boolean("is_custom").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Client Portal Settings table - controls what each client can see
+export const clientPortalSettings = pgTable("client_portal_settings", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }).unique(),
+  showProjects: boolean("show_projects").default(true),
+  showDocuments: boolean("show_documents").default(true),
+  showInvoices: boolean("show_invoices").default(true),
+  showMessages: boolean("show_messages").default(true),
+  showMilestones: boolean("show_milestones").default(true),
+  showTimeline: boolean("show_timeline").default(true),
+  allowDocumentUpload: boolean("allow_document_upload").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Project Milestones table - for progress tracking
+export const projectMilestones = pgTable("project_milestones", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  isCompleted: boolean("is_completed").default(false),
+  completedAt: timestamp("completed_at"),
+  dueDate: timestamp("due_date"),
+  orderIndex: integer("order_index").default(0),
+  isVisibleToClient: boolean("is_visible_to_client").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Document Requests table - for requesting specific documents from clients
+export const documentRequests = pgTable("document_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  requestedByUserId: varchar("requested_by_user_id").references(() => users.id),
+  documentType: varchar("document_type", { length: 100 }).notNull(),
+  description: text("description"),
+  isRequired: boolean("is_required").default(true),
+  isFulfilled: boolean("is_fulfilled").default(false),
+  fulfilledDocumentId: integer("fulfilled_document_id").references(() => documents.id),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Audit Logs table - for tracking all actions
+export const auditLogs = pgTable("audit_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").references(() => users.id),
+  clientId: integer("client_id").references(() => clients.id),
+  action: auditActionEnum("action").notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: varchar("entity_id", { length: 100 }),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  ipAddress: varchar("ip_address", { length: 50 }),
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -544,6 +615,50 @@ export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
   }),
 }));
 
+export const clientPortalSettingsRelations = relations(clientPortalSettings, ({ one }) => ({
+  client: one(clients, {
+    fields: [clientPortalSettings.clientId],
+    references: [clients.id],
+  }),
+}));
+
+export const projectMilestonesRelations = relations(projectMilestones, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectMilestones.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const documentRequestsRelations = relations(documentRequests, ({ one }) => ({
+  project: one(projects, {
+    fields: [documentRequests.projectId],
+    references: [projects.id],
+  }),
+  client: one(clients, {
+    fields: [documentRequests.clientId],
+    references: [clients.id],
+  }),
+  requestedByUser: one(users, {
+    fields: [documentRequests.requestedByUserId],
+    references: [users.id],
+  }),
+  fulfilledDocument: one(documents, {
+    fields: [documentRequests.fulfilledDocumentId],
+    references: [documents.id],
+  }),
+}));
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+  client: one(clients, {
+    fields: [auditLogs.clientId],
+    references: [clients.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -598,6 +713,17 @@ export const insertDailyActivityLogSchema = createInsertSchema(dailyActivityLogs
   date: requiredDateCoercion,
 });
 
+// Client Portal insert schemas
+export const insertClientPortalSettingsSchema = createInsertSchema(clientPortalSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectMilestoneSchema = createInsertSchema(projectMilestones).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  completedAt: dateCoercion,
+  dueDate: dateCoercion,
+});
+export const insertDocumentRequestSchema = createInsertSchema(documentRequests).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  dueDate: dateCoercion,
+});
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -635,3 +761,13 @@ export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertDailyActivityLog = z.infer<typeof insertDailyActivityLogSchema>;
 export type DailyActivityLog = typeof dailyActivityLogs.$inferSelect;
+
+// Client Portal types
+export type InsertClientPortalSettings = z.infer<typeof insertClientPortalSettingsSchema>;
+export type ClientPortalSettings = typeof clientPortalSettings.$inferSelect;
+export type InsertProjectMilestone = z.infer<typeof insertProjectMilestoneSchema>;
+export type ProjectMilestone = typeof projectMilestones.$inferSelect;
+export type InsertDocumentRequest = z.infer<typeof insertDocumentRequestSchema>;
+export type DocumentRequest = typeof documentRequests.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;

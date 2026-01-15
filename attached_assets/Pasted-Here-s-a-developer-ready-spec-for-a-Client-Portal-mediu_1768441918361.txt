@@ -1,0 +1,270 @@
+Here’s a **developer-ready spec** for a **Client Portal (medium scope)** that matches what you wrote, but with enough structure + detail for your dev to build it cleanly.
+
+---
+
+## 1) Goal (What we’re building)
+
+Develop a **secure client portal** where each **client can log in**, view **status/progress**, and **upload documents** tied to a **specific project**.
+
+**Key rule:**
+✅ **One Client → many Projects → many Documents**
+Clients should always know: **“Where am I up to?”** per project.
+
+---
+
+## 2) Core User Roles
+
+### Client (Portal User)
+
+* Can log in
+* Can see only **their** projects + documents
+* Can upload documents to a specific project
+* Can see project status + timeline + tasks/milestones (as configured)
+* Can comment / add notes (optional but recommended)
+
+### Admin / Staff (Internal)
+
+* Creates clients + projects
+* Controls what the client sees (visibility settings)
+* Reviews uploads, marks as accepted/rejected, requests missing docs
+* Updates project status/milestones/tasks
+
+---
+
+## 3) Authentication & Access Control (Security baseline)
+
+### Login
+
+* Email + password
+* Password requirements (min length, complexity)
+* Account lockout after X failed attempts
+* Email verification on first signup (or admin-created invite link)
+
+### MFA (Recommended for “maximum security”)
+
+* Optional or enforced per client/company policy
+* TOTP authenticator app or email-based OTP (app is better)
+
+### Session Security
+
+* Short-lived access tokens + refresh tokens
+* Secure cookies (HttpOnly, Secure, SameSite)
+* Automatic logout after inactivity (configurable)
+
+### Authorization
+
+* Strict tenant isolation:
+
+  * Client can only access records where `client_id = their_client_id`
+* Role-based permissions for admin/staff
+
+---
+
+## 4) Portal UX (What the client sees)
+
+### A) Client Home Dashboard
+
+**Widgets:**
+
+* “Active Projects” list
+* “Documents Requested” (count + quick links)
+* “Recent Updates” (status changes, notes, uploads)
+* “Next Step” callout per project (e.g., “Upload W-9”, “Approve proposal”)
+
+### B) Projects List
+
+Each project card shows:
+
+* Project name
+* Status badge (e.g., Not Started / In Progress / Waiting on Client / Completed)
+* Progress indicator (milestones complete %)
+* Last update date
+* “Open Project” button
+
+### C) Project Detail Page (Main working page)
+
+Tabs:
+
+1. **Overview**
+
+   * Status
+   * Timeline / milestones
+   * Assigned staff contact
+   * Last activity log
+2. **Documents**
+
+   * Upload button
+   * Document list + filters (type/status/date)
+   * Requested docs checklist (what’s missing)
+3. **Updates / Notes**
+
+   * Staff updates
+   * Client comments (optional)
+4. **Activity**
+
+   * Audit-friendly feed of changes (read-only for client)
+
+---
+
+## 5) Document Upload System (Must be solid)
+
+### Upload Requirements
+
+* Upload to a specific **Project**
+* Drag-and-drop + “Browse”
+* Multiple file upload
+* Accepted types: pdf, docx, xlsx, jpg, png (configurable)
+* Max file size (e.g., 25MB default, configurable)
+* Metadata fields:
+
+  * Document Type (dropdown: “Contract”, “Permit”, “Invoice”, “ID”, “W-9”, “Other”)
+  * Optional note/description
+
+### Document Status Workflow
+
+* **Uploaded**
+* **Under Review**
+* **Accepted**
+* **Rejected** (requires rejection reason + “re-upload” button)
+
+### Storage
+
+* Store files in secure object storage (S3 compatible)
+* Never expose public URLs
+* Use **signed URLs** (time-limited) for viewing/downloading
+
+---
+
+## 6) “Where am I up to?” (Progress tracking)
+
+To make progress real, each project should support:
+
+* **Status** (single field)
+* **Milestones** (list of steps with completion state)
+* **Requested Documents Checklist** (required docs with completion state)
+* **Last Update** timestamp
+
+Example statuses:
+
+* Draft
+* In Review
+* Waiting on Client
+* Waiting on Third Party
+* In Progress
+* Completed
+* On Hold
+
+---
+
+## 7) Notifications (What makes it feel alive)
+
+Email notifications (and optionally SMS later):
+
+* New document request from staff
+* Document accepted/rejected
+* Project status changed
+* New message/comment on project
+* Reminder: missing documents (scheduled)
+
+All notifications should link directly to the exact portal location:
+
+* `/projects/:id/documents`
+* `/projects/:id/overview`
+
+---
+
+## 8) Compliance & Data Protection (maximum security posture)
+
+Implement “privacy by design” controls:
+
+### Encryption
+
+* TLS everywhere (HTTPS only)
+* Encrypt sensitive fields at rest (at least via DB encryption + storage encryption)
+* Signed URLs for docs, expiring quickly (e.g., 5–15 minutes)
+
+### Audit Logs (Important)
+
+Track who did what and when:
+
+* Login events
+* Document uploads/downloads
+* Status changes
+* Permission changes
+* Failed login attempts
+
+### Data retention & deletion
+
+* Ability to delete client/project data by policy (admin-only)
+* Configurable retention rules (optional)
+
+### Access & privacy controls
+
+* Least-privilege access internally
+* Admin can revoke a client’s access instantly
+* Strong separation between clients (no cross-visibility possible)
+
+**Note on “relevant regulations”:**
+Your developer should implement a baseline aligned with common requirements (GDPR/CCPA principles: access control, auditability, minimization, deletion, encryption). If you operate in a regulated industry, we can tighten this.
+
+---
+
+## 9) Suggested Database Model (simple & scalable)
+
+Tables/collections:
+
+* `clients`
+* `users` (role: client/admin/staff)
+* `projects` (belongs_to client)
+* `project_milestones`
+* `document_requests` (required docs list)
+* `documents` (file metadata + status)
+* `notes` (project communication)
+* `audit_logs`
+
+Key fields for `documents`:
+
+* id, project_id, uploaded_by_user_id
+* filename, mime_type, size
+* storage_key (S3 key)
+* doc_type, status
+* created_at, updated_at
+
+---
+
+## 10) Acceptance Criteria (what “done” means)
+
+A portal is considered complete when:
+
+* Client can log in securely and only see their data
+* Client can see a list of their projects with statuses
+* Client can open a project and:
+
+  * see progress/milestones
+  * upload documents
+  * see document status (accepted/rejected)
+* Admin can:
+
+  * create projects
+  * request documents
+  * review uploads
+  * update statuses
+* Files are stored securely and accessed only via signed URLs
+* Audit log exists for key actions
+
+---
+
+## 11) Medium Scope Extras (recommended, still “medium”)
+
+* Invite flow (admin sends client invite)
+* Password reset flow
+* Basic in-portal messaging per project
+* Mobile-friendly UI
+* Search/filter documents by type/status/date
+
+---
+
+If you want, I can also turn this into:
+
+* a **Phase 1 / Phase 2 build plan** (with hours + deliverables), or
+* a **wireframe outline** for each page (layout + components), matching the style you’re aiming for.

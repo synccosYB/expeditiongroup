@@ -1,10 +1,12 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,12 +29,16 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
+  Settings,
+  Eye,
+  EyeOff,
+  Upload,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client, Project, Associate, Note, Invoice, InvoiceItem } from "@shared/schema";
+import type { Client, Project, Associate, Note, Invoice, InvoiceItem, ClientPortalSettings } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
@@ -89,7 +95,30 @@ export default function ClientDetail() {
     enabled: !!clientId,
   });
 
+  const { data: portalSettings, isLoading: portalSettingsLoading } = useQuery<ClientPortalSettings>({
+    queryKey: ["/api/clients", clientId, "portal-settings"],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${clientId}/portal-settings`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch portal settings");
+      return response.json();
+    },
+    enabled: !!clientId,
+  });
+
   const { toast } = useToast();
+
+  const updatePortalSettingsMutation = useMutation({
+    mutationFn: async (updates: Partial<ClientPortalSettings>) => {
+      return await apiRequest("PUT", `/api/clients/${clientId}/portal-settings`, updates);
+    },
+    onSuccess: () => {
+      toast({ title: "Portal settings updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "portal-settings"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update settings", description: error.message, variant: "destructive" });
+    },
+  });
 
   const updateInvoiceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
@@ -101,6 +130,19 @@ export default function ClientDetail() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update invoice", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateInvoiceVisibilityMutation = useMutation({
+    mutationFn: async ({ id, isVisibleToClient }: { id: number; isVisibleToClient: boolean }) => {
+      return await apiRequest("PATCH", `/api/invoices/${id}`, { isVisibleToClient });
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice visibility updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "invoices"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update invoice visibility", description: error.message, variant: "destructive" });
     },
   });
 
@@ -209,7 +251,7 @@ export default function ClientDetail() {
 
         <div className="lg:col-span-2">
           <Tabs defaultValue="jobs" className="w-full">
-            <TabsList className="grid w-full grid-cols-4" data-testid="tabs-client-sections">
+            <TabsList className="grid w-full grid-cols-5" data-testid="tabs-client-sections">
               <TabsTrigger value="jobs" data-testid="tab-jobs">
                 <FolderKanban className="h-4 w-4 mr-2" />
                 Jobs ({projects?.length || 0})
@@ -225,6 +267,10 @@ export default function ClientDetail() {
               <TabsTrigger value="activity" data-testid="tab-activity">
                 <Clock className="h-4 w-4 mr-2" />
                 Activity
+              </TabsTrigger>
+              <TabsTrigger value="portal" data-testid="tab-portal-settings">
+                <Settings className="h-4 w-4 mr-2" />
+                Portal
               </TabsTrigger>
             </TabsList>
 
@@ -327,6 +373,12 @@ export default function ClientDetail() {
                                 <Badge variant={statusInfo.variant} className="text-xs">
                                   {statusInfo.label}
                                 </Badge>
+                                {!invoice.isVisibleToClient && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <EyeOff className="h-3 w-3 mr-1" />
+                                    Hidden
+                                  </Badge>
+                                )}
                               </div>
                               {invoice.project && (
                                 <Link href={`/projects/${invoice.project.id}`} className="text-sm text-muted-foreground hover:underline">
@@ -360,6 +412,25 @@ export default function ClientDetail() {
                                       <ExternalLink className="h-4 w-4 mr-2" />
                                       View Details
                                     </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => updateInvoiceVisibilityMutation.mutate({ 
+                                      id: invoice.id, 
+                                      isVisibleToClient: !invoice.isVisibleToClient 
+                                    })}
+                                    data-testid={`button-toggle-visibility-invoice-${invoice.id}`}
+                                  >
+                                    {invoice.isVisibleToClient ? (
+                                      <>
+                                        <EyeOff className="h-4 w-4 mr-2" />
+                                        Hide from Client
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        Show to Client
+                                      </>
+                                    )}
                                   </DropdownMenuItem>
                                   {invoice.status === "draft" && (
                                     <DropdownMenuItem
@@ -474,6 +545,175 @@ export default function ClientDetail() {
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="portal" className="mt-4 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    Client Portal Visibility
+                  </CardTitle>
+                  <CardDescription>
+                    Control what this client can see when they log into their portal. All sections are hidden by default.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {portalSettingsLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading settings...</div>
+                  ) : (
+                    <>
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Content Sections</h4>
+                        
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-projects">
+                          <div className="flex items-center gap-3">
+                            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Projects</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to view their projects</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showProjects || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showProjects: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-projects"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-documents">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Documents</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to view shared documents</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showDocuments || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showDocuments: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-documents"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-invoices">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Invoices</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to view their invoices</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showInvoices || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showInvoices: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-invoices"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-messages">
+                          <div className="flex items-center gap-3">
+                            <Send className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Messages</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to send and receive messages</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showMessages || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showMessages: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-messages"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-milestones">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Milestones</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to view project milestones</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showMilestones || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showMilestones: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-milestones"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-show-timeline">
+                          <div className="flex items-center gap-3">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Timeline</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to view activity timeline</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.showTimeline || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ showTimeline: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-show-timeline"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium">Permissions</h4>
+                        
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30" data-testid="toggle-allow-upload">
+                          <div className="flex items-center gap-3">
+                            <Upload className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <Label className="font-medium">Document Upload</Label>
+                              <p className="text-xs text-muted-foreground">Allow client to upload documents for review</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={portalSettings?.allowDocumentUpload || false}
+                            onCheckedChange={(checked) => 
+                              updatePortalSettingsMutation.mutate({ allowDocumentUpload: checked })
+                            }
+                            disabled={updatePortalSettingsMutation.isPending}
+                            data-testid="switch-allow-upload"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                        <div className="flex items-start gap-3">
+                          <EyeOff className="h-5 w-5 text-amber-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Visibility Notice</p>
+                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                              Even when sections are enabled above, individual projects, documents, and invoices must also be marked as visible for the client to see them.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
