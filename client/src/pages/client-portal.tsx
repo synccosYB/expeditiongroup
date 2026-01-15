@@ -13,6 +13,7 @@ import {
   ClipboardList,
   MessageSquare,
   ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   Timer,
   AlertCircle,
@@ -24,6 +25,8 @@ import {
   Receipt,
   DollarSign,
   Flag,
+  Reply,
+  X,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -345,6 +348,7 @@ export function ClientProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [newNote, setNewNote] = useState("");
+  const [replyingTo, setReplyingTo] = useState<{ id: number; content: string; author: string } | null>(null);
 
   const { data: portalSettings } = useQuery<ClientPortalSettings>({
     queryKey: ["/api/client/portal-settings"],
@@ -367,12 +371,21 @@ export function ClientProjectDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/projects"] });
       setNewNote("");
+      setReplyingTo(null);
       toast({ title: "Note added", description: "Your message has been sent" });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
     },
   });
+
+  const handleReply = (note: { id: number; content: string; user?: { firstName?: string | null } | null }) => {
+    setReplyingTo({
+      id: note.id,
+      content: note.content.length > 100 ? note.content.slice(0, 100) + "..." : note.content,
+      author: note.user?.firstName || "Team",
+    });
+  };
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -668,14 +681,26 @@ export function ClientProjectDetail() {
                   {project.notes.map((note) => (
                     <div
                       key={note.id}
-                      className="p-3 rounded-md bg-muted/50"
+                      className="group p-3 rounded-md bg-muted/50"
                       data-testid={`card-client-note-${note.id}`}
                     >
                       <p className="text-sm whitespace-pre-wrap">{note.content}</p>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                        <span className="font-medium">{note.user?.firstName || "Team"}</span>
-                        <span>-</span>
-                        <span>{note.createdAt && formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}</span>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium">{note.user?.firstName || "Team"}</span>
+                          <span>-</span>
+                          <span>{note.createdAt && formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleReply(note)}
+                          data-testid={`button-reply-${note.id}`}
+                        >
+                          <Reply className="h-3 w-3 mr-1" />
+                          Reply
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -684,9 +709,27 @@ export function ClientProjectDetail() {
                 <p className="text-sm text-muted-foreground text-center py-4">No messages yet</p>
               )}
 
+              {replyingTo && (
+                <div className="flex items-start gap-2 p-2 rounded-md bg-primary/10 border-l-2 border-primary">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Replying to {replyingTo.author}</p>
+                    <p className="text-sm truncate">{replyingTo.content}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => setReplyingTo(null)}
+                    data-testid="button-cancel-reply"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Textarea
-                  placeholder="Type your message..."
+                  placeholder={replyingTo ? `Reply to ${replyingTo.author}...` : "Type your message..."}
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
                   className="min-h-[80px]"
@@ -697,14 +740,17 @@ export function ClientProjectDetail() {
                 <Button
                   onClick={() => {
                     if (newNote.trim()) {
-                      addNoteMutation.mutate(newNote.trim());
+                      const messageContent = replyingTo
+                        ? `> ${replyingTo.author}: "${replyingTo.content}"\n\n${newNote.trim()}`
+                        : newNote.trim();
+                      addNoteMutation.mutate(messageContent);
                     }
                   }}
                   disabled={!newNote.trim() || addNoteMutation.isPending}
                   data-testid="button-send-message"
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  {addNoteMutation.isPending ? "Sending..." : "Send Message"}
+                  {addNoteMutation.isPending ? "Sending..." : replyingTo ? "Send Reply" : "Send Message"}
                 </Button>
               </div>
             </CardContent>
