@@ -21,6 +21,7 @@ import {
   projectMilestones,
   documentRequests,
   auditLogs,
+  intakeApplications,
   type User,
   type UpsertUser,
   type Client,
@@ -64,6 +65,8 @@ import {
   type InsertDocumentRequest,
   type AuditLog,
   type InsertAuditLog,
+  type IntakeApplication,
+  type InsertIntakeApplication,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
@@ -251,6 +254,13 @@ export interface IStorage {
   getClientVisibleDocuments(projectId: number): Promise<Document[]>;
   getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]>;
   getClientVisibleNotes(projectId: number): Promise<(Note & { user?: User })[]>;
+  
+  // Intake Applications
+  getIntakeApplications(): Promise<IntakeApplication[]>;
+  getIntakeApplication(id: number): Promise<IntakeApplication | undefined>;
+  createIntakeApplication(application: InsertIntakeApplication): Promise<IntakeApplication>;
+  updateIntakeApplication(id: number, application: Partial<InsertIntakeApplication>): Promise<IntakeApplication | undefined>;
+  deleteIntakeApplication(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1524,6 +1534,35 @@ export class DatabaseStorage implements IStorage {
         lte(auditLogs.createdAt, endDate)
       ))
       .orderBy(desc(auditLogs.createdAt));
+  }
+
+  // Intake Applications
+  async getIntakeApplications(): Promise<IntakeApplication[]> {
+    return await db.select().from(intakeApplications).orderBy(desc(intakeApplications.createdAt));
+  }
+
+  async getIntakeApplication(id: number): Promise<IntakeApplication | undefined> {
+    const [application] = await db.select().from(intakeApplications).where(eq(intakeApplications.id, id));
+    return application;
+  }
+
+  async createIntakeApplication(application: InsertIntakeApplication): Promise<IntakeApplication> {
+    const [newApplication] = await db.insert(intakeApplications).values(application).returning();
+    return newApplication;
+  }
+
+  async updateIntakeApplication(id: number, application: Partial<InsertIntakeApplication>): Promise<IntakeApplication | undefined> {
+    const [updated] = await db
+      .update(intakeApplications)
+      .set({ ...application, updatedAt: new Date() })
+      .where(eq(intakeApplications.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteIntakeApplication(id: number): Promise<boolean> {
+    const result = await db.delete(intakeApplications).where(eq(intakeApplications.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

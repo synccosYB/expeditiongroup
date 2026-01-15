@@ -406,6 +406,121 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Intake Application Status enum
+export const intakeStatusEnum = pgEnum("intake_status", ["draft", "submitted", "under_review", "approved", "rejected"]);
+
+// Intake Applications table - for planning/permit intake process
+export const intakeApplications = pgTable("intake_applications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  
+  // Applicant Information - Owner 1
+  ownerName: varchar("owner_name", { length: 255 }),
+  hasSecondOwner: boolean("has_second_owner").default(false),
+  secondOwnerName: varchar("second_owner_name", { length: 255 }),
+  businessName: varchar("business_name", { length: 255 }),
+  homeNumber: varchar("home_number", { length: 50 }),
+  cellNumber: varchar("cell_number", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  alternateEmail: varchar("alternate_email", { length: 255 }),
+  currentAddress: text("current_address"),
+  mailingAddress: text("mailing_address"),
+  mailingAddressSameAsCurrent: boolean("mailing_address_same_as_current").default(false),
+  dateOfBirth: varchar("date_of_birth", { length: 20 }),
+  ssOrFid: varchar("ss_or_fid", { length: 50 }),
+  
+  // Second Owner Information (if applicable)
+  secondOwnerBusinessName: varchar("second_owner_business_name", { length: 255 }),
+  secondOwnerHomeNumber: varchar("second_owner_home_number", { length: 50 }),
+  secondOwnerCellNumber: varchar("second_owner_cell_number", { length: 50 }),
+  secondOwnerEmail: varchar("second_owner_email", { length: 255 }),
+  secondOwnerAlternateEmail: varchar("second_owner_alternate_email", { length: 255 }),
+  secondOwnerCurrentAddress: text("second_owner_current_address"),
+  secondOwnerMailingAddress: text("second_owner_mailing_address"),
+  secondOwnerMailingAddressSameAsCurrent: boolean("second_owner_mailing_address_same_as_current").default(false),
+  secondOwnerDateOfBirth: varchar("second_owner_date_of_birth", { length: 20 }),
+  secondOwnerSsOrFid: varchar("second_owner_ss_or_fid", { length: 50 }),
+  
+  // Project Information
+  projectName: varchar("project_name", { length: 255 }),
+  section: varchar("section", { length: 50 }),
+  block: varchar("block", { length: 50 }),
+  lot: varchar("lot", { length: 50 }),
+  currentZoning: varchar("current_zoning", { length: 100 }),
+  
+  // Location
+  locationSide: varchar("location_side", { length: 100 }),
+  locationStreet: varchar("location_street", { length: 255 }),
+  locationFeet: varchar("location_feet", { length: 50 }),
+  locationOf: varchar("location_of", { length: 255 }),
+  locationTown: varchar("location_town", { length: 100 }),
+  locationVillage: varchar("location_village", { length: 100 }),
+  
+  // Districts
+  acreageOfParcel: varchar("acreage_of_parcel", { length: 50 }),
+  zoningDistrict: varchar("zoning_district", { length: 100 }),
+  schoolDistrict: varchar("school_district", { length: 100 }),
+  postalDistrict: varchar("postal_district", { length: 100 }),
+  fireDistrict: varchar("fire_district", { length: 100 }),
+  ambulanceDistrict: varchar("ambulance_district", { length: 100 }),
+  waterDistrict: varchar("water_district", { length: 100 }),
+  sewerDistrict: varchar("sewer_district", { length: 100 }),
+  
+  // Project Description
+  needDemolishHouse: boolean("need_demolish_house").default(false),
+  wellBeingDone: boolean("well_being_done").default(false),
+  temporaryElectricGasNeeded: boolean("temporary_electric_gas_needed").default(false),
+  
+  // Subdivision Questions
+  varianceFromSubdivision: text("variance_from_subdivision"),
+  openSpaceOffered: boolean("open_space_offered").default(false),
+  openSpaceAmount: varchar("open_space_amount", { length: 100 }),
+  subdivisionType: varchar("subdivision_type", { length: 100 }),
+  
+  // Site Plan Questions
+  totalBuildingSize: varchar("total_building_size", { length: 100 }),
+  proposedAddition: varchar("proposed_addition", { length: 255 }),
+  numberOfDwellingUnits: varchar("number_of_dwelling_units", { length: 50 }),
+  
+  // Special Permit Questions
+  specialPermitUse: text("special_permit_use"),
+  
+  // Site Characteristics
+  hasSlopesGreaterThan25: boolean("has_slopes_greater_than_25").default(false),
+  slopesDetails: text("slopes_details"),
+  hasStreams: boolean("has_streams").default(false),
+  streamsNames: text("streams_names"),
+  hasWetlands: boolean("has_wetlands").default(false),
+  wetlandsDetails: text("wetlands_details"),
+  
+  // Project History
+  hasBeenReviewedBefore: boolean("has_been_reviewed_before").default(false),
+  projectHistoryNarrative: text("project_history_narrative"),
+  abuttingPropertiesTaxMap: text("abutting_properties_tax_map"),
+  
+  // Proximity to Features (stored as JSON array of selected options)
+  proximityFeatures: jsonb("proximity_features").default([]),
+  
+  // Referral Agencies (stored as JSON array of selected agencies)
+  referralAgencies: jsonb("referral_agencies").default([]),
+  adjacentMunicipality: varchar("adjacent_municipality", { length: 255 }),
+  
+  // Boards / Approvals Needed (stored as JSON)
+  boardsApprovals: jsonb("boards_approvals").default({}),
+  numberOfLots: varchar("number_of_lots", { length: 50 }),
+  
+  // DEC/USACOA applications
+  nydecApplicationNeeded: boolean("nydec_application_needed").default(false),
+  usacoaApplicationNeeded: boolean("usacoa_application_needed").default(false),
+  
+  // Status and metadata
+  status: intakeStatusEnum("status").default("draft").notNull(),
+  submittedAt: timestamp("submitted_at"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  linkedProjectId: integer("linked_project_id").references(() => projects.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   client: one(clients, {
@@ -659,6 +774,17 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   }),
 }));
 
+export const intakeApplicationsRelations = relations(intakeApplications, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [intakeApplications.createdByUserId],
+    references: [users.id],
+  }),
+  linkedProject: one(projects, {
+    fields: [intakeApplications.linkedProjectId],
+    references: [projects.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -723,6 +849,9 @@ export const insertDocumentRequestSchema = createInsertSchema(documentRequests).
   dueDate: dateCoercion,
 });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export const insertIntakeApplicationSchema = createInsertSchema(intakeApplications).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  submittedAt: dateCoercion,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -771,3 +900,5 @@ export type InsertDocumentRequest = z.infer<typeof insertDocumentRequestSchema>;
 export type DocumentRequest = typeof documentRequests.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertIntakeApplication = z.infer<typeof insertIntakeApplicationSchema>;
+export type IntakeApplication = typeof intakeApplications.$inferSelect;
