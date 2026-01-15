@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,6 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +43,9 @@ import {
   Eye,
   EyeOff,
   Upload,
+  UserPlus,
+  Key,
+  Copy,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -105,6 +118,29 @@ export default function ClientDetail() {
     enabled: !!clientId,
   });
 
+  interface PortalUser {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    createdAt: string;
+  }
+
+  const { data: portalUser, isLoading: portalUserLoading } = useQuery<PortalUser | null>({
+    queryKey: ["/api/clients", clientId, "portal-user"],
+    queryFn: async () => {
+      const response = await fetch(`/api/clients/${clientId}/portal-user`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch portal user");
+      return response.json();
+    },
+    enabled: !!clientId,
+  });
+
+  const [portalAccessDialogOpen, setPortalAccessDialogOpen] = useState(false);
+  const [portalEmail, setPortalEmail] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
+  const [showCredentials, setShowCredentials] = useState<{ email: string; password: string } | null>(null);
+
   const { toast } = useToast();
 
   const updatePortalSettingsMutation = useMutation({
@@ -145,6 +181,36 @@ export default function ClientDetail() {
       toast({ title: "Failed to update invoice visibility", description: error.message, variant: "destructive" });
     },
   });
+
+  const createPortalAccessMutation = useMutation({
+    mutationFn: async (data: { email: string; password?: string }) => {
+      const response = await apiRequest("POST", `/api/clients/${clientId}/portal-access`, data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: data.isNew ? "Portal account created" : "User linked to client" });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "portal-user"] });
+      if (data.isNew && portalPassword) {
+        setShowCredentials({ email: portalEmail, password: portalPassword });
+      } else {
+        setPortalAccessDialogOpen(false);
+      }
+      setPortalEmail("");
+      setPortalPassword("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create portal access", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleCreatePortalAccess = () => {
+    createPortalAccessMutation.mutate({ email: portalEmail, password: portalPassword || undefined });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copied to clipboard" });
+  };
 
   const isLoading = clientLoading || projectsLoading;
 
@@ -553,6 +619,60 @@ export default function ClientDetail() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
+                    <UserPlus className="h-5 w-5" />
+                    Portal Access
+                  </CardTitle>
+                  <CardDescription>
+                    Manage this client's login credentials to access their portal.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {portalUserLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading...</div>
+                  ) : portalUser ? (
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Portal Access Active</p>
+                          <p className="text-xs text-muted-foreground">{portalUser.email}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
+                        Connected
+                      </Badge>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                          <Key className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">No Portal Access</p>
+                          <p className="text-xs text-muted-foreground">This client cannot access the portal yet</p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          setPortalEmail(client.email || "");
+                          setPortalAccessDialogOpen(true);
+                        }}
+                        data-testid="button-create-portal-access"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Create Access
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
                     <Eye className="h-5 w-5" />
                     Client Portal Visibility
                   </CardTitle>
@@ -720,6 +840,122 @@ export default function ClientDetail() {
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={portalAccessDialogOpen} onOpenChange={(open) => {
+        setPortalAccessDialogOpen(open);
+        if (!open) {
+          setShowCredentials(null);
+          setPortalEmail("");
+          setPortalPassword("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Portal Access</DialogTitle>
+            <DialogDescription>
+              {showCredentials 
+                ? "Portal account created! Share these credentials with your client."
+                : "Enter the client's email and create a password for portal access."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {showCredentials ? (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span className="font-medium text-green-700 dark:text-green-400">Account Created Successfully</span>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 p-2 bg-background rounded text-sm">{showCredentials.email}</code>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => copyToClipboard(showCredentials.email)}
+                        data-testid="button-copy-email"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Password</Label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 p-2 bg-background rounded text-sm">{showCredentials.password}</code>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => copyToClipboard(showCredentials.password)}
+                        data-testid="button-copy-password"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => {
+                  setPortalAccessDialogOpen(false);
+                  setShowCredentials(null);
+                }} data-testid="button-close-credentials">
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="portal-email">Email Address</Label>
+                <Input
+                  id="portal-email"
+                  type="email"
+                  placeholder="client@example.com"
+                  value={portalEmail}
+                  onChange={(e) => setPortalEmail(e.target.value)}
+                  data-testid="input-portal-email"
+                />
+                <p className="text-xs text-muted-foreground">
+                  If this email already has an account, it will be linked to this client.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="portal-password">Password</Label>
+                <Input
+                  id="portal-password"
+                  type="password"
+                  placeholder="Create a password (min 8 characters)"
+                  value={portalPassword}
+                  onChange={(e) => setPortalPassword(e.target.value)}
+                  data-testid="input-portal-password"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Required for new accounts. Leave empty if linking an existing user.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setPortalAccessDialogOpen(false)}
+                  data-testid="button-cancel-portal-access"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreatePortalAccess}
+                  disabled={!portalEmail || createPortalAccessMutation.isPending}
+                  data-testid="button-submit-portal-access"
+                >
+                  {createPortalAccessMutation.isPending ? "Creating..." : "Create Access"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

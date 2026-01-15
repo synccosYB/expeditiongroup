@@ -2018,6 +2018,125 @@ export async function registerRoutes(
     }
   });
 
+  // Link or create portal user for a client
+  app.post("/api/clients/:clientId/portal-access", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const clientId = parseInt(req.params.clientId);
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const portalAccessSchema = z.object({
+        email: z.string().email("Invalid email address"),
+        password: z.string().min(8, "Password must be at least 8 characters").optional(),
+        createNew: z.boolean().optional(),
+      });
+
+      const parsed = portalAccessSchema.parse(req.body);
+      
+      // Check if client already has a portal user
+      const allUsers = await storage.getAllUsers();
+      const existingPortalUser = allUsers.find(u => u.clientId === clientId && u.role === "client");
+      if (existingPortalUser) {
+        return res.status(400).json({ 
+          message: "This client already has portal access. Remove the existing account first to create a new one." 
+        });
+      }
+
+      const existingUser = await storage.getUserByEmail(parsed.email);
+
+      if (existingUser) {
+        // Don't allow linking admin/super_admin accounts - this would demote them
+        if (existingUser.role === "admin" || existingUser.role === "super_admin") {
+          return res.status(400).json({ 
+            message: "Cannot link an admin account to a client. Use a different email address." 
+          });
+        }
+        // Link existing user to this client
+        if (existingUser.clientId && existingUser.clientId !== clientId) {
+          return res.status(400).json({ 
+            message: "This email is already linked to a different client" 
+          });
+        }
+        const linkedUser = await storage.linkUserToClient(existingUser.id, clientId);
+        return res.json({ 
+          message: "Existing user linked to client",
+          user: { id: linkedUser?.id, email: linkedUser?.email },
+          isNew: false 
+        });
+      }
+
+      // Create new user
+      if (!parsed.password) {
+        return res.status(400).json({ 
+          message: "Password is required to create a new account" 
+        });
+      }
+
+      const bcrypt = await import("bcrypt");
+      const passwordHash = await bcrypt.hash(parsed.password, 10);
+      
+      const newUser = await storage.createUser({
+        email: parsed.email,
+        passwordHash,
+        firstName: client.name.split(" ")[0] || null,
+        lastName: client.name.split(" ").slice(1).join(" ") || null,
+        role: "client",
+        clientId,
+      });
+
+      // Ensure portal settings exist
+      await storage.upsertClientPortalSettings({ clientId });
+
+      res.status(201).json({ 
+        message: "New portal account created",
+        user: { id: newUser.id, email: newUser.email },
+        isNew: true 
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating portal access:", error);
+      res.status(500).json({ message: "Failed to create portal access" });
+    }
+  });
+
+  // Get portal user for a client
+  app.get("/api/clients/:clientId/portal-user", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const clientId = parseInt(req.params.clientId);
+      const allUsers = await storage.getAllUsers();
+      const portalUser = allUsers.find(u => u.clientId === clientId && u.role === "client");
+      
+      if (!portalUser) {
+        return res.json(null);
+      }
+
+      res.json({
+        id: portalUser.id,
+        email: portalUser.email,
+        firstName: portalUser.firstName,
+        lastName: portalUser.lastName,
+        createdAt: portalUser.createdAt,
+      });
+    } catch (error) {
+      console.error("Error fetching portal user:", error);
+      res.status(500).json({ message: "Failed to fetch portal user" });
+    }
+  });
+
   // Project Milestones
   app.get("/api/projects/:projectId/milestones", isAuthenticated, async (req: any, res) => {
     try {
