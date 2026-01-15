@@ -140,6 +140,8 @@ export default function ClientDetail() {
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
   const [showCredentials, setShowCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   const { toast } = useToast();
 
@@ -206,6 +208,20 @@ export default function ClientDetail() {
   const handleCreatePortalAccess = () => {
     createPortalAccessMutation.mutate({ email: portalEmail, password: portalPassword || undefined });
   };
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (password: string) => {
+      return await apiRequest("PATCH", `/api/clients/${clientId}/portal-password`, { password });
+    },
+    onSuccess: () => {
+      toast({ title: "Password reset successfully" });
+      setResetPasswordDialogOpen(false);
+      setNewPassword("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to reset password", description: error.message, variant: "destructive" });
+    },
+  });
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -640,9 +656,20 @@ export default function ClientDetail() {
                           <p className="text-xs text-muted-foreground">{portalUser.email}</p>
                         </div>
                       </div>
-                      <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
-                        Connected
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setResetPasswordDialogOpen(true)}
+                          data-testid="button-reset-password"
+                        >
+                          <Key className="h-4 w-4 mr-2" />
+                          Reset Password
+                        </Button>
+                        <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
+                          Connected
+                        </Badge>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
@@ -954,6 +981,49 @@ export default function ClientDetail() {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) setNewPassword("");
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Portal Password</DialogTitle>
+            <DialogDescription>
+              Enter a new password for the client's portal access.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Enter new password (min 8 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                data-testid="input-new-password"
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setResetPasswordDialogOpen(false)}
+                data-testid="button-cancel-reset-password"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => resetPasswordMutation.mutate(newPassword)}
+                disabled={newPassword.length < 8 || resetPasswordMutation.isPending}
+                data-testid="button-submit-reset-password"
+              >
+                {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

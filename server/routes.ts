@@ -2155,6 +2155,42 @@ export async function registerRoutes(
     }
   });
 
+  // Reset client portal password
+  app.patch("/api/clients/:clientId/portal-password", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const clientId = parseInt(req.params.clientId);
+      const allUsers = await storage.getAllUsers();
+      const portalUser = allUsers.find(u => u.clientId === clientId && u.role === "client");
+      
+      if (!portalUser) {
+        return res.status(404).json({ message: "No portal user found for this client" });
+      }
+
+      const passwordSchema = z.object({
+        password: z.string().min(8, "Password must be at least 8 characters"),
+      });
+      const parsed = passwordSchema.parse(req.body);
+
+      const bcrypt = await import("bcrypt");
+      const passwordHash = await bcrypt.hash(parsed.password, 10);
+      
+      await storage.updateUserPassword(portalUser.id, passwordHash);
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error resetting portal password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // Project Milestones
   app.get("/api/projects/:projectId/milestones", isAuthenticated, async (req: any, res) => {
     try {
