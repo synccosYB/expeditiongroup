@@ -86,7 +86,7 @@ export default function ClientPortal() {
     return <DashboardSkeleton />;
   }
 
-  const activeProjects = projects?.filter(p => p.status === "in_progress" || p.status === "pending") || [];
+  const activeProjects = projects?.filter(p => p.status === "in_progress" || p.status === "pending" || p.status === "intake") || [];
   const completedProjects = projects?.filter(p => p.status === "completed") || [];
   const pendingTodos = clientTodos?.filter(t => t.status !== "done") || [];
   const unpaidInvoices = invoices?.filter(inv => inv.status === "sent") || [];
