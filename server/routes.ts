@@ -583,7 +583,19 @@ export async function registerRoutes(
       }
       const allProjects = await storage.getProjectsByClientId(user.clientId);
       const visibleProjects = allProjects.filter(p => p.isVisibleToClient);
-      res.json(visibleProjects);
+      
+      const projectsWithRelations = await Promise.all(
+        visibleProjects.map(async (project) => {
+          const fullProject = await storage.getProject(project.id);
+          return {
+            ...project,
+            tasks: fullProject?.tasks || [],
+            notes: fullProject?.notes || [],
+          };
+        })
+      );
+      
+      res.json(projectsWithRelations);
     } catch (error) {
       console.error("Error fetching client projects:", error);
       res.status(500).json({ message: "Failed to fetch projects" });
