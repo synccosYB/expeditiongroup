@@ -219,6 +219,8 @@ export interface IStorage {
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
   getNextInvoiceNumber(): Promise<string>;
+  getInvoiceStats(): Promise<{ totalInvoiced: number; totalPaid: number; totalUnpaid: number; totalUnbilled: number }>;
+  getUnbilledTimeEntries(): Promise<{ projectId: number; projectName: string; clientName: string; totalMinutes: number; estimatedAmount: number }[]>;
   
   // Daily Activity Logs
   getDailyActivityLogs(userId?: string): Promise<DailyActivityLog[]>;
@@ -1214,6 +1216,121 @@ export class DatabaseStorage implements IStorage {
     const lastNumber = parseInt(lastInvoice.invoiceNumber.split('-')[2] || '0');
     const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
     return `INV-${currentYear}-${nextNumber}`;
+  }
+
+  async getInvoiceStats(): Promise<{ totalInvoiced: number; totalPaid: number; totalUnpaid: number; totalUnbilled: number }> {
+    const allInvoices = await db
+      .select({ total: invoices.total, status: invoices.status })
+      .from(invoices)
+      .where(ne(invoices.status, 'cancelled'));
+    
+    let totalInvoiced = 0;
+    let totalPaid = 0;
+    let totalUnpaid = 0;
+    
+    for (const inv of allInvoices) {
+      const amount = parseFloat(inv.total || '0');
+      totalInvoiced += amount;
+      if (inv.status === 'paid') {
+        totalPaid += amount;
+      } else {
+        totalUnpaid += amount;
+      }
+    }
+    
+    // Calculate unbilled time entries
+    const billedTimeEntryIds = await db
+      .select({ timeEntryId: invoiceItems.timeEntryId })
+      .from(invoiceItems)
+      .innerJoin(invoices, eq(invoiceItems.invoiceId, invoices.id))
+      .where(and(
+        ne(invoices.status, 'cancelled'),
+        sql`${invoiceItems.timeEntryId} IS NOT NULL`
+      ));
+    
+    const billedIds = billedTimeEntryIds.map(b => b.timeEntryId).filter(id => id !== null) as number[];
+    
+    let unbilledEntries;
+    if (billedIds.length > 0) {
+      unbilledEntries = await db
+        .select({ totalMinutes: timeEntries.totalMinutes, projectId: timeEntries.projectId })
+        .from(timeEntries)
+        .innerJoin(projects, eq(timeEntries.projectId, projects.id))
+        .innerJoin(clients, eq(projects.clientId, clients.id))
+        .where(and(
+          eq(timeEntries.isBillable, true),
+          sql`${timeEntries.id} NOT IN (${sql.raw(billedIds.join(','))})`
+        ));
+    } else {
+      unbilledEntries = await db
+        .select({ totalMinutes: timeEntries.totalMinutes, projectId: timeEntries.projectId })
+        .from(timeEntries)
+        .where(eq(timeEntries.isBillable, true));
+    }
+    
+    // Estimate unbilled at default rate of $75/hour
+    const defaultHourlyRate = 75;
+    let totalUnbilled = 0;
+    for (const entry of unbilledEntries) {
+      const hours = (entry.totalMinutes || 0) / 60;
+      totalUnbilled += hours * defaultHourlyRate;
+    }
+    
+    return { totalInvoiced, totalPaid, totalUnpaid, totalUnbilled };
+  }
+
+  async getUnbilledTimeEntries(): Promise<{ projectId: number; projectName: string; clientName: string; totalMinutes: number; estimatedAmount: number }[]> {
+    const billedTimeEntryIds = await db
+      .select({ timeEntryId: invoiceItems.timeEntryId })
+      .from(invoiceItems)
+      .innerJoin(invoices, eq(invoiceItems.invoiceId, invoices.id))
+      .where(and(
+        ne(invoices.status, 'cancelled'),
+        sql`${invoiceItems.timeEntryId} IS NOT NULL`
+      ));
+    
+    const billedIds = billedTimeEntryIds.map(b => b.timeEntryId).filter(id => id !== null) as number[];
+    
+    let unbilledQuery;
+    if (billedIds.length > 0) {
+      unbilledQuery = await db
+        .select({
+          projectId: projects.id,
+          projectName: projects.name,
+          clientName: clients.name,
+          totalMinutes: sql<number>`SUM(${timeEntries.totalMinutes})`.as('total_minutes'),
+        })
+        .from(timeEntries)
+        .innerJoin(projects, eq(timeEntries.projectId, projects.id))
+        .innerJoin(clients, eq(projects.clientId, clients.id))
+        .where(and(
+          eq(timeEntries.isBillable, true),
+          sql`${timeEntries.id} NOT IN (${sql.raw(billedIds.join(','))})`
+        ))
+        .groupBy(projects.id, projects.name, clients.name);
+    } else {
+      unbilledQuery = await db
+        .select({
+          projectId: projects.id,
+          projectName: projects.name,
+          clientName: clients.name,
+          totalMinutes: sql<number>`SUM(${timeEntries.totalMinutes})`.as('total_minutes'),
+        })
+        .from(timeEntries)
+        .innerJoin(projects, eq(timeEntries.projectId, projects.id))
+        .innerJoin(clients, eq(projects.clientId, clients.id))
+        .where(eq(timeEntries.isBillable, true))
+        .groupBy(projects.id, projects.name, clients.name);
+    }
+    
+    const defaultHourlyRate = 75;
+    return unbilledQuery.map(row => ({
+      projectId: row.projectId,
+      projectName: row.projectName,
+      clientName: row.clientName,
+      totalMinutes: Number(row.totalMinutes) || 0,
+      estimatedAmount: ((Number(row.totalMinutes) || 0) / 60) * defaultHourlyRate,
+    }));
   }
 
   async getBilledItemIds(projectId: number): Promise<{ timeLogIds: number[]; timeEntryIds: number[] }> {

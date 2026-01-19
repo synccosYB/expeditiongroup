@@ -24,6 +24,7 @@ import {
   FilePlus2,
   Bell,
   TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,6 +40,7 @@ const adminMenuItems = [
   { title: "Tasks", url: "/tasks", icon: ClipboardList },
   { title: "Reminders", url: "/reminders", icon: Bell },
   { title: "Time Logs", url: "/time-logs", icon: Clock },
+  { title: "Invoices", url: "/invoices", icon: DollarSign },
   { title: "Activity Logs", url: "/activity-logs", icon: FileText },
   { title: "Associates", url: "/associates", icon: UserCog },
   { title: "Settings", url: "/settings", icon: Settings },

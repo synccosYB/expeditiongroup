@@ -72,6 +72,16 @@ Preferred communication style: Simple, everyday language.
 - Line items can reference time_logs, time_entries, or be custom items (filing fees, mileage, etc.)
 - Hourly rate defaults to client's configured rate or $75/hour
 - Client portal: Clients can view invoices via `/invoice/:id` route with detailed line items
+- **Invoices Page** (/invoices):
+  - Dedicated page for viewing all invoices with financial summaries
+  - Stats cards: Total Invoiced, Total Paid, Total Unpaid, Unbilled Time
+  - Status filter dropdown to filter by draft, sent, paid, cancelled
+  - Invoice table with client/project links, status badges, amounts, due dates
+  - Delete functionality with confirmation dialog
+  - Unbilled time estimated at $75/hour default rate
+- API Endpoints:
+  - GET /api/invoices/stats - returns totalInvoiced, totalPaid, totalUnpaid, totalUnbilled
+  - GET /api/invoices/unbilled - returns unbilled time entries grouped by project
 
 ### Client Portal Features
 - Documents: Clients can view and download documents via `/objects/*` endpoint (uses storagePath field)

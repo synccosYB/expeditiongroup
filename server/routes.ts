@@ -1955,6 +1955,34 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/invoices/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const stats = await storage.getInvoiceStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching invoice stats:", error);
+      res.status(500).json({ message: "Failed to fetch invoice stats" });
+    }
+  });
+
+  app.get("/api/invoices/unbilled", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const unbilledEntries = await storage.getUnbilledTimeEntries();
+      res.json(unbilledEntries);
+    } catch (error) {
+      console.error("Error fetching unbilled time entries:", error);
+      res.status(500).json({ message: "Failed to fetch unbilled time entries" });
+    }
+  });
+
   app.get("/api/invoices/next-number", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
