@@ -2829,7 +2829,7 @@ export default function ProjectDetail() {
                       </a>
                     </Button>
                     <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
-                      <a href={doc.storagePath}>
+                      <a href={doc.storagePath} download={doc.fileName}>
                         <Download className="h-4 w-4 mr-1" />
                         Download
                       </a>
