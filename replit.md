@@ -85,9 +85,17 @@ Preferred communication style: Simple, everyday language.
   - Form validation using insertIntakeApplicationSchema with required ownerName field
   - Automatic step navigation to validation errors on submit
 - Status workflow: draft → submitted → under_review → approved/rejected
-- Database: intake_applications table with 100+ fields
-- API Routes: GET/POST /api/intake-applications, GET/PATCH/DELETE /api/intake-applications/:id
-- Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view read-only), /intake/:id/edit (edit)
+- **Conversion to Client/Project**: 
+  - POST /api/intake-applications/:id/convert endpoint
+  - Creates Client from owner data (name, email, phone, address)
+  - Creates Project from property data (projectName, location)
+  - Sets linkedClientId, linkedProjectId, convertedAt on intake record
+  - Changes status to "approved"
+  - Idempotent: rejects with 400 if already converted
+  - Single source of truth: intake becomes immutable reference, linked client/project are the active records
+- Database: intake_applications table with 100+ fields including linkedClientId, linkedProjectId, convertedAt
+- API Routes: GET/POST /api/intake-applications, GET/PATCH/DELETE /api/intake-applications/:id, POST /api/intake-applications/:id/convert
+- Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view read-only with Convert button), /intake/:id/edit (edit)
 
 ### Daily Activity Logs
 - Log Daily Activity dialog accessible from dashboard
