@@ -1742,6 +1742,19 @@ export default function ProjectDetail() {
   const activeTasks = filterActiveTasks(hierarchicalTasks);
   const archivedTasks = filterArchivedTasks(hierarchicalTasks);
 
+  // Flatten all tasks (including subtasks) for dropdowns
+  const flattenAllTasks = (tasks: TaskWithSubtasks[], prefix = ""): { id: number; title: string; displayTitle: string }[] => {
+    const result: { id: number; title: string; displayTitle: string }[] = [];
+    tasks.forEach(task => {
+      result.push({ id: task.id, title: task.title, displayTitle: prefix ? `${prefix} > ${task.title}` : task.title });
+      if (task.subtasks && task.subtasks.length > 0) {
+        result.push(...flattenAllTasks(task.subtasks, prefix ? `${prefix} > ${task.title}` : task.title));
+      }
+    });
+    return result;
+  };
+  const allTasksFlattened = flattenAllTasks(hierarchicalTasks);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -2598,6 +2611,7 @@ export default function ProjectDetail() {
                     <div className="border rounded-lg p-4">
                       <ObjectUploader
                         maxNumberOfFiles={20}
+                        autoProceed={false}
                         onGetUploadParameters={async (file) => {
                           const fileId = file?.id || "";
                           const fileName = file?.name || "";
@@ -3184,7 +3198,7 @@ export default function ProjectDetail() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Attach To</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-note-entity-type">
                                 <SelectValue placeholder="Select entity type" />
@@ -3192,8 +3206,8 @@ export default function ProjectDetail() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="project">This Project</SelectItem>
-                              <SelectItem value="task" disabled={!project.tasks || project.tasks.length === 0}>
-                                A Task {(!project.tasks || project.tasks.length === 0) && "(none available)"}
+                              <SelectItem value="task" disabled={allTasksFlattened.length === 0}>
+                                A Task {allTasksFlattened.length === 0 && "(none available)"}
                               </SelectItem>
                               <SelectItem value="associate" disabled={!projectAssociates || projectAssociates.length === 0}>
                                 An Associate {(!projectAssociates || projectAssociates.length === 0) && "(none available)"}
@@ -3208,7 +3222,7 @@ export default function ProjectDetail() {
                       )}
                     />
 
-                    {watchedEntityType === "task" && project.tasks && project.tasks.length > 0 && (
+                    {watchedEntityType === "task" && allTasksFlattened.length > 0 && (
                       <FormField
                         control={noteForm.control}
                         name="taskId"
@@ -3222,8 +3236,8 @@ export default function ProjectDetail() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {project.tasks.map((task) => (
-                                  <SelectItem key={task.id} value={task.id.toString()}>{task.title}</SelectItem>
+                                {allTasksFlattened.map((task) => (
+                                  <SelectItem key={task.id} value={task.id.toString()}>{task.displayTitle}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>

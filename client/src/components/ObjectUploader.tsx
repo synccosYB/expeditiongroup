@@ -13,6 +13,7 @@ import "@uppy/dashboard/css/style.min.css";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
+  autoProceed?: boolean;
   onGetUploadParameters: (file?: { id: string; name: string; size: number; type?: string }) => Promise<{
     method: "PUT";
     url: string;
@@ -28,6 +29,7 @@ interface ObjectUploaderProps {
 export function ObjectUploader({
   maxNumberOfFiles = 1,
   maxFileSize = 52428800,
+  autoProceed = true,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -55,7 +57,7 @@ export function ObjectUploader({
         maxNumberOfFiles,
         maxFileSize,
       },
-      autoProceed: true,
+      autoProceed,
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
@@ -120,7 +122,7 @@ export function ObjectUploader({
       uppy.destroy();
       uppyRef.current = null;
     };
-  }, [showModal, dashboardElement, maxNumberOfFiles, maxFileSize, onGetUploadParameters, onComplete]);
+  }, [showModal, dashboardElement, maxNumberOfFiles, maxFileSize, autoProceed, onGetUploadParameters, onComplete]);
 
   return (
     <div>
