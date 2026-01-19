@@ -98,6 +98,18 @@ Preferred communication style: Simple, everyday language.
 - Endpoint: GET /api/daily-activity-logs/generate?date=YYYY-MM-DD
 - Admin-only feature
 
+### Date Formatting
+- **Standard Format**: DD-MM-YYYY (e.g., 19-01-2026) for all date displays
+- **Long Format**: d MMMM yyyy (e.g., 19 January 2026) for formal displays like invoices
+- **DateTime Format**: DD-MM-YYYY at h:mm AM/PM for timestamps with time
+- **Utility Functions** (client/src/lib/dateUtils.ts):
+  - `formatLocalDate()` - Standard DD-MM-YYYY format
+  - `formatLocalDateLong()` - Formal long format (19 January 2026)
+  - `formatLocalDateTime()` - Date with time
+  - `parseLocalDateFromISO()` - Parse ISO dates in local time to avoid timezone shifts
+  - `formatDateForInput()` - YYYY-MM-DD for HTML date inputs
+- **Timezone Handling**: Dates are parsed in local time using component extraction (not UTC) to prevent off-by-one day errors
+
 ### Design System
 The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis on information density and data clarity. Typography uses Inter for UI and JetBrains Mono for timestamps. Layout uses a fixed-width sidebar (w-64) with responsive main content area.
 

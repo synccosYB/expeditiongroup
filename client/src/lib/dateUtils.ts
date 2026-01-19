@@ -4,6 +4,66 @@ export function parseLocalDate(dateString: string): Date {
   return new Date(year, month - 1, day, 12, 0, 0);
 }
 
+/**
+ * Format a date in local time as DD-MM-YYYY format.
+ * Use this for consistent date display throughout the application.
+ */
+export function formatLocalDate(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  
+  const d = typeof date === 'string' ? parseLocalDateFromISO(date) : date;
+  if (!d || isNaN(d.getTime())) return "";
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  
+  return `${day}-${month}-${year}`;
+}
+
+/**
+ * Format a date with time in local time as "DD-MM-YYYY at h:mm a" format.
+ */
+export function formatLocalDateTime(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (!d || isNaN(d.getTime())) return "";
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  
+  return `${day}-${month}-${year} at ${hours}:${minutes} ${period}`;
+}
+
+/**
+ * Format a date in local time as "d MMMM yyyy" format (e.g., "19 January 2026").
+ * Use this for formal display like invoices.
+ */
+export function formatLocalDateLong(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  
+  const d = typeof date === 'string' ? parseLocalDateFromISO(date) : date;
+  if (!d || isNaN(d.getTime())) return "";
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const day = d.getDate();
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+}
+
 export function formatDateForInput(date: Date | string | null | undefined): string {
   if (!date) return "";
   

@@ -66,10 +66,9 @@ import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/sta
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
-import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull } from "@/lib/dateUtils";
+import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull, formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { format } from "date-fns";
 import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder } from "@shared/schema";
 import {
   DropdownMenu,
@@ -717,7 +716,7 @@ function TaskHierarchyItem({
             {task.dueDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
+                {formatLocalDate(task.dueDate)}
               </span>
             )}
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
@@ -734,7 +733,7 @@ function TaskHierarchyItem({
                   <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                     <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
                     <span>-</span>
-                    <span>{format(new Date(note.createdAt!), "MM/dd/yyyy")}</span>
+                    <span>{formatLocalDate(note.createdAt)}</span>
                     {note.isVisibleToClient && (
                       <Badge variant="outline" size="sm">Visible</Badge>
                     )}
@@ -1760,7 +1759,7 @@ export default function ProjectDetail() {
               <div>
                 <p className="text-xs text-muted-foreground">Start Date</p>
                 <p className="text-sm font-medium">
-                  {format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}
+                  {formatLocalDate(project.startDate)}
                 </p>
               </div>
             </CardContent>
@@ -3165,7 +3164,7 @@ export default function ProjectDetail() {
                           <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap">
                             <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
                             <span>-</span>
-                            <span>{format(new Date(note.createdAt!), "MM/dd/yyyy 'at' h:mm a")}</span>
+                            <span>{formatLocalDateTime(note.createdAt)}</span>
                             {note.isVisibleToClient && (
                               <Badge variant="outline" size="sm">Visible to client</Badge>
                             )}
@@ -3444,7 +3443,7 @@ export default function ProjectDetail() {
                         <div className="flex-1">
                           <p className="text-sm font-medium">{task?.title || "Task"}</p>
                           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                            <span>{format(new Date(entry.date), "MM/dd/yyyy")}</span>
+                            <span>{formatLocalDate(entry.date)}</span>
                             {entry.startTime && entry.endTime && (
                               <span>{formatTimeRange12h(entry.startTime, entry.endTime)}</span>
                             )}
@@ -3466,7 +3465,7 @@ export default function ProjectDetail() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{log.taskDescription}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                          <span>{format(new Date(log.date), "MM/dd/yyyy")}</span>
+                          <span>{formatLocalDate(log.date)}</span>
                           {log.startTime && log.endTime && (
                             <span>{formatTimeRange12h(log.startTime, log.endTime)}</span>
                           )}

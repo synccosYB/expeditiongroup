@@ -28,8 +28,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimeLog, TimeEntry, Project, User, Task, Client, Invoice } from "@shared/schema";
-import { format } from "date-fns";
-import { formatTimeRange12h } from "@/lib/dateUtils";
+import { formatTimeRange12h, formatLocalDate } from "@/lib/dateUtils";
 
 type TimeLogWithRelations = TimeLog & { project: Project; user?: User };
 type TimeEntryWithRelations = TimeEntry & { project: Project; task: Task };
@@ -148,7 +147,7 @@ export default function TimeLogs() {
       const hourlyRate = project.client.hourlyRate || "75";
       const hours = log.totalHours;
       const amount = (hours * parseFloat(hourlyRate)).toFixed(2);
-      const dateStr = format(new Date(log.date), "MM/dd/yyyy");
+      const dateStr = formatLocalDate(log.date);
       
       const invoiceData = {
         invoiceNumber,
@@ -315,7 +314,7 @@ export default function TimeLogs() {
                       </Link>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(log.date), "MM/dd/yyyy")}
+                        {formatLocalDate(log.date)}
                       </span>
                       {log.startTime && log.endTime && (
                         <span>{formatTimeRange12h(log.startTime, log.endTime)}</span>

@@ -21,8 +21,8 @@ import {
 import { AssociateTypeBadge, StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import type { Associate, Project, Task } from "@shared/schema";
-import { formatDistanceToNow, format } from "date-fns";
-import { parseLocalDateFromISO, isDateOverdue } from "@/lib/dateUtils";
+import { formatDistanceToNow } from "date-fns";
+import { parseLocalDateFromISO, isDateOverdue, formatLocalDate } from "@/lib/dateUtils";
 
 interface AssociateWithRelations extends Associate {
   projects: Project[];
@@ -197,7 +197,7 @@ export default function AssociateDetail() {
                           </div>
                           {project.createdAt && (
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(project.createdAt), "MM/dd/yyyy")}
+                              {formatLocalDate(project.createdAt)}
                             </span>
                           )}
                         </div>
@@ -249,7 +249,7 @@ function TaskCard({ task }: { task: Task & { project?: Project } }) {
                 <div className={`flex items-center gap-1 text-xs ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
                   {isOverdue && <AlertCircle className="h-3 w-3" />}
                   <Calendar className="h-3 w-3" />
-                  {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
+                  {formatLocalDate(task.dueDate)}
                 </div>
               )}
             </div>

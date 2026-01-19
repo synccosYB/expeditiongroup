@@ -37,8 +37,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project, Client, Task, Note, User, Document, Invoice, ClientPortalSettings } from "@shared/schema";
-import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
-import { parseLocalDateFromISO } from "@/lib/dateUtils";
+import { formatDistanceToNow, isPast, isToday } from "date-fns";
+import { parseLocalDateFromISO, formatLocalDate, formatLocalDateLong } from "@/lib/dateUtils";
 
 type ProjectWithRelations = Project & {
   client: Client;
@@ -142,7 +142,7 @@ export default function ClientPortal() {
                   </div>
                   {todo.dueDate && (
                     <Badge variant={isPast(parseLocalDateFromISO(todo.dueDate)!) ? "destructive" : "outline"} className="shrink-0">
-                      {format(parseLocalDateFromISO(todo.dueDate)!, "MM/dd/yyyy")}
+                      {formatLocalDate(todo.dueDate)}
                     </Badge>
                   )}
                 </div>
@@ -263,7 +263,7 @@ function ProjectCard({ project, onView }: { project: ProjectWithRelations; onVie
           {project.startDate && (
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              <span>{format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}</span>
+              <span>{formatLocalDate(project.startDate)}</span>
             </div>
           )}
         </div>
@@ -329,7 +329,7 @@ function InvoiceCard({ invoice, onView }: { invoice: InvoiceWithProject; onView:
             {invoice.dueDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                Due {format(parseLocalDateFromISO(invoice.dueDate)!, "MM/dd/yyyy")}
+                Due {formatLocalDate(invoice.dueDate)}
               </span>
             )}
           </div>
@@ -550,7 +550,7 @@ export function ClientProjectDetail() {
                           {task.dueDate && (
                             <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              Due: {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
+                              Due: {formatLocalDate(task.dueDate)}
                               {isPast(parseLocalDateFromISO(task.dueDate)!) && task.status !== "done" && (
                                 <Badge variant="destructive" className="ml-2">Overdue</Badge>
                               )}
@@ -607,7 +607,7 @@ export function ClientProjectDetail() {
                         )}
                         {task.dueDate && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            Due: {format(parseLocalDateFromISO(task.dueDate)!, "MM/dd/yyyy")}
+                            Due: {formatLocalDate(task.dueDate)}
                           </p>
                         )}
                       </div>
@@ -642,7 +642,7 @@ export function ClientProjectDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{doc.fileName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {doc.createdAt && format(new Date(doc.createdAt), "MM/dd/yyyy")}
+                          {doc.createdAt && formatLocalDate(doc.createdAt)}
                           {doc.category && ` - ${doc.category}`}
                         </p>
                       </div>
@@ -869,7 +869,7 @@ export function ClientInvoiceDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-medium" data-testid="text-issue-date">
-              {invoice.issueDate ? format(parseLocalDateFromISO(invoice.issueDate)!, "MMMM d, yyyy") : "-"}
+              {invoice.issueDate ? formatLocalDateLong(invoice.issueDate) : "-"}
             </p>
           </CardContent>
         </Card>
@@ -879,7 +879,7 @@ export function ClientInvoiceDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-medium" data-testid="text-due-date">
-              {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMMM d, yyyy") : "-"}
+              {invoice.dueDate ? formatLocalDateLong(invoice.dueDate) : "-"}
             </p>
           </CardContent>
         </Card>

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
 import { FileText, Plus, Trash2 } from "lucide-react";
 import type { TimeLog, TimeEntry, Project, Client } from "@shared/schema";
 
@@ -146,7 +147,7 @@ export function InvoiceGenerationDialog({
         const amount = hours * rate;
         timeTotal += amount;
         items.push({
-          description: `${format(new Date(log.date), "MM/dd/yyyy")} - ${log.taskDescription}`,
+          description: `${formatLocalDate(log.date)} - ${log.taskDescription}`,
           quantity: log.totalHours,
           unitPrice: hourlyRate,
           amount: amount.toFixed(2),
@@ -162,7 +163,7 @@ export function InvoiceGenerationDialog({
         const amount = hours * rate;
         timeTotal += amount;
         items.push({
-          description: `${format(new Date(entry.date), "MM/dd/yyyy")} - ${entry.notes || "Task work"}`,
+          description: `${formatLocalDate(entry.date)} - ${entry.notes || "Task work"}`,
           quantity: hours.toFixed(2),
           unitPrice: hourlyRate,
           amount: amount.toFixed(2),
@@ -310,7 +311,7 @@ export function InvoiceGenerationDialog({
                             data-testid={`checkbox-entry-${entry.id}`}
                           />
                         </td>
-                        <td className="p-2">{format(new Date(entry.date), "MM/dd/yyyy")}</td>
+                        <td className="p-2">{formatLocalDate(entry.date)}</td>
                         <td className="p-2 truncate max-w-[200px]">{entry.notes || "Task work"}</td>
                         <td className="p-2 text-right">{((entry.totalMinutes || 0) / 60).toFixed(2)}</td>
                       </tr>
@@ -329,7 +330,7 @@ export function InvoiceGenerationDialog({
                             data-testid={`checkbox-log-${log.id}`}
                           />
                         </td>
-                        <td className="p-2">{format(new Date(log.date), "MM/dd/yyyy")}</td>
+                        <td className="p-2">{formatLocalDate(log.date)}</td>
                         <td className="p-2 truncate max-w-[200px]">{log.taskDescription}</td>
                         <td className="p-2 text-right">{log.totalHours}</td>
                       </tr>

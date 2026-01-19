@@ -47,7 +47,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { parseLocalDate, formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
+import { parseLocalDate, formatDateForInput, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 import type { Project, Client } from "@shared/schema";
 import {
   DropdownMenu,
@@ -65,8 +65,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
-
 const projectFormSchema = z.object({
   clientId: z.number().min(1, "Client is required"),
   name: z.string().min(1, "Name is required"),
@@ -693,7 +691,7 @@ export default function Projects() {
                   {project.startDate && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Started {format(parseLocalDateFromISO(project.startDate)!, "MM/dd/yyyy")}</span>
+                      <span>Started {formatLocalDate(project.startDate)}</span>
                     </div>
                   )}
                 </div>
