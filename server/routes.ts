@@ -1,10 +1,12 @@
 import type { Express, Request } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
+import { storage, db } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
+import { eq } from "drizzle-orm";
+import { clients, projects, intakeApplications } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -2835,6 +2837,95 @@ export async function registerRoutes(
       }
       console.error("Error updating intake application:", error);
       res.status(500).json({ message: "Failed to update intake application" });
+    }
+  });
+
+  // Convert intake application to client/project
+  app.post("/api/intake-applications/:id/convert", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const intakeId = parseInt(req.params.id);
+      const intake = await storage.getIntakeApplication(intakeId);
+      
+      if (!intake) {
+        return res.status(404).json({ message: "Intake application not found" });
+      }
+      
+      // Check if already converted
+      if (intake.linkedClientId || intake.linkedProjectId) {
+        return res.status(400).json({ 
+          message: "This intake application has already been converted",
+          linkedClientId: intake.linkedClientId,
+          linkedProjectId: intake.linkedProjectId
+        });
+      }
+      
+      // Create client from intake data using direct database insert
+      const [newClient] = await db.insert(clients).values({
+        name: intake.ownerName || "Unknown",
+        company: intake.businessName || null,
+        clientType: "homeowner",
+        email: intake.email || null,
+        phone: intake.cellNumber || intake.homeNumber || null,
+        address: intake.currentAddress || null,
+        status: "active",
+      }).returning();
+      
+      // Build project address from intake location fields
+      const projectAddress = [
+        intake.locationStreet,
+        intake.locationTown,
+        intake.locationVillage
+      ].filter(Boolean).join(", ") || intake.currentAddress || "";
+      
+      // Create project from intake data using direct database insert
+      const [newProject] = await db.insert(projects).values({
+        clientId: newClient.id,
+        name: intake.projectName || `${intake.ownerName} - New Project`,
+        description: intake.varianceFromSubdivision || intake.specialPermitUse || null,
+        address: projectAddress,
+        city: intake.locationTown || intake.locationVillage || "",
+        state: "NY",
+        zip: "",
+        jobType: "residential",
+        status: "intake",
+        priority: "normal",
+        isVisibleToClient: true,
+      }).returning();
+      
+      // Update intake with linkage to client and project using direct SQL
+      await db.update(intakeApplications)
+        .set({
+          linkedClientId: newClient.id,
+          linkedProjectId: newProject.id,
+          convertedAt: new Date(),
+          status: "approved",
+          updatedAt: new Date(),
+        })
+        .where(eq(intakeApplications.id, intakeId));
+      
+      // Log the conversion in audit log
+      await storage.createAuditLog({
+        userId: user.id,
+        action: "create",
+        entityType: "intake_conversion",
+        entityId: intakeId.toString(),
+        description: `Converted intake application to Client #${newClient.id} and Project #${newProject.id}`,
+        metadata: { intakeId, clientId: newClient.id, projectId: newProject.id },
+      });
+      
+      res.json({
+        message: "Intake application converted successfully",
+        client: newClient,
+        project: newProject,
+      });
+    } catch (error) {
+      console.error("Error converting intake application:", error);
+      res.status(500).json({ message: "Failed to convert intake application" });
     }
   });
 

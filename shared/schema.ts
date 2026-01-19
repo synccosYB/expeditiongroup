@@ -516,7 +516,12 @@ export const intakeApplications = pgTable("intake_applications", {
   status: intakeStatusEnum("status").default("draft").notNull(),
   submittedAt: timestamp("submitted_at"),
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  
+  // Linkage to CRM entities (single source of truth)
+  linkedClientId: integer("linked_client_id").references(() => clients.id),
   linkedProjectId: integer("linked_project_id").references(() => projects.id),
+  convertedAt: timestamp("converted_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -851,6 +856,7 @@ export const insertDocumentRequestSchema = createInsertSchema(documentRequests).
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 export const insertIntakeApplicationSchema = createInsertSchema(intakeApplications).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   submittedAt: dateCoercion,
+  convertedAt: dateCoercion,
 });
 
 // Types
