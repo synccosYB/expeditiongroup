@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { YesNoNaField } from "@/components/YesNoNaField";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -134,24 +135,24 @@ export default function IntakeForm() {
       ambulanceDistrict: "",
       waterDistrict: "",
       sewerDistrict: "",
-      needDemolishHouse: false,
-      wellBeingDone: false,
-      temporaryElectricGasNeeded: false,
+      needDemolishHouse: "",
+      wellBeingDone: "",
+      temporaryElectricGasNeeded: "",
       varianceFromSubdivision: "",
-      openSpaceOffered: false,
+      openSpaceOffered: "",
       openSpaceAmount: "",
       subdivisionType: "",
       totalBuildingSize: "",
       proposedAddition: "",
       numberOfDwellingUnits: "",
       specialPermitUse: "",
-      hasSlopesGreaterThan25: false,
+      hasSlopesGreaterThan25: "",
       slopesDetails: "",
-      hasStreams: false,
+      hasStreams: "",
       streamsNames: "",
-      hasWetlands: false,
+      hasWetlands: "",
       wetlandsDetails: "",
-      hasBeenReviewedBefore: false,
+      hasBeenReviewedBefore: "",
       projectHistoryNarrative: "",
       abuttingPropertiesTaxMap: "",
       proximityFeatures: [],
@@ -159,8 +160,8 @@ export default function IntakeForm() {
       adjacentMunicipality: "",
       boardsApprovals: {},
       numberOfLots: "",
-      nydecApplicationNeeded: false,
-      usacoaApplicationNeeded: false,
+      nydecApplicationNeeded: "",
+      usacoaApplicationNeeded: "",
       status: "draft",
     },
   });
@@ -168,11 +169,11 @@ export default function IntakeForm() {
   const hasSecondOwner = form.watch("hasSecondOwner");
   const mailingAddressSameAsCurrent = form.watch("mailingAddressSameAsCurrent");
   const secondOwnerMailingAddressSameAsCurrent = form.watch("secondOwnerMailingAddressSameAsCurrent");
-  const hasBeenReviewedBefore = form.watch("hasBeenReviewedBefore");
-  const openSpaceOffered = form.watch("openSpaceOffered");
-  const hasSlopesGreaterThan25 = form.watch("hasSlopesGreaterThan25");
-  const hasStreams = form.watch("hasStreams");
-  const hasWetlands = form.watch("hasWetlands");
+  const hasBeenReviewedBefore = form.watch("hasBeenReviewedBefore") === "yes";
+  const openSpaceOffered = form.watch("openSpaceOffered") === "yes";
+  const hasSlopesGreaterThan25 = form.watch("hasSlopesGreaterThan25") === "yes";
+  const hasStreams = form.watch("hasStreams") === "yes";
+  const hasWetlands = form.watch("hasWetlands") === "yes";
   const boardsApprovals = form.watch("boardsApprovals") || {};
 
   useEffect(() => {
@@ -947,48 +948,36 @@ export default function IntakeForm() {
                         control={form.control}
                         name="needDemolishHouse"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-demolish"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">Need to demolish house?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="Need to demolish house?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-demolish"
+                          />
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="wellBeingDone"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-well"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">Any well being done on the property?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="Any well being done on the property?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-well"
+                          />
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="temporaryElectricGasNeeded"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-temp-electric"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">Temporary electric and gas service needed?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="Temporary electric and gas service needed?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-temp-electric"
+                          />
                         )}
                       />
                     </div>
@@ -1017,16 +1006,12 @@ export default function IntakeForm() {
                         control={form.control}
                         name="openSpaceOffered"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-open-space"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">Is any open space being offered?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="Is any open space being offered?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-open-space"
+                          />
                         )}
                       />
                       {openSpaceOffered && (
@@ -1134,16 +1119,12 @@ export default function IntakeForm() {
                           control={form.control}
                           name="hasSlopesGreaterThan25"
                           render={({ field }) => (
-                            <FormItem className="flex items-center gap-2 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value || false}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-slopes"
-                                />
-                              </FormControl>
-                              <FormLabel className="cursor-pointer font-normal">Are there slopes greater than 25%?</FormLabel>
-                            </FormItem>
+                            <YesNoNaField
+                              label="Are there slopes greater than 25%?"
+                              value={field.value}
+                              onChange={field.onChange}
+                              testId="radio-slopes"
+                            />
                           )}
                         />
                         {hasSlopesGreaterThan25 && (
@@ -1169,16 +1150,12 @@ export default function IntakeForm() {
                           control={form.control}
                           name="hasStreams"
                           render={({ field }) => (
-                            <FormItem className="flex items-center gap-2 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value || false}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-streams"
-                                />
-                              </FormControl>
-                              <FormLabel className="cursor-pointer font-normal">Are there streams on the site?</FormLabel>
-                            </FormItem>
+                            <YesNoNaField
+                              label="Are there streams on the site?"
+                              value={field.value}
+                              onChange={field.onChange}
+                              testId="radio-streams"
+                            />
                           )}
                         />
                         {hasStreams && (
@@ -1204,16 +1181,12 @@ export default function IntakeForm() {
                           control={form.control}
                           name="hasWetlands"
                           render={({ field }) => (
-                            <FormItem className="flex items-center gap-2 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value || false}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-wetlands"
-                                />
-                              </FormControl>
-                              <FormLabel className="cursor-pointer font-normal">Are there wetlands on the site?</FormLabel>
-                            </FormItem>
+                            <YesNoNaField
+                              label="Are there wetlands on the site?"
+                              value={field.value}
+                              onChange={field.onChange}
+                              testId="radio-wetlands"
+                            />
                           )}
                         />
                         {hasWetlands && (
@@ -1247,16 +1220,12 @@ export default function IntakeForm() {
                         control={form.control}
                         name="hasBeenReviewedBefore"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-reviewed-before"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">Has this project been reviewed before?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="Has this project been reviewed before?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-reviewed-before"
+                          />
                         )}
                       />
                       {hasBeenReviewedBefore && (
@@ -1444,32 +1413,24 @@ export default function IntakeForm() {
                         control={form.control}
                         name="nydecApplicationNeeded"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-nydec"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">NYDEC application needed?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="NYDEC application needed?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-nydec"
+                          />
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="usacoaApplicationNeeded"
                         render={({ field }) => (
-                          <FormItem className="flex items-center gap-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value || false}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-usacoa"
-                              />
-                            </FormControl>
-                            <FormLabel className="cursor-pointer font-normal">USACOA application needed?</FormLabel>
-                          </FormItem>
+                          <YesNoNaField
+                            label="USACOA application needed?"
+                            value={field.value}
+                            onChange={field.onChange}
+                            testId="radio-usacoa"
+                          />
                         )}
                       />
                     </div>
