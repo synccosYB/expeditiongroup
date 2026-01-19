@@ -27,6 +27,8 @@ import {
   Flag,
   Reply,
   X,
+  Eye,
+  Download,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -645,11 +647,20 @@ export function ClientProjectDetail() {
                         </p>
                       </div>
                       {doc.storagePath && (
-                        <Button variant="outline" size="sm" asChild data-testid={`button-download-document-${doc.id}`}>
-                          <a href={doc.storagePath} target="_blank" rel="noopener noreferrer" download={doc.fileName}>
-                            Download
-                          </a>
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" asChild data-testid={`button-view-document-${doc.id}`}>
+                            <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </a>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild data-testid={`button-download-document-${doc.id}`}>
+                            <a href={doc.storagePath} download={doc.fileName}>
+                              <Download className="h-4 w-4 mr-1" />
+                              Download
+                            </a>
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>
