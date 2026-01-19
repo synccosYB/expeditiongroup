@@ -84,16 +84,30 @@ export class ObjectStorageService {
     return null;
   }
 
-  async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
+  async downloadObject(file: File, res: Response, options: { cacheTtlSec?: number; inline?: boolean } = {}) {
+    const { cacheTtlSec = 3600, inline = false } = options;
     try {
       const [metadata] = await file.getMetadata();
       const aclPolicy = await getObjectAclPolicy(file);
       const isPublic = aclPolicy?.visibility === "public";
-      res.set({
+      
+      // Get the filename from the object name
+      const fileName = file.name.split('/').pop() || 'download';
+      
+      const headers: Record<string, string | number | undefined> = {
         "Content-Type": metadata.contentType || "application/octet-stream",
         "Content-Length": metadata.size,
         "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
-      });
+      };
+      
+      // Set Content-Disposition based on inline flag
+      if (inline) {
+        headers["Content-Disposition"] = "inline";
+      } else {
+        headers["Content-Disposition"] = `attachment; filename="${encodeURIComponent(fileName)}"`;
+      }
+      
+      res.set(headers);
       const stream = file.createReadStream();
       stream.on("error", (err) => {
         console.error("Stream error:", err);

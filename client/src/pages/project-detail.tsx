@@ -2765,13 +2765,13 @@ export default function ProjectDetail() {
                       </div>
                     </div>
                     <Button size="sm" variant="ghost" asChild data-testid={`button-view-document-${doc.id}`}>
-                      <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                      <a href={`${doc.storagePath}?inline=true`} target="_blank" rel="noopener noreferrer">
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </a>
                     </Button>
                     <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
-                      <a href={doc.storagePath} download={doc.fileName}>
+                      <a href={doc.storagePath}>
                         <Download className="h-4 w-4 mr-1" />
                         Download
                       </a>

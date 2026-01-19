@@ -1905,6 +1905,7 @@ export async function registerRoutes(
   app.get("/objects/*", async (req: any, res) => {
     try {
       const objectPath = req.path;
+      const inline = req.query.inline === "true";
       const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
       
       // Check if user is authenticated
@@ -1914,7 +1915,7 @@ export async function registerRoutes(
       if (userId) {
         const user = await storage.getUser(userId);
         if (user?.role === "admin") {
-          await objectStorageService.downloadObject(objectFile, res);
+          await objectStorageService.downloadObject(objectFile, res, { inline });
           return;
         }
       }
@@ -1930,7 +1931,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Access denied" });
       }
 
-      await objectStorageService.downloadObject(objectFile, res);
+      await objectStorageService.downloadObject(objectFile, res, { inline });
     } catch (error) {
       if (error instanceof ObjectNotFoundError) {
         return res.status(404).json({ message: "Object not found" });

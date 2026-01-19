@@ -649,13 +649,13 @@ export function ClientProjectDetail() {
                       {doc.storagePath && (
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="sm" asChild data-testid={`button-view-document-${doc.id}`}>
-                            <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                            <a href={`${doc.storagePath}?inline=true`} target="_blank" rel="noopener noreferrer">
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </a>
                           </Button>
                           <Button variant="outline" size="sm" asChild data-testid={`button-download-document-${doc.id}`}>
-                            <a href={doc.storagePath} download={doc.fileName}>
+                            <a href={doc.storagePath}>
                               <Download className="h-4 w-4 mr-1" />
                               Download
                             </a>
