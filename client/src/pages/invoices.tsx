@@ -103,6 +103,9 @@ export default function Invoices() {
 
   const filteredInvoices = invoices?.filter(inv => {
     if (statusFilter === "all") return true;
+    if (statusFilter === "unpaid") {
+      return inv.status === "draft" || inv.status === "sent";
+    }
     return inv.status === statusFilter;
   }) || [];
 
@@ -135,6 +138,7 @@ export default function Invoices() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Invoices</SelectItem>
+            <SelectItem value="unpaid">Unpaid</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="sent">Sent</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
@@ -144,7 +148,11 @@ export default function Invoices() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card 
+          className="cursor-pointer hover-elevate" 
+          onClick={() => setStatusFilter("all")}
+          data-testid="card-total-invoiced"
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Invoiced</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -156,7 +164,11 @@ export default function Invoices() {
             <p className="text-xs text-muted-foreground">Excludes cancelled</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer hover-elevate" 
+          onClick={() => setStatusFilter("paid")}
+          data-testid="card-total-paid"
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
@@ -168,7 +180,11 @@ export default function Invoices() {
             <p className="text-xs text-muted-foreground">Payments received</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer hover-elevate" 
+          onClick={() => setStatusFilter("unpaid")}
+          data-testid="card-total-unpaid"
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Unpaid</CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-500" />
@@ -180,7 +196,11 @@ export default function Invoices() {
             <p className="text-xs text-muted-foreground">Outstanding balance</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer hover-elevate" 
+          onClick={() => setStatusFilter("all")}
+          data-testid="card-unbilled-time"
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Unbilled Time</CardTitle>
             <Clock className="h-4 w-4 text-blue-500" />
