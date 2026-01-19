@@ -1,12 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Edit, User, MapPin, FileText, Mountain, History, Building } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation, useParams, Link } from "wouter";
+import { ArrowLeft, Edit, User, MapPin, FileText, Mountain, History, Building, CheckCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { IntakeApplication } from "@shared/schema";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { IntakeApplication, Client, Project } from "@shared/schema";
 
 const statusStyles: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
   draft: { variant: "secondary", label: "Draft" },
@@ -39,12 +42,38 @@ function CheckItem({ label, checked }: { label: string; checked: boolean | null 
 export default function IntakeView() {
   const params = useParams();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const applicationId = params.id ? parseInt(params.id) : null;
 
   const { data: application, isLoading, error } = useQuery<IntakeApplication>({
     queryKey: ["/api/intake-applications", applicationId],
     enabled: !!applicationId,
   });
+
+  const convertMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/intake-applications/${applicationId}/convert`);
+      return res.json();
+    },
+    onSuccess: (data: { message: string; client: Client; project: Project }) => {
+      toast({
+        title: "Converted Successfully",
+        description: `Created client "${data.client.name}" and project "${data.project.name}"`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/intake-applications", applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Conversion Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isConverted = application?.linkedClientId || application?.linkedProjectId;
 
   if (isLoading) {
     return (
@@ -90,11 +119,50 @@ export default function IntakeView() {
             </p>
           </div>
         </div>
-        <Button onClick={() => navigate(`/intake/${applicationId}/edit`)} data-testid="button-edit">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isConverted && (
+            <Button 
+              onClick={() => convertMutation.mutate()}
+              disabled={convertMutation.isPending}
+              data-testid="button-convert"
+            >
+              <ArrowRight className="h-4 w-4 mr-2" />
+              {convertMutation.isPending ? "Converting..." : "Convert to Project"}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => navigate(`/intake/${applicationId}/edit`)} data-testid="button-edit">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        </div>
       </div>
+
+      {isConverted && (
+        <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="flex items-center gap-4 flex-wrap">
+            <span className="text-green-800 dark:text-green-200">
+              This intake has been converted to a project.
+            </span>
+            {application.linkedProjectId && (
+              <Link href={`/projects/${application.linkedProjectId}`}>
+                <Button variant="outline" size="sm" data-testid="link-project">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View Project
+                </Button>
+              </Link>
+            )}
+            {application.linkedClientId && (
+              <Link href={`/clients/${application.linkedClientId}`}>
+                <Button variant="outline" size="sm" data-testid="link-client">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  View Client
+                </Button>
+              </Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 pb-4">

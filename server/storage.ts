@@ -69,6 +69,7 @@ import {
   type InsertIntakeApplication,
 } from "@shared/schema";
 import { db } from "./db";
+export { db };
 import { eq, desc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
