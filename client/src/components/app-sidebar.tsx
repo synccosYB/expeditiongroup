@@ -79,7 +79,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-hidden">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wide font-medium text-muted-foreground px-4 py-2">
             {isAdmin ? "Administration" : "Portal"}
