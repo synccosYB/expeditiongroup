@@ -147,6 +147,7 @@ export const tasks = pgTable("tasks", {
   assigneeId: varchar("assignee_id").references(() => users.id),
   relatedClientId: integer("related_client_id").references(() => clients.id),
   relatedAssociateId: integer("related_associate_id").references(() => associates.id),
+  associateId: integer("associate_id").references(() => associates.id),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
   internalNotes: text("internal_notes"),
@@ -302,6 +303,7 @@ export const taskReminders = pgTable("task_reminders", {
   errorMessage: text("error_message"),
   actionNote: text("action_note"),
   actionAt: timestamp("action_at", { withTimezone: true }),
+  isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

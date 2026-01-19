@@ -1739,13 +1739,17 @@ export async function registerRoutes(
   app.patch("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const { status, actionNote } = req.body;
-      const updateData: any = { status };
+      const { status, actionNote, isRead } = req.body;
+      const updateData: any = {};
+      if (status !== undefined) {
+        updateData.status = status;
+        if (status === 'done' || status === 'postponed') updateData.actionAt = new Date();
+      }
       if (actionNote !== undefined) updateData.actionNote = actionNote;
-      if (status === 'done' || status === 'postponed') updateData.actionAt = new Date();
+      if (isRead !== undefined) updateData.isRead = isRead;
       
       const updated = await storage.updateTaskReminder(parseInt(req.params.id), updateData);
       if (!updated) {
