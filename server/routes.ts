@@ -30,6 +30,9 @@ import {
   insertDocumentRequestSchema,
   insertAuditLogSchema,
   insertIntakeApplicationSchema,
+  insertServiceSchema,
+  insertProposalSchema,
+  insertProposalItemSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -41,6 +44,9 @@ const updateFolderSchema = insertFolderSchema.partial();
 const updateDocumentSchema = insertDocumentSchema.partial();
 const updateChecklistTemplateSchema = insertChecklistTemplateSchema.partial();
 const updateChecklistInstanceSchema = insertChecklistInstanceSchema.partial();
+const updateServiceSchema = insertServiceSchema.partial();
+const updateProposalSchema = insertProposalSchema.partial();
+const updateProposalItemSchema = insertProposalItemSchema.partial();
 
 export async function registerRoutes(
   httpServer: Server,
@@ -2947,6 +2953,311 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting intake application:", error);
       res.status(500).json({ message: "Failed to delete intake application" });
+    }
+  });
+
+  // ===== Services (for proposals) =====
+  app.get("/api/services", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const services = await storage.getServices();
+      res.json(services);
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      res.status(500).json({ message: "Failed to fetch services" });
+    }
+  });
+
+  app.get("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const service = await storage.getService(parseInt(req.params.id));
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      console.error("Error fetching service:", error);
+      res.status(500).json({ message: "Failed to fetch service" });
+    }
+  });
+
+  app.post("/api/services", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertServiceSchema.parse(req.body);
+      const service = await storage.createService(parsed);
+      res.status(201).json(service);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating service:", error);
+      res.status(500).json({ message: "Failed to create service" });
+    }
+  });
+
+  app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = updateServiceSchema.parse(req.body);
+      const service = await storage.updateService(parseInt(req.params.id), parsed);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating service:", error);
+      res.status(500).json({ message: "Failed to update service" });
+    }
+  });
+
+  app.delete("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteService(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json({ message: "Service deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      res.status(500).json({ message: "Failed to delete service" });
+    }
+  });
+
+  // ===== Proposals (Sales Pipeline) =====
+  app.get("/api/proposals", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const proposals = await storage.getProposals();
+      res.json(proposals);
+    } catch (error) {
+      console.error("Error fetching proposals:", error);
+      res.status(500).json({ message: "Failed to fetch proposals" });
+    }
+  });
+
+  app.get("/api/proposals/next-number", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const proposalNumber = await storage.getNextProposalNumber();
+      res.json({ proposalNumber });
+    } catch (error) {
+      console.error("Error getting next proposal number:", error);
+      res.status(500).json({ message: "Failed to get next proposal number" });
+    }
+  });
+
+  app.get("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const proposal = await storage.getProposal(parseInt(req.params.id));
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      res.json(proposal);
+    } catch (error) {
+      console.error("Error fetching proposal:", error);
+      res.status(500).json({ message: "Failed to fetch proposal" });
+    }
+  });
+
+  app.post("/api/proposals", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { items, ...proposalData } = req.body;
+      const parsed = insertProposalSchema.parse(proposalData);
+      const parsedItems = (items || []).map((item: any) => insertProposalItemSchema.parse(item));
+      
+      const proposal = await storage.createProposal(
+        { ...parsed, createdByUserId: user.id },
+        parsedItems
+      );
+      res.status(201).json(proposal);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating proposal:", error);
+      res.status(500).json({ message: "Failed to create proposal" });
+    }
+  });
+
+  app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = updateProposalSchema.parse(req.body);
+      const proposal = await storage.updateProposal(parseInt(req.params.id), parsed);
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      res.json(proposal);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating proposal:", error);
+      res.status(500).json({ message: "Failed to update proposal" });
+    }
+  });
+
+  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteProposal(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      res.json({ message: "Proposal deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting proposal:", error);
+      res.status(500).json({ message: "Failed to delete proposal" });
+    }
+  });
+
+  // ===== Proposal Items =====
+  app.post("/api/proposals/:proposalId/items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const proposalId = parseInt(req.params.proposalId);
+      const parsed = insertProposalItemSchema.parse({ ...req.body, proposalId });
+      const item = await storage.addProposalItem(parsed);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error adding proposal item:", error);
+      res.status(500).json({ message: "Failed to add proposal item" });
+    }
+  });
+
+  app.patch("/api/proposal-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = updateProposalItemSchema.parse(req.body);
+      const item = await storage.updateProposalItem(parseInt(req.params.id), parsed);
+      if (!item) {
+        return res.status(404).json({ message: "Proposal item not found" });
+      }
+      res.json(item);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating proposal item:", error);
+      res.status(500).json({ message: "Failed to update proposal item" });
+    }
+  });
+
+  app.delete("/api/proposal-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteProposalItem(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Proposal item not found" });
+      }
+      res.json({ message: "Proposal item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting proposal item:", error);
+      res.status(500).json({ message: "Failed to delete proposal item" });
+    }
+  });
+
+  // ===== Seed Default Services =====
+  app.post("/api/services/seed", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const defaultServices = [
+        { name: "Business Tax Return", category: "accounting" as const, description: "Preparation and filing of business tax returns", sortOrder: 1 },
+        { name: "Personal Tax Return", category: "accounting" as const, description: "Preparation and filing of personal tax returns", sortOrder: 2 },
+        { name: "Estimate Tax Payment for Business", category: "accounting" as const, description: "Our team will ensure providing you with best legal tax techniques in order to minimize tax bill", sortOrder: 3 },
+        { name: "Tax, Legal, and Financial Questions", category: "accounting" as const, description: "We will be available to answer your tax, legal, and financial questions", sortOrder: 4 },
+        
+        { name: "Quarterly Meeting with CEO", category: "write_up" as const, description: "Scheduled quarterly meetings with CEO", sortOrder: 1 },
+        { name: "Review Books Quarterly with CEO", category: "write_up" as const, description: "Quarterly review of books with CEO", sortOrder: 2 },
+        { name: "Quarterly Books", category: "write_up" as const, description: "Quarterly bookkeeping services", sortOrder: 3 },
+        { name: "Quarterly Sales Tax Filing", category: "write_up" as const, description: "Quarterly sales tax filing services", sortOrder: 4 },
+        { name: "New Corp.", category: "write_up" as const, description: "New corporation setup and filing", sortOrder: 5 },
+        
+        { name: "Cash Reconciliation", category: "bookkeeping" as const, description: "Regular cash reconciliation services", sortOrder: 1 },
+        { name: "Month End Close", category: "bookkeeping" as const, description: "Monthly closing of books", sortOrder: 2 },
+        { name: "Review and Analyze P&L and Balance Sheet", category: "bookkeeping" as const, description: "Review and analysis of profit & loss and balance sheet", sortOrder: 3 },
+        { name: "Year End Close", category: "bookkeeping" as const, description: "Closing the books at year end for the accountant to prepare financials", sortOrder: 4 },
+        { name: "Enter Transactions", category: "bookkeeping" as const, description: "Transaction entry services", sortOrder: 5 },
+        
+        { name: "Cash Flow Management and Forecasting", category: "cfo" as const, description: "Cash flow management and forecasting services", sortOrder: 1 },
+        { name: "Financial Analysis for Business Decisions", category: "cfo" as const, description: "Financial analysis to support smart business decisions", sortOrder: 2 },
+        { name: "Monthly Review of P&L and Balance Sheet", category: "cfo" as const, description: "Monthly review of profit & loss and balance sheet", sortOrder: 3 },
+        { name: "Bi-Monthly Meetings with CEO", category: "cfo" as const, description: "Bi-monthly strategic meetings with CEO", sortOrder: 4 },
+        { name: "Set Up AP/AR Processes and Policies", category: "cfo" as const, description: "Accounts payable and receivable process setup", sortOrder: 5 },
+        { name: "Build Reserve Accounts", category: "cfo" as const, description: "Building and managing reserve accounts", sortOrder: 6 },
+        { name: "Budget vs Actual Reporting", category: "cfo" as const, description: "Budget vs actual performance reporting", sortOrder: 7 },
+        { name: "Support Sustainable Growth Planning", category: "cfo" as const, description: "Support for sustainable growth planning", sortOrder: 8 },
+        { name: "Identify and Resolve Financial Issues", category: "cfo" as const, description: "Identify and resolve financial issues", sortOrder: 9 },
+        { name: "Review and Optimize Pricing Models", category: "cfo" as const, description: "Review and optimize pricing models", sortOrder: 10 },
+      ];
+
+      const createdServices = [];
+      for (const service of defaultServices) {
+        const newService = await storage.createService(service);
+        createdServices.push(newService);
+      }
+
+      res.status(201).json({ message: "Services seeded successfully", count: createdServices.length });
+    } catch (error) {
+      console.error("Error seeding services:", error);
+      res.status(500).json({ message: "Failed to seed services" });
     }
   });
 

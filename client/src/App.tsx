@@ -40,6 +40,8 @@ import Intake from "@/pages/intake";
 import IntakeForm from "@/pages/intake-form";
 import IntakeView from "@/pages/intake-view";
 import Reminders from "@/pages/reminders";
+import SalesPipeline from "@/pages/sales-pipeline";
+import ProposalDetail from "@/pages/proposal-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -74,6 +76,9 @@ function AdminRouter() {
       <Route path="/associates/:id" component={AssociateDetail} />
       <Route path="/activity-logs" component={ActivityLogs} />
       <Route path="/reminders" component={Reminders} />
+      <Route path="/sales-pipeline" component={SalesPipeline} />
+      <Route path="/proposals/new" component={ProposalDetail} />
+      <Route path="/proposals/:id" component={ProposalDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

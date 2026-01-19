@@ -22,6 +22,9 @@ import {
   documentRequests,
   auditLogs,
   intakeApplications,
+  services,
+  proposals,
+  proposalItems,
   type User,
   type UpsertUser,
   type Client,
@@ -67,6 +70,12 @@ import {
   type InsertAuditLog,
   type IntakeApplication,
   type InsertIntakeApplication,
+  type Service,
+  type InsertService,
+  type Proposal,
+  type InsertProposal,
+  type ProposalItem,
+  type InsertProposalItem,
 } from "@shared/schema";
 import { db } from "./db";
 export { db };
@@ -262,6 +271,27 @@ export interface IStorage {
   createIntakeApplication(application: InsertIntakeApplication): Promise<IntakeApplication>;
   updateIntakeApplication(id: number, application: Partial<InsertIntakeApplication>): Promise<IntakeApplication | undefined>;
   deleteIntakeApplication(id: number): Promise<boolean>;
+  
+  // Services (for proposals)
+  getServices(): Promise<Service[]>;
+  getService(id: number): Promise<Service | undefined>;
+  getServicesByCategory(category: string): Promise<Service[]>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: number): Promise<boolean>;
+  
+  // Proposals (sales pipeline)
+  getProposals(): Promise<(Proposal & { client?: Client; items: ProposalItem[] })[]>;
+  getProposal(id: number): Promise<(Proposal & { client?: Client; items: ProposalItem[] }) | undefined>;
+  createProposal(proposal: InsertProposal, items: InsertProposalItem[]): Promise<Proposal & { items: ProposalItem[] }>;
+  updateProposal(id: number, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
+  deleteProposal(id: number): Promise<boolean>;
+  getNextProposalNumber(): Promise<string>;
+  
+  // Proposal Items
+  addProposalItem(item: InsertProposalItem): Promise<ProposalItem>;
+  updateProposalItem(id: number, item: Partial<InsertProposalItem>): Promise<ProposalItem | undefined>;
+  deleteProposalItem(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1563,6 +1593,134 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIntakeApplication(id: number): Promise<boolean> {
     const result = await db.delete(intakeApplications).where(eq(intakeApplications.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Services (for proposals)
+  async getServices(): Promise<Service[]> {
+    return await db.select().from(services).orderBy(services.category, services.sortOrder, services.name);
+  }
+
+  async getService(id: number): Promise<Service | undefined> {
+    const [service] = await db.select().from(services).where(eq(services.id, id));
+    return service;
+  }
+
+  async getServicesByCategory(category: string): Promise<Service[]> {
+    return await db.select().from(services).where(eq(services.category, category as any)).orderBy(services.sortOrder, services.name);
+  }
+
+  async createService(service: InsertService): Promise<Service> {
+    const [newService] = await db.insert(services).values(service).returning();
+    return newService;
+  }
+
+  async updateService(id: number, service: Partial<InsertService>): Promise<Service | undefined> {
+    const [updated] = await db
+      .update(services)
+      .set({ ...service, updatedAt: new Date() })
+      .where(eq(services.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteService(id: number): Promise<boolean> {
+    const result = await db.delete(services).where(eq(services.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Proposals (sales pipeline)
+  async getProposals(): Promise<(Proposal & { client?: Client; items: ProposalItem[] })[]> {
+    const allProposals = await db
+      .select()
+      .from(proposals)
+      .leftJoin(clients, eq(proposals.clientId, clients.id))
+      .orderBy(desc(proposals.createdAt));
+    
+    const result = [];
+    for (const row of allProposals) {
+      const items = await db.select().from(proposalItems).where(eq(proposalItems.proposalId, row.proposals.id)).orderBy(proposalItems.sortOrder);
+      result.push({
+        ...row.proposals,
+        client: row.clients || undefined,
+        items,
+      });
+    }
+    return result;
+  }
+
+  async getProposal(id: number): Promise<(Proposal & { client?: Client; items: ProposalItem[] }) | undefined> {
+    const [row] = await db
+      .select()
+      .from(proposals)
+      .leftJoin(clients, eq(proposals.clientId, clients.id))
+      .where(eq(proposals.id, id));
+    
+    if (!row) return undefined;
+
+    const items = await db.select().from(proposalItems).where(eq(proposalItems.proposalId, id)).orderBy(proposalItems.sortOrder);
+    
+    return {
+      ...row.proposals,
+      client: row.clients || undefined,
+      items,
+    };
+  }
+
+  async createProposal(proposal: InsertProposal, items: InsertProposalItem[]): Promise<Proposal & { items: ProposalItem[] }> {
+    const [newProposal] = await db.insert(proposals).values(proposal).returning();
+    
+    const createdItems: ProposalItem[] = [];
+    for (const item of items) {
+      const [newItem] = await db.insert(proposalItems).values({ ...item, proposalId: newProposal.id }).returning();
+      createdItems.push(newItem);
+    }
+    
+    return { ...newProposal, items: createdItems };
+  }
+
+  async updateProposal(id: number, proposal: Partial<InsertProposal>): Promise<Proposal | undefined> {
+    const [updated] = await db
+      .update(proposals)
+      .set({ ...proposal, updatedAt: new Date() })
+      .where(eq(proposals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProposal(id: number): Promise<boolean> {
+    const result = await db.delete(proposals).where(eq(proposals.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNextProposalNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const [result] = await db
+      .select({ count: count() })
+      .from(proposals)
+      .where(sql`EXTRACT(YEAR FROM ${proposals.createdAt}) = ${year}`);
+    
+    const nextNum = (result?.count || 0) + 1;
+    return `PROP-${year}-${String(nextNum).padStart(4, '0')}`;
+  }
+
+  // Proposal Items
+  async addProposalItem(item: InsertProposalItem): Promise<ProposalItem> {
+    const [newItem] = await db.insert(proposalItems).values(item).returning();
+    return newItem;
+  }
+
+  async updateProposalItem(id: number, item: Partial<InsertProposalItem>): Promise<ProposalItem | undefined> {
+    const [updated] = await db
+      .update(proposalItems)
+      .set(item)
+      .where(eq(proposalItems.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProposalItem(id: number): Promise<boolean> {
+    const result = await db.delete(proposalItems).where(eq(proposalItems.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }

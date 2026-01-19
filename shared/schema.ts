@@ -30,6 +30,10 @@ export const reminderChannelEnum = pgEnum("reminder_channel", ["email", "sms", "
 export const reminderStatusEnum = pgEnum("reminder_status", ["pending", "sent", "failed", "cancelled", "done", "postponed"]);
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "cancelled"]);
 
+// Sales Pipeline enums
+export const serviceCategoryEnum = pgEnum("service_category", ["accounting", "write_up", "bookkeeping", "cfo"]);
+export const proposalStatusEnum = pgEnum("proposal_status", ["draft", "sent", "accepted", "rejected", "expired"]);
+
 // Client Portal enums
 export const documentStatusEnum = pgEnum("document_status", ["uploaded", "under_review", "accepted", "rejected"]);
 export const auditActionEnum = pgEnum("audit_action", ["login", "logout", "upload", "download", "view", "create", "update", "delete", "status_change", "document_uploaded", "document_reviewed", "document_accepted", "document_rejected"]);
@@ -528,6 +532,60 @@ export const intakeApplications = pgTable("intake_applications", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Services table (for proposals)
+export const services = pgTable("services", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: serviceCategoryEnum("category").notNull(),
+  defaultPrice: varchar("default_price", { length: 20 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposals table (sales pipeline)
+export const proposals = pgTable("proposals", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  proposalNumber: varchar("proposal_number", { length: 50 }).notNull(),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+  clientName: varchar("client_name", { length: 255 }).notNull(),
+  clientEmail: varchar("client_email", { length: 255 }),
+  clientPhone: varchar("client_phone", { length: 50 }),
+  clientCompany: varchar("client_company", { length: 255 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: proposalStatusEnum("status").default("draft").notNull(),
+  subtotal: varchar("subtotal", { length: 20 }).default("0"),
+  discount: varchar("discount", { length: 20 }).default("0"),
+  tax: varchar("tax", { length: 20 }).default("0"),
+  total: varchar("total", { length: 20 }).default("0"),
+  notes: text("notes"),
+  validUntil: timestamp("valid_until"),
+  sentAt: timestamp("sent_at"),
+  acceptedAt: timestamp("accepted_at"),
+  rejectedAt: timestamp("rejected_at"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Proposal Items table (services in a proposal)
+export const proposalItems = pgTable("proposal_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  proposalId: integer("proposal_id").notNull().references(() => proposals.id, { onDelete: "cascade" }),
+  serviceId: integer("service_id").references(() => services.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: serviceCategoryEnum("category"),
+  quantity: varchar("quantity", { length: 20 }).default("1"),
+  unitPrice: varchar("unit_price", { length: 20 }).notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   client: one(clients, {
@@ -792,6 +850,33 @@ export const intakeApplicationsRelations = relations(intakeApplications, ({ one 
   }),
 }));
 
+export const servicesRelations = relations(services, ({ many }) => ({
+  proposalItems: many(proposalItems),
+}));
+
+export const proposalsRelations = relations(proposals, ({ one, many }) => ({
+  client: one(clients, {
+    fields: [proposals.clientId],
+    references: [clients.id],
+  }),
+  createdByUser: one(users, {
+    fields: [proposals.createdByUserId],
+    references: [users.id],
+  }),
+  items: many(proposalItems),
+}));
+
+export const proposalItemsRelations = relations(proposalItems, ({ one }) => ({
+  proposal: one(proposals, {
+    fields: [proposalItems.proposalId],
+    references: [proposals.id],
+  }),
+  service: one(services, {
+    fields: [proposalItems.serviceId],
+    references: [services.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -861,6 +946,13 @@ export const insertIntakeApplicationSchema = createInsertSchema(intakeApplicatio
   convertedAt: dateCoercion,
 });
 
+// Sales Pipeline insert schemas
+export const insertServiceSchema = createInsertSchema(services).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true, sentAt: true, acceptedAt: true, rejectedAt: true }).extend({
+  validUntil: dateCoercion,
+});
+export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({ id: true, createdAt: true });
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -910,3 +1002,11 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertIntakeApplication = z.infer<typeof insertIntakeApplicationSchema>;
 export type IntakeApplication = typeof intakeApplications.$inferSelect;
+
+// Sales Pipeline types
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type Service = typeof services.$inferSelect;
+export type InsertProposal = z.infer<typeof insertProposalSchema>;
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertProposalItem = z.infer<typeof insertProposalItemSchema>;
+export type ProposalItem = typeof proposalItems.$inferSelect;
