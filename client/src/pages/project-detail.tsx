@@ -636,6 +636,8 @@ function TaskHierarchyItem({
   toggleExpand,
   reminderCounts,
   taskNotes,
+  expandedNotes,
+  toggleNotesExpand,
 }: { 
   task: TaskWithSubtasks; 
   level?: number;
@@ -649,10 +651,13 @@ function TaskHierarchyItem({
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
   taskNotes?: (Note & { user: User })[];
+  expandedNotes: Set<number>;
+  toggleNotesExpand: (taskId: number) => void;
 }) {
   const reminderCount = reminderCounts?.get(task.id) ?? 0;
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   const isExpanded = expandedTasks.has(task.id);
+  const notesExpanded = expandedNotes.has(task.id);
 
   return (
     <div className="space-y-2">
@@ -725,24 +730,35 @@ function TaskHierarchyItem({
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
           </div>
           {taskNotes && taskNotes.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border space-y-2">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MessageSquare className="h-3 w-3" />
-                <span>{taskNotes.length} note{taskNotes.length > 1 ? 's' : ''}</span>
-              </div>
-              {taskNotes.map((note) => (
-                <div key={note.id} className="text-xs bg-muted/50 rounded p-2" data-testid={`task-note-${note.id}`}>
-                  <p className="text-foreground whitespace-pre-wrap line-clamp-2">{note.content}</p>
-                  <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-                    <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
-                    <span>-</span>
-                    <span>{formatLocalDate(note.createdAt)}</span>
-                    {note.isVisibleToClient && (
-                      <Badge variant="outline" size="sm">Visible</Badge>
-                    )}
-                  </div>
+            <div className="mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => toggleNotesExpand(task.id)}
+                data-testid={`button-view-notes-${task.id}`}
+              >
+                <MessageSquare className="h-3 w-3 mr-1" />
+                {notesExpanded ? "Hide" : "View"} Note History ({taskNotes.length})
+                {notesExpanded ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
+              </Button>
+              {notesExpanded && (
+                <div className="mt-2 space-y-2 pl-2 border-l-2 border-muted">
+                  {taskNotes.map((note) => (
+                    <div key={note.id} className="text-xs bg-muted/50 rounded p-2" data-testid={`task-note-${note.id}`}>
+                      <p className="text-foreground whitespace-pre-wrap">{note.content}</p>
+                      <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                        <span>{note.user?.firstName || note.user?.email || "Unknown"}</span>
+                        <span>-</span>
+                        <span>{formatLocalDate(note.createdAt)}</span>
+                        {note.isVisibleToClient && (
+                          <Badge variant="outline" size="sm">Visible</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
@@ -816,6 +832,8 @@ function TaskHierarchyItem({
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
               taskNotes={taskNotes?.filter(n => n.taskId === subtask.id)}
+              expandedNotes={expandedNotes}
+              toggleNotesExpand={toggleNotesExpand}
             />
           ))}
         </div>
@@ -842,6 +860,7 @@ export default function ProjectDetail() {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [reminderTaskId, setReminderTaskId] = useState<number | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
   const [selectedAssociateId, setSelectedAssociateId] = useState<string>("");
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
@@ -1073,6 +1092,18 @@ export default function ProjectDetail() {
 
   const toggleExpand = (taskId: number) => {
     setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleNotesExpand = (taskId: number) => {
+    setExpandedNotes(prev => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
         newSet.delete(taskId);
@@ -2116,6 +2147,8 @@ export default function ProjectDetail() {
                   toggleExpand={toggleExpand}
                   reminderCounts={taskReminderCounts}
                   taskNotes={project.notes?.filter(n => n.taskId === task.id)}
+                  expandedNotes={expandedNotes}
+                  toggleNotesExpand={toggleNotesExpand}
                 />
               ))}
             </div>
