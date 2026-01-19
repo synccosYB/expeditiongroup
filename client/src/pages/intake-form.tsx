@@ -135,6 +135,7 @@ export default function IntakeForm() {
       ambulanceDistrict: "",
       waterDistrict: "",
       sewerDistrict: "",
+      projectDetails: "",
       needDemolishHouse: "",
       wellBeingDone: "",
       temporaryElectricGasNeeded: "",
@@ -219,7 +220,7 @@ export default function IntakeForm() {
     
     const step1Fields = ["ownerName", "hasSecondOwner", "secondOwnerName", "businessName", "homeNumber", "cellNumber", "email", "alternateEmail", "currentAddress", "mailingAddress", "mailingAddressSameAsCurrent", "dateOfBirth", "ssOrFid", "secondOwnerBusinessName", "secondOwnerHomeNumber", "secondOwnerCellNumber", "secondOwnerEmail", "secondOwnerAlternateEmail", "secondOwnerCurrentAddress", "secondOwnerMailingAddress", "secondOwnerMailingAddressSameAsCurrent", "secondOwnerDateOfBirth", "secondOwnerSsOrFid"];
     const step2Fields = ["projectName", "section", "block", "lot", "currentZoning", "locationSide", "locationStreet", "locationFeet", "locationOf", "locationTown", "locationVillage", "acreageOfParcel", "zoningDistrict", "schoolDistrict", "postalDistrict", "fireDistrict", "ambulanceDistrict", "waterDistrict", "sewerDistrict"];
-    const step3Fields = ["needDemolishHouse", "wellBeingDone", "temporaryElectricGasNeeded", "varianceFromSubdivision", "openSpaceOffered", "openSpaceAmount", "subdivisionType", "totalBuildingSize", "proposedAddition", "numberOfDwellingUnits", "specialPermitUse"];
+    const step3Fields = ["projectDetails", "needDemolishHouse", "wellBeingDone", "temporaryElectricGasNeeded", "varianceFromSubdivision", "openSpaceOffered", "openSpaceAmount", "subdivisionType", "totalBuildingSize", "proposedAddition", "numberOfDwellingUnits", "specialPermitUse"];
     const step4Fields = ["hasSlopesGreaterThan25", "slopesDetails", "hasStreams", "streamsNames", "hasWetlands", "wetlandsDetails"];
     const step5Fields = ["hasBeenReviewedBefore", "projectHistoryNarrative", "abuttingPropertiesTaxMap", "proximityFeatures", "referralAgencies", "adjacentMunicipality"];
     const step6Fields = ["boardsApprovals", "numberOfLots", "nydecApplicationNeeded", "usacoaApplicationNeeded", "status"];
@@ -944,6 +945,26 @@ export default function IntakeForm() {
                   <div>
                     <h3 className="text-lg font-medium mb-4">Project Description</h3>
                     <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="projectDetails"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Project Details</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                {...field} 
+                                placeholder="Enter detailed information about the project..."
+                                rows={5}
+                                data-testid="input-project-details" 
+                              />
+                            </FormControl>
+                            <p className="text-sm text-muted-foreground">
+                              Describe the scope, goals, and any specific requirements for this project.
+                            </p>
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="needDemolishHouse"

@@ -471,6 +471,9 @@ export const intakeApplications = pgTable("intake_applications", {
   waterDistrict: varchar("water_district", { length: 100 }),
   sewerDistrict: varchar("sewer_district", { length: 100 }),
   
+  // Project Description
+  projectDetails: text("project_details"),
+  
   // Project Description (yes/no/na questions)
   needDemolishHouse: varchar("need_demolish_house", { length: 10 }),
   wellBeingDone: varchar("well_being_done", { length: 10 }),
