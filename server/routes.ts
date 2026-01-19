@@ -2528,16 +2528,16 @@ export async function registerRoutes(
       }
       
       const dateParam = req.query.date as string;
-      if (!dateParam) {
-        return res.status(400).json({ message: "Date parameter required" });
+      if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        return res.status(400).json({ message: "Valid date parameter required (YYYY-MM-DD)" });
       }
       
       const userId = req.session.userId!;
-      const targetDate = new Date(dateParam);
-      const startOfDay = new Date(targetDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(targetDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Parse date components to avoid timezone issues
+      // dateParam is in format "YYYY-MM-DD" - using local time to match user's intent
+      const [year, month, day] = dateParam.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
       
       // Gather activity data from various sources
       const [timeEntries, timeLogs, notesCreated, documentsProcessed, tasksCompleted, auditLogEntries] = await Promise.all([
