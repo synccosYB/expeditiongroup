@@ -2226,7 +2226,10 @@ export default function ProjectDetail() {
                       clientId: null,
                     });
                     setActiveTab("notes");
-                    setIsNoteDialogOpen(true);
+                    setTimeout(() => {
+                      noteForm.setValue("taskId", task.id);
+                      setIsNoteDialogOpen(true);
+                    }, 0);
                   }}
                   onUpdateDueDate={(taskId, dueDate) => {
                     updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });
@@ -2298,7 +2301,10 @@ export default function ProjectDetail() {
                           clientId: null,
                         });
                         setActiveTab("notes");
-                        setIsNoteDialogOpen(true);
+                        setTimeout(() => {
+                          noteForm.setValue("taskId", task.id);
+                          setIsNoteDialogOpen(true);
+                        }, 0);
                       }}
                       onUpdateDueDate={(taskId, dueDate) => {
                         updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });
