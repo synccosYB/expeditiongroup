@@ -52,6 +52,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { parseLocalDate, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
+import { format } from "date-fns";
 import type { Task, Project, User } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -163,10 +164,9 @@ function TaskHierarchyItem({
                 <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
                   {task.title}
                 </p>
-                <Badge variant="outline" size="sm">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
+                <Badge variant="outline">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
                 <Badge 
-                  variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'} 
-                  size="sm"
+                  variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'}
                 >
                   {task.priority || 'normal'}
                 </Badge>
@@ -174,7 +174,7 @@ function TaskHierarchyItem({
                   <StatusBadge status={task.status} type="task" />
                 )}
                 {hasSubtasks && (
-                  <Badge variant="outline" size="sm">
+                  <Badge variant="outline">
                     {task.subtasks?.filter(s => s.status === 'done').length}/{task.subtasks?.length} subtasks
                   </Badge>
                 )}
@@ -202,7 +202,7 @@ function TaskHierarchyItem({
                     {formatLocalDate(task.dueDate)}
                   </span>
                 )}
-                <Badge variant="outline" size="sm">{task.locationType || 'office'}</Badge>
+                <Badge variant="outline">{task.locationType || 'office'}</Badge>
               </div>
             </div>
             <DropdownMenu>
