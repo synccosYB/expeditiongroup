@@ -48,6 +48,22 @@ Preferred communication style: Simple, everyday language.
 - **Invoices**: Generated invoices from time logs/entries with line items
 - **Invoice Items**: Individual line items referencing time logs, time entries, or custom items
 - **Associates**: External professionals (engineers, architects, surveyors, consultants)
+- **Services**: Service catalog items organized by category for proposals
+- **Proposals**: Sales proposals with line items, totals, and status tracking
+- **Proposal Items**: Individual service line items within proposals
+
+### Sales Pipeline
+- Proposal number format: PROP-YYYY-NNNN (e.g., PROP-2026-0001)
+- Proposals can be created from the Sales Pipeline page (/sales-pipeline)
+- Each proposal has a status: draft, sent, accepted, rejected, expired
+- Services are organized into 4 categories:
+  - **Accounting**: Business/Personal Tax Returns, Estimate Tax Payments, Tax/Legal/Financial Questions
+  - **Write Up**: Quarterly Meetings, Review Books, Quarterly Sales Tax Filing, New Corp
+  - **Bookkeeping**: Cash Reconciliation, Month/Year End Close, P&L/Balance Sheet Review, Enter Transactions
+  - **CFO**: Cash Flow Management, Financial Analysis, Budget vs Actual, Growth Planning, AP/AR Setup
+- Default services can be seeded via POST /api/services/seed endpoint
+- Line items include quantity, unit price, and calculated amounts
+- Routes: /sales-pipeline (list), /proposals/new (create), /proposals/:id (view/edit)
 
 ### Invoicing System
 - Invoice number format: INV-YYYY-NNNN (e.g., INV-2024-0001)
