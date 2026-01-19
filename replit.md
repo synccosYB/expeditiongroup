@@ -97,6 +97,18 @@ Preferred communication style: Simple, everyday language.
 - API Routes: GET/POST /api/intake-applications, GET/PATCH/DELETE /api/intake-applications/:id, POST /api/intake-applications/:id/convert
 - Frontend Routes: /intake (list), /intake/new (create), /intake/:id (view read-only with Convert button), /intake/:id/edit (edit)
 
+### Reminders System
+- Task reminders can be created and scheduled for future dates
+- Reminders page at /reminders shows all reminders with task and project context
+- Features:
+  - Grouped by read/unread status for easy triage
+  - Toggle read/unread to revisit later (click eye icon)
+  - Shows status (pending, sent, done, postponed, cancelled, failed)
+  - Links to related project for quick navigation
+  - Displays recipient email/phone and scheduled time
+- API: GET /api/reminders (all), PATCH /api/reminders/:id (update status, isRead)
+- Database: task_reminders table with isRead boolean field
+
 ### Daily Activity Logs
 - Log Daily Activity dialog accessible from dashboard
 - "Generate from Activity" button auto-populates fields from application data:
