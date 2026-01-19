@@ -13,7 +13,7 @@ import "@uppy/dashboard/css/style.min.css";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onGetUploadParameters: (file?: { size: number; type?: string }) => Promise<{
+  onGetUploadParameters: (file?: { id: string; name: string; size: number; type?: string }) => Promise<{
     method: "PUT";
     url: string;
     headers?: Record<string, string>;
@@ -61,8 +61,8 @@ export function ObjectUploader({
         shouldUseMultipart: false,
         async getUploadParameters(file) {
           try {
-            console.log("getUploadParameters called for:", file.name);
-            const params = await onGetUploadParameters({ size: file.size || 0, type: file.type || undefined });
+            console.log("getUploadParameters called for:", file.name, "id:", file.id);
+            const params = await onGetUploadParameters({ id: file.id, name: file.name || "", size: file.size || 0, type: file.type || undefined });
             console.log("getUploadParameters returning:", params.method, params.url.substring(0, 50) + "...");
             return params;
           } catch (error: any) {

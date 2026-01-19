@@ -64,6 +64,16 @@ Preferred communication style: Simple, everyday language.
 - Projects: View-only project status with task timeline
 - Task status values: "todo", "waiting", "in_progress", "done", "cancelled"
 
+### Document Management
+- **Single Upload**: Add Document button for uploading one document at a time with full metadata
+- **Bulk Upload**: Bulk Upload button for uploading up to 20 documents at once
+  - Uses Uppy library via ObjectUploader component
+  - Allows setting shared category, folder, and visibility for all files
+  - Files are tracked by unique Uppy file ID to handle duplicate filenames
+  - Creates document records after all files are uploaded to storage
+- **Folders**: Documents can be organized into folders
+- **Categories**: plan, permit, survey, dob_letter, correspondence, legal, photo, inspection, other
+
 ### Intake Applications (Permit Application Intake)
 - Multi-step wizard form (6 steps) for comprehensive permit application intake
 - Steps: Applicant Info → Project Info → Project Details → Site Characteristics → History & Proximity → Boards & Approvals
