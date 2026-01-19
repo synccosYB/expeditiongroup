@@ -5,7 +5,7 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
- * Format a date in local time as DD-MM-YYYY format.
+ * Format a date in local time as MM-DD-YYYY format (US standard).
  * Use this for consistent date display throughout the application.
  */
 export function formatLocalDate(date: Date | string | null | undefined): string {
@@ -18,11 +18,11 @@ export function formatLocalDate(date: Date | string | null | undefined): string 
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
   
-  return `${day}-${month}-${year}`;
+  return `${month}-${day}-${year}`;
 }
 
 /**
- * Format a date with time in local time as "DD-MM-YYYY at h:mm a" format.
+ * Format a date with time in local time as "MM-DD-YYYY at h:mm AM/PM" format (US standard).
  */
 export function formatLocalDateTime(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -39,12 +39,12 @@ export function formatLocalDateTime(date: Date | string | null | undefined): str
   const period = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
   
-  return `${day}-${month}-${year} at ${hours}:${minutes} ${period}`;
+  return `${month}-${day}-${year} at ${hours}:${minutes} ${period}`;
 }
 
 /**
- * Format a date in local time as "d MMMM yyyy" format (e.g., "19 January 2026").
- * Use this for formal display like invoices.
+ * Format a date in local time as "MMMM d, yyyy" format (e.g., "January 19, 2026").
+ * Use this for formal display like invoices (US standard).
  */
 export function formatLocalDateLong(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -61,7 +61,7 @@ export function formatLocalDateLong(date: Date | string | null | undefined): str
   const month = months[d.getMonth()];
   const year = d.getFullYear();
   
-  return `${day} ${month} ${year}`;
+  return `${month} ${day}, ${year}`;
 }
 
 export function formatDateForInput(date: Date | string | null | undefined): string {

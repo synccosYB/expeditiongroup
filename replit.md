@@ -99,12 +99,12 @@ Preferred communication style: Simple, everyday language.
 - Admin-only feature
 
 ### Date Formatting
-- **Standard Format**: DD-MM-YYYY (e.g., 19-01-2026) for all date displays
-- **Long Format**: d MMMM yyyy (e.g., 19 January 2026) for formal displays like invoices
-- **DateTime Format**: DD-MM-YYYY at h:mm AM/PM for timestamps with time
+- **Standard Format**: MM-DD-YYYY (e.g., 01-19-2026) for all date displays (US standard)
+- **Long Format**: MMMM d, yyyy (e.g., January 19, 2026) for formal displays like invoices
+- **DateTime Format**: MM-DD-YYYY at h:mm AM/PM for timestamps with time
 - **Utility Functions** (client/src/lib/dateUtils.ts):
-  - `formatLocalDate()` - Standard DD-MM-YYYY format
-  - `formatLocalDateLong()` - Formal long format (19 January 2026)
+  - `formatLocalDate()` - Standard MM-DD-YYYY format
+  - `formatLocalDateLong()` - Formal long format (January 19, 2026)
   - `formatLocalDateTime()` - Date with time
   - `parseLocalDateFromISO()` - Parse ISO dates in local time to avoid timezone shifts
   - `formatDateForInput()` - YYYY-MM-DD for HTML date inputs
