@@ -29,6 +29,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DayPicker } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -633,6 +635,7 @@ function TaskHierarchyItem({
   onReminder,
   onAddTimeLog,
   onAddNote,
+  onUpdateDueDate,
   expandedTasks,
   toggleExpand,
   reminderCounts,
@@ -648,6 +651,7 @@ function TaskHierarchyItem({
   onReminder: (task: Task) => void;
   onAddTimeLog: (task: Task) => void;
   onAddNote: (task: Task) => void;
+  onUpdateDueDate: (taskId: number, dueDate: string | null) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
@@ -722,12 +726,45 @@ function TaskHierarchyItem({
                 {task.relatedAssociate.name}
               </span>
             )}
-            {task.dueDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {formatLocalDate(task.dueDate)}
-              </span>
-            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 hover:text-foreground hover:underline cursor-pointer"
+                  data-testid={`button-inline-due-date-${task.id}`}
+                >
+                  <Calendar className="h-3 w-3" />
+                  {task.dueDate ? formatLocalDate(task.dueDate) : "Set due date"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <DayPicker
+                  mode="single"
+                  selected={task.dueDate ? parseLocalDateFromISO(task.dueDate) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      onUpdateDueDate(task.id, formatDateForInput(date));
+                    } else {
+                      onUpdateDueDate(task.id, null);
+                    }
+                  }}
+                  initialFocus
+                />
+                {task.dueDate && (
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-muted-foreground"
+                      onClick={() => onUpdateDueDate(task.id, null)}
+                      data-testid={`button-clear-due-date-${task.id}`}
+                    >
+                      Clear due date
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
           </div>
           {taskNotes && taskNotes.length > 0 && (
@@ -829,6 +866,7 @@ function TaskHierarchyItem({
               onReminder={onReminder}
               onAddTimeLog={onAddTimeLog}
               onAddNote={onAddNote}
+              onUpdateDueDate={onUpdateDueDate}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
@@ -2190,6 +2228,9 @@ export default function ProjectDetail() {
                     setActiveTab("notes");
                     setIsNoteDialogOpen(true);
                   }}
+                  onUpdateDueDate={(taskId, dueDate) => {
+                    updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });
+                  }}
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
                   reminderCounts={taskReminderCounts}
@@ -2258,6 +2299,9 @@ export default function ProjectDetail() {
                         });
                         setActiveTab("notes");
                         setIsNoteDialogOpen(true);
+                      }}
+                      onUpdateDueDate={(taskId, dueDate) => {
+                        updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });
                       }}
                       expandedTasks={expandedTasks}
                       toggleExpand={toggleExpand}
