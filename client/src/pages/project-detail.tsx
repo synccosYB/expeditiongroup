@@ -61,6 +61,7 @@ import {
   FolderInput,
   Eye,
   EyeOff,
+  Download,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -998,7 +999,7 @@ export default function ProjectDetail() {
   const timeLogForm = useForm<TimeLogFormData>({
     resolver: zodResolver(timeLogFormSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: formatDateForInput(new Date()),
       taskDescription: "",
       startTime: "",
       endTime: "",
@@ -1257,7 +1258,7 @@ export default function ProjectDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Time log added successfully" });
       setIsTimeLogDialogOpen(false);
-      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
+      timeLogForm.reset({ date: formatDateForInput(new Date()), type: "office", durationUnit: "minutes", duration: "" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -1294,7 +1295,7 @@ export default function ProjectDetail() {
       toast({ title: "Time log updated successfully" });
       setIsTimeLogDialogOpen(false);
       setEditingTimeLog(null);
-      timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
+      timeLogForm.reset({ date: formatDateForInput(new Date()), type: "office", durationUnit: "minutes", duration: "" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -2083,7 +2084,7 @@ export default function ProjectDetail() {
                   onReminder={(task) => setReminderTaskId(task.id)}
                   onAddTimeLog={(task) => {
                     timeLogForm.reset({
-                      date: format(new Date(), "yyyy-MM-dd"),
+                      date: formatDateForInput(new Date()),
                       type: task.locationType || "office",
                       durationUnit: "minutes",
                       duration: "",
@@ -2618,9 +2619,16 @@ export default function ProjectDetail() {
                         )}
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" asChild>
-                      <a href={doc.storagePath} target="_blank" rel="noopener noreferrer" data-testid={`button-view-document-${doc.id}`}>
+                    <Button size="sm" variant="ghost" asChild data-testid={`button-view-document-${doc.id}`}>
+                      <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                        <Eye className="h-4 w-4 mr-1" />
                         View
+                      </a>
+                    </Button>
+                    <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
+                      <a href={doc.storagePath} download={doc.fileName}>
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
                       </a>
                     </Button>
                     <DropdownMenu>
@@ -3302,7 +3310,7 @@ export default function ProjectDetail() {
                 </Tooltip>
               <DialogContent onCloseAutoFocus={() => {
                 setEditingTimeLog(null);
-                timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), type: "office", durationUnit: "minutes", duration: "" });
+                timeLogForm.reset({ date: formatDateForInput(new Date()), type: "office", durationUnit: "minutes", duration: "" });
               }}>
                 <DialogHeader>
                   <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
@@ -3483,7 +3491,7 @@ export default function ProjectDetail() {
                             const hoursValue = parseFloat(log.totalHours) || 0;
                             const totalMinutes = Math.round(hoursValue * 60);
                             timeLogForm.reset({
-                              date: format(new Date(log.date), "yyyy-MM-dd"),
+                              date: formatDateForInput(log.date),
                               taskDescription: log.taskDescription,
                               type: log.type as "road" | "office",
                               startTime: log.startTime || "",
