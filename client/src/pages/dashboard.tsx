@@ -499,7 +499,7 @@ export default function Dashboard() {
               </CardTitle>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/tasks">
+              <Link href="/tasks?filter=overdue">
                 View All
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Link>

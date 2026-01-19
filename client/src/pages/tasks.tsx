@@ -51,7 +51,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { parseLocalDate, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, isDateOverdue } from "@/lib/dateUtils";
+import { useLocation, useSearch } from "wouter";
 import { format } from "date-fns";
 import type { Task, Project, User } from "@shared/schema";
 import { useForm } from "react-hook-form";
@@ -63,6 +64,7 @@ type TaskWithSubtasks = TaskWithProject & { subtasks?: TaskWithSubtasks[] };
 
 const statusOptions = [
   { value: "all", label: "All Statuses" },
+  { value: "overdue", label: "Overdue" },
   { value: "todo", label: "To Do" },
   { value: "in_progress", label: "In Progress" },
   { value: "waiting", label: "Waiting" },
@@ -249,8 +251,12 @@ function TaskHierarchyItem({
 export default function Tasks() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const initialStatusFilter = searchParams.get("filter") || "all";
+  
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
@@ -390,7 +396,16 @@ export default function Tasks() {
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.project?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || task.status === statusFilter;
+    
+    let matchesStatus = false;
+    if (statusFilter === "all") {
+      matchesStatus = true;
+    } else if (statusFilter === "overdue") {
+      matchesStatus = isDateOverdue(task.dueDate) && task.status !== "done" && task.status !== "cancelled";
+    } else {
+      matchesStatus = task.status === statusFilter;
+    }
+    
     const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
     const matchesLocation = locationFilter === "all" || task.locationType === locationFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesLocation;
