@@ -631,6 +631,7 @@ function TaskHierarchyItem({
   onToggle,
   onReminder,
   onAddTimeLog,
+  onAddNote,
   expandedTasks,
   toggleExpand,
   reminderCounts,
@@ -643,6 +644,7 @@ function TaskHierarchyItem({
   onToggle: (task: Task) => void;
   onReminder: (task: Task) => void;
   onAddTimeLog: (task: Task) => void;
+  onAddNote: (task: Task) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
@@ -785,6 +787,10 @@ function TaskHierarchyItem({
                 <Clock className="h-4 w-4 mr-2" />
                 Add Time Log
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddNote(task)} data-testid={`button-add-note-${task.id}`}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Add Note
+              </DropdownMenuItem>
               <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
@@ -805,6 +811,7 @@ function TaskHierarchyItem({
               onToggle={onToggle}
               onReminder={onReminder}
               onAddTimeLog={onAddTimeLog}
+              onAddNote={onAddNote}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
@@ -2092,6 +2099,18 @@ export default function ProjectDetail() {
                     });
                     setActiveTab("time-logs");
                     setIsTimeLogDialogOpen(true);
+                  }}
+                  onAddNote={(task) => {
+                    noteForm.reset({
+                      content: "",
+                      isVisibleToClient: false,
+                      entityType: "task",
+                      taskId: task.id,
+                      associateId: null,
+                      clientId: null,
+                    });
+                    setActiveTab("notes");
+                    setIsNoteDialogOpen(true);
                   }}
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
