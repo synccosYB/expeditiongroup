@@ -62,6 +62,7 @@ import {
   Eye,
   EyeOff,
   Download,
+  Archive,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -861,6 +862,7 @@ export default function ProjectDetail() {
   const [reminderTaskId, setReminderTaskId] = useState<number | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [expandedNotes, setExpandedNotes] = useState<Set<number>>(new Set());
+  const [showArchivedTasks, setShowArchivedTasks] = useState(false);
   const [selectedAssociateId, setSelectedAssociateId] = useState<string>("");
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
@@ -1708,6 +1710,38 @@ export default function ProjectDetail() {
   const hierarchicalTasks = buildTaskHierarchy(project.tasks || []);
   const parentTasks = project.tasks?.filter(t => !t.parentTaskId) || [];
 
+  // Check if a task has any incomplete subtasks (recursively)
+  const hasIncompleteSubtasks = (task: TaskWithSubtasks): boolean => {
+    if (!task.subtasks || task.subtasks.length === 0) return false;
+    return task.subtasks.some(subtask => 
+      (subtask.status !== 'done' && subtask.status !== 'cancelled') || hasIncompleteSubtasks(subtask)
+    );
+  };
+
+  // Filter tasks: show incomplete tasks OR completed tasks with incomplete subtasks
+  const filterActiveTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
+    return tasks.filter(task => {
+      const isIncomplete = task.status !== 'done' && task.status !== 'cancelled';
+      const hasActiveSubtasks = hasIncompleteSubtasks(task);
+      return isIncomplete || hasActiveSubtasks;
+    }).map(task => ({
+      ...task,
+      subtasks: task.subtasks ? filterActiveTasks(task.subtasks) : []
+    }));
+  };
+
+  // Filter archived tasks: completed tasks without any incomplete subtasks
+  const filterArchivedTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
+    return tasks.filter(task => {
+      const isComplete = task.status === 'done' || task.status === 'cancelled';
+      const hasActiveSubtasks = hasIncompleteSubtasks(task);
+      return isComplete && !hasActiveSubtasks;
+    });
+  };
+
+  const activeTasks = filterActiveTasks(hierarchicalTasks);
+  const archivedTasks = filterArchivedTasks(hierarchicalTasks);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -2110,9 +2144,9 @@ export default function ProjectDetail() {
             </Dialog>
           </div>
 
-          {hierarchicalTasks.length > 0 ? (
+          {activeTasks.length > 0 ? (
             <div className="space-y-4">
-              {hierarchicalTasks.map((task) => (
+              {activeTasks.map((task) => (
                 <TaskHierarchyItem
                   key={task.id}
                   task={task}
@@ -2157,13 +2191,72 @@ export default function ProjectDetail() {
               <CardContent className="p-0">
                 <EmptyState
                   icon={ClipboardList}
-                  title="No tasks yet"
-                  description="Add tasks to track work on this project"
+                  title="No open tasks"
+                  description={archivedTasks.length > 0 ? "All tasks are completed. View archived tasks below." : "Add tasks to track work on this project"}
                   actionLabel="Add Task"
                   onAction={() => handleOpenTaskDialog()}
                 />
               </CardContent>
             </Card>
+          )}
+
+          {archivedTasks.length > 0 && (
+            <div className="mt-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground mb-3"
+                onClick={() => setShowArchivedTasks(!showArchivedTasks)}
+                data-testid="button-toggle-archived-tasks"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                {showArchivedTasks ? "Hide" : "View"} Archived Tasks ({archivedTasks.length})
+                {showArchivedTasks ? <ChevronDown className="h-4 w-4 ml-1" /> : <ChevronRight className="h-4 w-4 ml-1" />}
+              </Button>
+              {showArchivedTasks && (
+                <div className="space-y-4 opacity-75">
+                  {archivedTasks.map((task) => (
+                    <TaskHierarchyItem
+                      key={task.id}
+                      task={task}
+                      onEdit={handleOpenTaskDialog}
+                      onDelete={setDeletingTask}
+                      onToggle={toggleTaskStatus}
+                      onReminder={(task) => setReminderTaskId(task.id)}
+                      onAddTimeLog={(task) => {
+                        timeLogForm.reset({
+                          date: formatDateForInput(new Date()),
+                          type: task.locationType || "office",
+                          durationUnit: "minutes",
+                          duration: "",
+                          taskDescription: task.title,
+                        });
+                        setActiveTab("time-logs");
+                        setIsTimeLogDialogOpen(true);
+                      }}
+                      onAddNote={(task) => {
+                        noteForm.reset({
+                          content: "",
+                          isVisibleToClient: false,
+                          entityType: "task",
+                          taskId: task.id,
+                          associateId: null,
+                          clientId: null,
+                        });
+                        setActiveTab("notes");
+                        setIsNoteDialogOpen(true);
+                      }}
+                      expandedTasks={expandedTasks}
+                      toggleExpand={toggleExpand}
+                      reminderCounts={taskReminderCounts}
+                      taskNotes={project.notes?.filter(n => n.taskId === task.id)}
+                      expandedNotes={expandedNotes}
+                      toggleNotesExpand={toggleNotesExpand}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </TabsContent>
 
