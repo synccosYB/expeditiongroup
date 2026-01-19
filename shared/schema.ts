@@ -471,14 +471,14 @@ export const intakeApplications = pgTable("intake_applications", {
   waterDistrict: varchar("water_district", { length: 100 }),
   sewerDistrict: varchar("sewer_district", { length: 100 }),
   
-  // Project Description
-  needDemolishHouse: boolean("need_demolish_house").default(false),
-  wellBeingDone: boolean("well_being_done").default(false),
-  temporaryElectricGasNeeded: boolean("temporary_electric_gas_needed").default(false),
+  // Project Description (yes/no/na questions)
+  needDemolishHouse: varchar("need_demolish_house", { length: 10 }),
+  wellBeingDone: varchar("well_being_done", { length: 10 }),
+  temporaryElectricGasNeeded: varchar("temporary_electric_gas_needed", { length: 10 }),
   
   // Subdivision Questions
   varianceFromSubdivision: text("variance_from_subdivision"),
-  openSpaceOffered: boolean("open_space_offered").default(false),
+  openSpaceOffered: varchar("open_space_offered", { length: 10 }),
   openSpaceAmount: varchar("open_space_amount", { length: 100 }),
   subdivisionType: varchar("subdivision_type", { length: 100 }),
   
@@ -490,16 +490,16 @@ export const intakeApplications = pgTable("intake_applications", {
   // Special Permit Questions
   specialPermitUse: text("special_permit_use"),
   
-  // Site Characteristics
-  hasSlopesGreaterThan25: boolean("has_slopes_greater_than_25").default(false),
+  // Site Characteristics (yes/no/na questions)
+  hasSlopesGreaterThan25: varchar("has_slopes_greater_than_25", { length: 10 }),
   slopesDetails: text("slopes_details"),
-  hasStreams: boolean("has_streams").default(false),
+  hasStreams: varchar("has_streams", { length: 10 }),
   streamsNames: text("streams_names"),
-  hasWetlands: boolean("has_wetlands").default(false),
+  hasWetlands: varchar("has_wetlands", { length: 10 }),
   wetlandsDetails: text("wetlands_details"),
   
-  // Project History
-  hasBeenReviewedBefore: boolean("has_been_reviewed_before").default(false),
+  // Project History (yes/no/na questions)
+  hasBeenReviewedBefore: varchar("has_been_reviewed_before", { length: 10 }),
   projectHistoryNarrative: text("project_history_narrative"),
   abuttingPropertiesTaxMap: text("abutting_properties_tax_map"),
   
@@ -514,9 +514,9 @@ export const intakeApplications = pgTable("intake_applications", {
   boardsApprovals: jsonb("boards_approvals").default({}),
   numberOfLots: varchar("number_of_lots", { length: 50 }),
   
-  // DEC/USACOA applications
-  nydecApplicationNeeded: boolean("nydec_application_needed").default(false),
-  usacoaApplicationNeeded: boolean("usacoa_application_needed").default(false),
+  // DEC/USACOA applications (yes/no/na questions)
+  nydecApplicationNeeded: varchar("nydec_application_needed", { length: 10 }),
+  usacoaApplicationNeeded: varchar("usacoa_application_needed", { length: 10 }),
   
   // Status and metadata
   status: intakeStatusEnum("status").default("draft").notNull(),
