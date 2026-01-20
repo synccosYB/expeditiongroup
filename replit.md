@@ -159,6 +159,16 @@ Preferred communication style: Simple, everyday language.
 ### Design System
 The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis on information density and data clarity. Typography uses Inter for UI and JetBrains Mono for timestamps. Layout uses a fixed-width sidebar (w-64) with responsive main content area.
 
+### Progressive Web App (PWA)
+The application is a fully installable PWA with the following features:
+- **Manifest**: `client/public/manifest.json` defines app metadata, icons, and shortcuts
+- **Service Worker**: `client/public/sw.js` provides offline caching with network-first strategy for API calls
+- **Installation**: Users can install the app from their browser's install prompt or address bar
+- **Offline Support**: Static assets are cached for offline viewing; API calls show friendly offline message
+- **App Shortcuts**: Dashboard and Projects pages available as quick shortcuts
+- **Theme Color**: #1e40af (blue) matches the app branding
+- **Icons**: SVG icon (`pwa-icon.svg`) with fallback to favicon.png
+
 ## External Dependencies
 
 ### Database
