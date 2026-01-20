@@ -1,10 +1,11 @@
-const CACHE_NAME = 'expedition-plus-v1';
+const CACHE_NAME = 'expedition-plus-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/favicon.svg',
   '/favicon.png',
-  '/pwa-icon.svg'
+  '/pwa-icon-192.png',
+  '/pwa-icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
