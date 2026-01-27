@@ -2879,7 +2879,7 @@ export async function registerRoutes(
     }
   });
 
-  // Convert intake application to client/project
+  // Convert intake application to project (links to existing client)
   app.post("/api/intake-applications/:id/convert", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -2888,6 +2888,13 @@ export async function registerRoutes(
       }
       
       const intakeId = parseInt(req.params.id);
+      const { clientId } = req.body;
+      
+      // Validate clientId is provided
+      if (!clientId) {
+        return res.status(400).json({ message: "Client ID is required. Please select an existing client to link the project to." });
+      }
+      
       const intake = await storage.getIntakeApplication(intakeId);
       
       if (!intake) {
@@ -2903,16 +2910,11 @@ export async function registerRoutes(
         });
       }
       
-      // Create client from intake data using direct database insert
-      const [newClient] = await db.insert(clients).values({
-        name: intake.ownerName || "Unknown",
-        company: intake.businessName || null,
-        clientType: "homeowner",
-        email: intake.email || null,
-        phone: intake.cellNumber || intake.homeNumber || null,
-        address: intake.currentAddress || null,
-        status: "active",
-      }).returning();
+      // Verify the client exists
+      const existingClient = await storage.getClient(parseInt(clientId));
+      if (!existingClient) {
+        return res.status(404).json({ message: "Selected client not found" });
+      }
       
       // Build project address from intake location fields
       const projectAddress = [
@@ -2921,9 +2923,9 @@ export async function registerRoutes(
         intake.locationVillage
       ].filter(Boolean).join(", ") || intake.currentAddress || "";
       
-      // Create project from intake data using direct database insert
+      // Create project from intake data, linked to the existing client
       const [newProject] = await db.insert(projects).values({
-        clientId: newClient.id,
+        clientId: existingClient.id,
         name: intake.projectName || `${intake.ownerName} - New Project`,
         description: intake.varianceFromSubdivision || intake.specialPermitUse || null,
         address: projectAddress,
@@ -2936,10 +2938,10 @@ export async function registerRoutes(
         isVisibleToClient: true,
       }).returning();
       
-      // Update intake with linkage to client and project using direct SQL
+      // Update intake with linkage to client and project
       await db.update(intakeApplications)
         .set({
-          linkedClientId: newClient.id,
+          linkedClientId: existingClient.id,
           linkedProjectId: newProject.id,
           convertedAt: new Date(),
           status: "approved",
@@ -2953,13 +2955,13 @@ export async function registerRoutes(
         action: "create",
         entityType: "intake_conversion",
         entityId: intakeId.toString(),
-        description: `Converted intake application to Client #${newClient.id} and Project #${newProject.id}`,
-        metadata: { intakeId, clientId: newClient.id, projectId: newProject.id },
+        description: `Converted intake application to Project #${newProject.id}, linked to existing Client #${existingClient.id}`,
+        metadata: { intakeId, clientId: existingClient.id, projectId: newProject.id },
       });
       
       res.json({
         message: "Intake application converted successfully",
-        client: newClient,
+        client: existingClient,
         project: newProject,
       });
     } catch (error) {

@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams, Link } from "wouter";
-import { ArrowLeft, Edit, User, MapPin, FileText, Mountain, History, Building, CheckCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { ArrowLeft, Edit, User, MapPin, FileText, Mountain, History, Building, CheckCircle, ExternalLink, ArrowRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { IntakeApplication, Client, Project } from "@shared/schema";
@@ -44,22 +49,38 @@ export default function IntakeView() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const applicationId = params.id ? parseInt(params.id) : null;
+  
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [clientSearch, setClientSearch] = useState("");
 
   const { data: application, isLoading, error } = useQuery<IntakeApplication>({
     queryKey: ["/api/intake-applications", applicationId],
     enabled: !!applicationId,
   });
 
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    (client.company && client.company.toLowerCase().includes(clientSearch.toLowerCase())) ||
+    (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
+  );
+
   const convertMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/intake-applications/${applicationId}/convert`);
+    mutationFn: async (clientId: number) => {
+      const res = await apiRequest("POST", `/api/intake-applications/${applicationId}/convert`, { clientId });
       return res.json();
     },
     onSuccess: (data: { message: string; client: Client; project: Project }) => {
       toast({
         title: "Converted Successfully",
-        description: `Created client "${data.client.name}" and project "${data.project.name}"`,
+        description: `Created project "${data.project.name}" linked to client "${data.client.name}"`,
       });
+      setShowConvertDialog(false);
+      setSelectedClientId("");
       queryClient.invalidateQueries({ queryKey: ["/api/intake-applications", applicationId] });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -72,6 +93,18 @@ export default function IntakeView() {
       });
     },
   });
+
+  const handleConvert = () => {
+    if (!selectedClientId) {
+      toast({
+        title: "Client Required",
+        description: "Please select an existing client to link this project to.",
+        variant: "destructive",
+      });
+      return;
+    }
+    convertMutation.mutate(parseInt(selectedClientId));
+  };
 
   const isConverted = application?.linkedClientId || application?.linkedProjectId;
 
@@ -122,12 +155,11 @@ export default function IntakeView() {
         <div className="flex items-center gap-2 flex-wrap">
           {!isConverted && (
             <Button 
-              onClick={() => convertMutation.mutate()}
-              disabled={convertMutation.isPending}
+              onClick={() => setShowConvertDialog(true)}
               data-testid="button-convert"
             >
               <ArrowRight className="h-4 w-4 mr-2" />
-              {convertMutation.isPending ? "Converting..." : "Convert to Project"}
+              Convert to Project
             </Button>
           )}
           <Button variant="outline" onClick={() => navigate(`/intake/${applicationId}/edit`)} data-testid="button-edit">
@@ -392,6 +424,71 @@ export default function IntakeView() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert to Project</DialogTitle>
+            <DialogDescription>
+              Select an existing client to link this project to. This will create a new project under the selected client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-search">Search Clients</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="client-search"
+                  placeholder="Search by name, company, or email..."
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-client-search"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client-select">Select Client</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger id="client-select" data-testid="select-client">
+                  <SelectValue placeholder="Choose an existing client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredClients.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No clients found
+                    </div>
+                  ) : (
+                    filteredClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()} data-testid={`select-client-${client.id}`}>
+                        <div className="flex flex-col">
+                          <span>{client.name}</span>
+                          {client.company && (
+                            <span className="text-xs text-muted-foreground">{client.company}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowConvertDialog(false)} data-testid="button-cancel-convert">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConvert} 
+              disabled={!selectedClientId || convertMutation.isPending}
+              data-testid="button-confirm-convert"
+            >
+              {convertMutation.isPending ? "Converting..." : "Convert"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
