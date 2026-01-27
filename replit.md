@@ -159,6 +159,16 @@ Preferred communication style: Simple, everyday language.
 ### Design System
 The UI follows productivity tool patterns (Linear, Notion, Asana) with emphasis on information density and data clarity. Typography uses Inter for UI and JetBrains Mono for timestamps. Layout uses a fixed-width sidebar (w-64) with responsive main content area.
 
+### Mobile Responsiveness
+The application is fully responsive with specific optimizations for mobile devices:
+- **Dialogs**: Constrained to max-h-[85vh] with overflow-y-auto for proper scrolling on mobile
+- **Tabs**: Horizontally scrollable with hidden scrollbars using scrollbar-hide utility class
+- **Headers**: Responsive text sizes (text-xl on mobile, text-3xl on desktop) with flex-wrap for badges
+- **Forms**: Time log forms use 2-column grid on mobile with inputMode="numeric" for proper mobile keyboard
+- **Grids**: Info cards use 2 columns on mobile, 4 columns on desktop
+- **Buttons**: Shortened text labels on mobile with icons hidden on smaller screens
+- **Utility Classes**: scrollbar-hide CSS class in index.css for smooth horizontal scrolling
+
 ### Progressive Web App (PWA)
 The application is a fully installable PWA with the following features:
 - **Manifest**: `client/public/manifest.json` defines app metadata, icons, and shortcuts
