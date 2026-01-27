@@ -2589,182 +2589,115 @@ export default function ProjectDetail() {
                   </Form>
                 </DialogContent>
               </Dialog>
-              <Dialog open={isBulkUploadDialogOpen} onOpenChange={(open) => {
-                setIsBulkUploadDialogOpen(open);
-                if (!open) {
-                  bulkUploadPathsRef.current.clear();
-                  setBulkUploadCategory("other");
-                  setBulkUploadFolderId("__none__");
-                  setBulkUploadVisible(true);
-                }
-              }}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" data-testid="button-bulk-upload">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Bulk Upload
-                      </Button>
-                    </DialogTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Upload multiple documents at once</TooltipContent>
-                </Tooltip>
-                <DialogContent className="max-w-xl">
-                  <DialogHeader>
-                    <DialogTitle>Bulk Upload Documents</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Category</label>
-                        <Select value={bulkUploadCategory} onValueChange={setBulkUploadCategory}>
-                          <SelectTrigger data-testid="select-bulk-category">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="plan">Plan</SelectItem>
-                            <SelectItem value="permit">Permit</SelectItem>
-                            <SelectItem value="survey">Survey</SelectItem>
-                            <SelectItem value="dob_letter">DOB Letter</SelectItem>
-                            <SelectItem value="correspondence">Correspondence</SelectItem>
-                            <SelectItem value="legal">Legal</SelectItem>
-                            <SelectItem value="photo">Photo</SelectItem>
-                            <SelectItem value="inspection">Inspection</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Folder</label>
-                        <Select value={bulkUploadFolderId} onValueChange={setBulkUploadFolderId}>
-                          <SelectTrigger data-testid="select-bulk-folder">
-                            <SelectValue placeholder="No folder" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">No folder</SelectItem>
-                            {folders?.map((folder) => (
-                              <SelectItem key={folder.id} value={folder.id.toString()}>
-                                {folder.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="bulk-visible"
-                        checked={bulkUploadVisible}
-                        onCheckedChange={(checked) => setBulkUploadVisible(checked as boolean)}
-                        data-testid="checkbox-bulk-visible"
-                      />
-                      <label htmlFor="bulk-visible" className="text-sm">Visible to client</label>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <ObjectUploader
-                        maxNumberOfFiles={20}
-                        autoProceed={false}
-                        onGetUploadParameters={async (file) => {
-                          const fileId = file?.id || "";
-                          const fileName = file?.name || "";
-                          const fileType = file?.type || "application/octet-stream";
-                          const res = await fetch(`/api/projects/${id}/documents/upload`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            credentials: "include",
-                            body: JSON.stringify({ category: bulkUploadCategory, fileSize: file?.size || 0 }),
-                          });
-                          if (!res.ok) {
-                            const errorData = await res.json().catch(() => ({}));
-                            if (errorData.code === "STORAGE_LIMIT_EXCEEDED") {
-                              const error: any = new Error("Storage limit exceeded");
-                              error.code = "STORAGE_LIMIT_EXCEEDED";
-                              throw error;
-                            }
-                            throw new Error("Failed to get upload URL");
+              <ObjectUploader
+                maxNumberOfFiles={20}
+                autoProceed={false}
+                showStagingStep={true}
+                folders={folders?.map(f => ({ id: f.id, name: f.name })) || []}
+                defaultFolderId={bulkUploadFolderId}
+                defaultCategory={bulkUploadCategory}
+                defaultVisibility={bulkUploadVisible}
+                showCategorySelector={true}
+                showVisibilitySelector={true}
+                onCategoryChange={setBulkUploadCategory}
+                onVisibilityChange={setBulkUploadVisible}
+                onGetUploadParameters={async (file) => {
+                  const fileId = file?.id || "";
+                  const fileName = file?.name || "";
+                  const fileType = file?.type || "application/octet-stream";
+                  const res = await fetch(`/api/projects/${id}/documents/upload`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ category: bulkUploadCategory, fileSize: file?.size || 0 }),
+                  });
+                  if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    if (errorData.code === "STORAGE_LIMIT_EXCEEDED") {
+                      const error: any = new Error("Storage limit exceeded");
+                      error.code = "STORAGE_LIMIT_EXCEEDED";
+                      throw error;
+                    }
+                    throw new Error("Failed to get upload URL");
+                  }
+                  const data = await res.json();
+                  bulkUploadPathsRef.current.set(fileId, {
+                    storagePath: data.objectPath,
+                    fileSize: file?.size || null,
+                    fileName: fileName,
+                  });
+                  return { 
+                    method: "PUT" as const, 
+                    url: data.uploadUrl,
+                    headers: { "Content-Type": fileType },
+                  };
+                }}
+                onComplete={async (result, stagedFilesConfig, settings) => {
+                  if (result.successful && result.successful.length > 0) {
+                    setIsBulkUploading(true);
+                    try {
+                      const category = settings?.category || bulkUploadCategory;
+                      const visibility = settings?.visibility ?? bulkUploadVisible;
+                      let successCount = 0;
+                      let errorCount = 0;
+                      
+                      for (const uploadedFile of result.successful) {
+                        const fileId = uploadedFile.id || "";
+                        const uploadInfo = bulkUploadPathsRef.current.get(fileId);
+                        const fileConfig = stagedFilesConfig?.get(fileId);
+                        
+                        if (uploadInfo?.storagePath) {
+                          try {
+                            const documentName = fileConfig?.documentName || uploadInfo.fileName || uploadedFile.name || `document-${successCount + 1}`;
+                            const folderId = fileConfig?.folderId ? parseInt(fileConfig.folderId) : null;
+                            
+                            await apiRequest("POST", `/api/projects/${id}/documents`, {
+                              fileName: documentName,
+                              storagePath: uploadInfo.storagePath,
+                              fileSize: uploadInfo.fileSize,
+                              category,
+                              folderId,
+                              isVisibleToClient: visibility,
+                            });
+                            successCount++;
+                          } catch (err) {
+                            console.error("Failed to create document record:", err);
+                            errorCount++;
                           }
-                          const data = await res.json();
-                          bulkUploadPathsRef.current.set(fileId, {
-                            storagePath: data.objectPath,
-                            fileSize: file?.size || null,
-                            fileName: fileName,
-                          });
-                          return { 
-                            method: "PUT" as const, 
-                            url: data.uploadUrl,
-                            headers: { "Content-Type": fileType },
-                          };
-                        }}
-                        onComplete={async (result) => {
-                          if (result.successful && result.successful.length > 0) {
-                            setIsBulkUploading(true);
-                            try {
-                              const folderId = bulkUploadFolderId === "__none__" ? null : parseInt(bulkUploadFolderId);
-                              let successCount = 0;
-                              let errorCount = 0;
-                              
-                              for (const uploadedFile of result.successful) {
-                                const fileId = uploadedFile.id || "";
-                                const uploadInfo = bulkUploadPathsRef.current.get(fileId);
-                                
-                                if (uploadInfo?.storagePath) {
-                                  try {
-                                    await apiRequest("POST", `/api/projects/${id}/documents`, {
-                                      fileName: uploadInfo.fileName || uploadedFile.name || `document-${successCount + 1}`,
-                                      storagePath: uploadInfo.storagePath,
-                                      fileSize: uploadInfo.fileSize,
-                                      category: bulkUploadCategory,
-                                      folderId,
-                                      isVisibleToClient: bulkUploadVisible,
-                                    });
-                                    successCount++;
-                                  } catch (err) {
-                                    console.error("Failed to create document record:", err);
-                                    errorCount++;
-                                  }
-                                } else {
-                                  console.error("No upload info found for file id:", fileId);
-                                  errorCount++;
-                                }
-                              }
-                              
-                              queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-                              queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "documents"] });
-                              
-                              if (successCount > 0) {
-                                toast({ 
-                                  title: `${successCount} document${successCount > 1 ? 's' : ''} uploaded successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}` 
-                                });
-                              } else if (errorCount > 0) {
-                                toast({ 
-                                  title: "Upload failed", 
-                                  description: "Failed to save document records",
-                                  variant: "destructive" 
-                                });
-                              }
-                              
-                              setIsBulkUploadDialogOpen(false);
-                              bulkUploadPathsRef.current.clear();
-                              setBulkUploadCategory("other");
-                              setBulkUploadFolderId("__none__");
-                              setBulkUploadVisible(true);
-                            } finally {
-                              setIsBulkUploading(false);
-                            }
-                          }
-                        }}
-                        buttonClassName="w-full"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Select Files to Upload
-                      </ObjectUploader>
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Select up to 20 files at once. Max 50MB per file.
-                      </p>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                        } else {
+                          console.error("No upload info found for file id:", fileId);
+                          errorCount++;
+                        }
+                      }
+                      
+                      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "documents"] });
+                      
+                      if (successCount > 0) {
+                        toast({ 
+                          title: `${successCount} document${successCount > 1 ? 's' : ''} uploaded successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}` 
+                        });
+                      } else if (errorCount > 0) {
+                        toast({ 
+                          title: "Upload failed", 
+                          description: "Failed to save document records",
+                          variant: "destructive" 
+                        });
+                      }
+                      
+                      bulkUploadPathsRef.current.clear();
+                      setBulkUploadCategory("other");
+                      setBulkUploadFolderId("__none__");
+                      setBulkUploadVisible(true);
+                    } finally {
+                      setIsBulkUploading(false);
+                    }
+                  }
+                }}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </ObjectUploader>
             </div>
           </div>
 
