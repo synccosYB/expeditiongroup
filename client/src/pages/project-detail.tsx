@@ -1795,30 +1795,38 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/projects">
+            <Button variant="ghost" size="icon" asChild className="shrink-0 mt-1">
+              <Link href="/projects" data-testid="button-back-to-projects">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
           </TooltipTrigger>
           <TooltipContent>Back to Projects</TooltipContent>
         </Tooltip>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-semibold text-foreground">{project.name}</h1>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-3xl font-semibold text-foreground break-words">{project.name}</h1>
             <StatusBadge status={project.status} type="project" />
             {project.priority && project.priority !== 'normal' && (
               <Badge variant={project.priority === 'urgent' ? 'destructive' : project.priority === 'high' ? 'default' : 'secondary'}>
                 {project.priority}
               </Badge>
             )}
+          </div>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <p className="text-sm sm:text-base text-muted-foreground">
+              <Link href={`/clients/${project.clientId}`} className="hover:underline">
+                {project.client?.name}
+              </Link>
+              {project.internalCode && <span className="ml-2 text-xs">({project.internalCode})</span>}
+            </p>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div 
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer text-xs ${
                     project.isVisibleToClient 
                       ? 'bg-green-500/10 text-green-600 border border-green-500/30' 
                       : 'bg-muted text-muted-foreground'
@@ -1827,12 +1835,12 @@ export default function ProjectDetail() {
                   data-testid="toggle-project-visibility"
                 >
                   {project.isVisibleToClient ? (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3" />
                   ) : (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-3 w-3" />
                   )}
-                  <span className="text-xs font-medium">
-                    {project.isVisibleToClient ? 'Visible to Client' : 'Hidden from Client'}
+                  <span className="font-medium hidden sm:inline">
+                    {project.isVisibleToClient ? 'Visible' : 'Hidden'}
                   </span>
                 </div>
               </TooltipTrigger>
@@ -1844,16 +1852,10 @@ export default function ProjectDetail() {
               </TooltipContent>
             </Tooltip>
           </div>
-          <p className="text-muted-foreground mt-1">
-            <Link href={`/clients/${project.clientId}`} className="hover:underline">
-              {project.client?.name}
-            </Link>
-            {project.internalCode && <span className="ml-2 text-xs">({project.internalCode})</span>}
-          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {project.county && (
           <Card>
             <CardContent className="flex items-center gap-3 py-4">
@@ -1911,30 +1913,30 @@ export default function ProjectDetail() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="tasks" className="gap-2" data-testid="tab-tasks">
-            <ClipboardList className="h-4 w-4" />
+        <TabsList className="w-full sm:w-auto flex-nowrap">
+          <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-tasks">
+            <ClipboardList className="h-4 w-4 hidden sm:block" />
             Tasks ({project.tasks?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-2" data-testid="tab-documents">
-            <FileText className="h-4 w-4" />
-            Documents ({documents?.length || 0})
+          <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-documents">
+            <FileText className="h-4 w-4 hidden sm:block" />
+            Docs ({documents?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="checklists" className="gap-2" data-testid="tab-checklists">
-            <ListChecks className="h-4 w-4" />
-            Checklists ({checklists?.length || 0})
+          <TabsTrigger value="checklists" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-checklists">
+            <ListChecks className="h-4 w-4 hidden sm:block" />
+            Lists ({checklists?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="associates" className="gap-2" data-testid="tab-associates">
-            <Users className="h-4 w-4" />
-            Associates ({projectAssociates?.length || 0})
+          <TabsTrigger value="associates" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-associates">
+            <Users className="h-4 w-4 hidden sm:block" />
+            Assoc ({projectAssociates?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-2" data-testid="tab-notes">
-            <MessageSquare className="h-4 w-4" />
+          <TabsTrigger value="notes" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-notes">
+            <MessageSquare className="h-4 w-4 hidden sm:block" />
             Notes ({project.notes?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="time-logs" className="gap-2" data-testid="tab-time-logs">
-            <Clock className="h-4 w-4" />
-            Time Logs ({(project.timeLogs?.length || 0) + (project.timeEntries?.length || 0)})
+          <TabsTrigger value="time-logs" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-time-logs">
+            <Clock className="h-4 w-4 hidden sm:block" />
+            Time ({(project.timeLogs?.length || 0) + (project.timeEntries?.length || 0)})
           </TabsTrigger>
         </TabsList>
 
@@ -3496,13 +3498,14 @@ export default function ProjectDetail() {
 
         {/* Time Logs Tab */}
         <TabsContent value="time-logs" className="mt-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
             <h2 className="text-lg font-semibold">Time Logs</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {((project.timeLogs && project.timeLogs.length > 0) || (project.timeEntries && project.timeEntries.length > 0)) && (
                 <Button variant="outline" size="sm" onClick={() => setIsInvoiceDialogOpen(true)} data-testid="button-generate-invoice">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Generate Invoice
+                  <FileText className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Generate Invoice</span>
+                  <span className="sm:hidden">Invoice</span>
                 </Button>
               )}
               <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
@@ -3510,8 +3513,9 @@ export default function ProjectDetail() {
                   <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                       <Button size="sm" data-testid="button-add-time-log">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Log Time
+                        <Plus className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Log Time</span>
+                        <span className="sm:hidden">Log</span>
                       </Button>
                     </DialogTrigger>
                   </TooltipTrigger>
@@ -3558,7 +3562,7 @@ export default function ProjectDetail() {
                         </FormItem>
                       )}
                     />
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <FormField
                         control={timeLogForm.control}
                         name="startTime"
@@ -3585,34 +3589,34 @@ export default function ProjectDetail() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={timeLogForm.control}
-                        name="duration"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Duration *</FormLabel>
-                            <div className="flex gap-2">
-                              <FormControl>
-                                <Input placeholder="30" {...field} className="flex-1" data-testid="input-time-log-duration" />
-                              </FormControl>
-                              <Select
-                                value={timeLogForm.watch("durationUnit")}
-                                onValueChange={(value: "minutes" | "hours") => timeLogForm.setValue("durationUnit", value)}
-                              >
-                                <SelectTrigger className="w-24" data-testid="select-time-log-unit">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="minutes">Min</SelectItem>
-                                  <SelectItem value="hours">Hrs</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
+                    <FormField
+                      control={timeLogForm.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Duration *</FormLabel>
+                          <div className="flex gap-2">
+                            <FormControl>
+                              <Input type="number" inputMode="numeric" pattern="[0-9]*" placeholder="30" {...field} className="flex-1" data-testid="input-time-log-duration" />
+                            </FormControl>
+                            <Select
+                              value={timeLogForm.watch("durationUnit")}
+                              onValueChange={(value: "minutes" | "hours") => timeLogForm.setValue("durationUnit", value)}
+                            >
+                              <SelectTrigger className="w-20 sm:w-24" data-testid="select-time-log-unit">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="minutes">Min</SelectItem>
+                                <SelectItem value="hours">Hrs</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={timeLogForm.control}
                       name="type"

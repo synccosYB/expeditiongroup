@@ -522,9 +522,9 @@ function EditTimeLogDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="edit-start-time">Start Time</Label>
+              <Label htmlFor="edit-start-time">Start</Label>
               <Input
                 id="edit-start-time"
                 type="time"
@@ -534,7 +534,7 @@ function EditTimeLogDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-end-time">End Time</Label>
+              <Label htmlFor="edit-end-time">End</Label>
               <Input
                 id="edit-end-time"
                 type="time"
@@ -552,13 +552,16 @@ function EditTimeLogDialog({
                 id="edit-duration"
                 type="number"
                 min="0"
+                step="1"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
                 className="flex-1"
                 data-testid="input-edit-time-log-duration"
               />
               <Select value={durationUnit} onValueChange={(val) => setDurationUnit(val as "minutes" | "hours")}>
-                <SelectTrigger className="w-24" data-testid="select-edit-time-log-unit">
+                <SelectTrigger className="w-20 sm:w-24" data-testid="select-edit-time-log-unit">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
