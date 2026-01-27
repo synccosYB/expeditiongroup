@@ -163,6 +163,7 @@ export interface IStorage {
   getDocumentsByProjectId(projectId: number): Promise<Document[]>;
   getDocumentsByFolderId(folderId: number): Promise<Document[]>;
   getDocument(id: number): Promise<Document | undefined>;
+  getDocumentByStoragePath(storagePath: string): Promise<Document | undefined>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
@@ -816,6 +817,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDocument(id: number): Promise<Document | undefined> {
     const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+
+  async getDocumentByStoragePath(storagePath: string): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.storagePath, storagePath));
     return document;
   }
 

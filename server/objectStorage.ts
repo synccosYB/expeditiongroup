@@ -84,15 +84,15 @@ export class ObjectStorageService {
     return null;
   }
 
-  async downloadObject(file: File, res: Response, options: { cacheTtlSec?: number; inline?: boolean } = {}) {
-    const { cacheTtlSec = 3600, inline = false } = options;
+  async downloadObject(file: File, res: Response, options: { cacheTtlSec?: number; inline?: boolean; filename?: string } = {}) {
+    const { cacheTtlSec = 3600, inline = false, filename } = options;
     try {
       const [metadata] = await file.getMetadata();
       const aclPolicy = await getObjectAclPolicy(file);
       const isPublic = aclPolicy?.visibility === "public";
       
-      // Get the filename from the object name
-      const fileName = file.name.split('/').pop() || 'download';
+      // Use provided filename, or fall back to object name
+      const downloadName = filename || file.name.split('/').pop() || 'download';
       
       const headers: Record<string, string | number | undefined> = {
         "Content-Type": metadata.contentType || "application/octet-stream",
@@ -104,7 +104,7 @@ export class ObjectStorageService {
       if (inline) {
         headers["Content-Disposition"] = "inline";
       } else {
-        headers["Content-Disposition"] = `attachment; filename="${encodeURIComponent(fileName)}"`;
+        headers["Content-Disposition"] = `attachment; filename="${encodeURIComponent(downloadName)}"`;
       }
       
       res.set(headers);
