@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type TaskStatus = "todo" | "in_progress" | "waiting" | "done" | "cancelled";
-type ProjectStatus = "intake" | "in_progress" | "waiting_on_client" | "with_dob" | "completed" | "on_hold" | "cancelled";
+type ProjectStatus = "intake" | "in_progress" | "waiting_on_client" | "with_dob" | "completed" | "on_hold" | "cancelled" | "archived";
 
 interface StatusBadgeProps {
   status: TaskStatus | ProjectStatus;
@@ -61,6 +61,10 @@ const projectStatusConfig: Record<ProjectStatus, { label: string; className: str
   cancelled: {
     label: "Cancelled",
     className: "bg-destructive/10 text-destructive dark:bg-destructive/20",
+  },
+  archived: {
+    label: "Archived",
+    className: "bg-muted text-muted-foreground opacity-70",
   },
 };
 

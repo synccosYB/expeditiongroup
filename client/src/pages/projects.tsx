@@ -40,6 +40,8 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  Archive,
+  AlertTriangle,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -83,6 +85,14 @@ const projectFormSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
 
+type RelatedDataCounts = {
+  documents: number;
+  notes: number;
+  tasks: number;
+  timeLogs: number;
+  timeEntries: number;
+};
+
 const counties = ["Orange", "Rockland", "Sullivan"];
 const statusOptions = [
   { value: "intake", label: "Intake" },
@@ -94,6 +104,11 @@ const statusOptions = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const statusOptionsWithArchived = [
+  ...statusOptions,
+  { value: "archived", label: "Archived" },
+];
+
 export default function Projects() {
   const { toast } = useToast();
   const searchString = useSearch();
@@ -102,17 +117,64 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<(Project & { client: Client }) | null>(null);
-  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<(Project & { client: Client }) | null>(null);
+  const [relatedDataCounts, setRelatedDataCounts] = useState<RelatedDataCounts | null>(null);
+  const [isLoadingCounts, setIsLoadingCounts] = useState(false);
 
   // Read status filter from URL query params on mount
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const urlStatus = params.get("status");
-    const validStatuses = ["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled"];
+    const validStatuses = ["intake", "in_progress", "waiting_on_client", "with_dob", "completed", "on_hold", "cancelled", "archived"];
     if (urlStatus && validStatuses.includes(urlStatus)) {
       setStatusFilter(urlStatus);
     }
   }, [searchString]);
+
+  const [countsError, setCountsError] = useState<string | null>(null);
+
+  const fetchRelatedDataCounts = async (projectId: number) => {
+    setIsLoadingCounts(true);
+    setCountsError(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/related-data-counts`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const counts = await response.json();
+        setRelatedDataCounts(counts);
+      } else if (response.status === 401) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+      } else {
+        setCountsError("Failed to load project data. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error fetching related data counts:", error);
+      setCountsError("Failed to load project data. Please try again.");
+    } finally {
+      setIsLoadingCounts(false);
+    }
+  };
+
+  const handleDeleteClick = async (project: Project & { client: Client }) => {
+    setDeletingProject(project);
+    setRelatedDataCounts(null);
+    setCountsError(null);
+    await fetchRelatedDataCounts(project.id);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeletingProject(null);
+    setRelatedDataCounts(null);
+    setCountsError(null);
+  };
 
   const { data: projects, isLoading } = useQuery<(Project & { client: Client })[]>({
     queryKey: ["/api/projects"],
@@ -222,6 +284,7 @@ export default function Projects() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Project deleted successfully" });
       setDeletingProject(null);
+      setRelatedDataCounts(null);
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -243,6 +306,68 @@ export default function Projects() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("POST", `/api/projects/${id}/archive`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Project archived successfully" });
+      setDeletingProject(null);
+      setRelatedDataCounts(null);
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to archive project",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/projects/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Project permanently deleted" });
+      setDeletingProject(null);
+      setRelatedDataCounts(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete project",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleOpenDialog = (project?: Project & { client: Client }) => {
     if (project) {
       setEditingProject(project);
@@ -257,7 +382,7 @@ export default function Projects() {
         county: project.county || "",
         jurisdiction: (project as any).jurisdiction || "",
         jurisdictionAddress: (project as any).jurisdictionAddress || "",
-        status: project.status,
+        status: project.status === "archived" ? "on_hold" : project.status,
         startDate: formatDateForInput(project.startDate),
         targetEndDate: formatDateForInput(project.targetEndDate),
       });
@@ -625,7 +750,7 @@ export default function Projects() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {statusOptions.map((option) => (
+            {statusOptionsWithArchived.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
@@ -664,13 +789,22 @@ export default function Projects() {
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => setDeletingProject(project)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
+                      {project.status === "archived" ? (
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleDeleteClick(project)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Permanently Delete
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(project)}
+                        >
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive / Delete
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button size="icon" variant="ghost" asChild>
@@ -718,24 +852,94 @@ export default function Projects() {
         </Card>
       )}
 
-      <AlertDialog open={!!deletingProject} onOpenChange={() => setDeletingProject(null)}>
+      <AlertDialog open={!!deletingProject} onOpenChange={handleCloseDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deletingProject?.name}"? This will also delete
-              all associated tasks, notes, and time logs. This action cannot be undone.
+            <AlertDialogTitle>
+              {deletingProject?.status === "archived" ? "Permanently Delete Project" : "Archive or Delete Project"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                {isLoadingCounts ? (
+                  <p>Checking project data...</p>
+                ) : countsError ? (
+                  <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded-md border border-destructive/20">
+                    <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-destructive">{countsError}</p>
+                  </div>
+                ) : deletingProject?.status === "archived" ? (
+                  <div>
+                    <p>Are you sure you want to permanently delete "{deletingProject?.name}"?</p>
+                    <p className="mt-2 text-destructive font-medium">This action cannot be undone.</p>
+                  </div>
+                ) : relatedDataCounts && (relatedDataCounts.documents > 0 || relatedDataCounts.notes > 0 || relatedDataCounts.tasks > 0 || relatedDataCounts.timeLogs > 0 || relatedDataCounts.timeEntries > 0) ? (
+                  <div>
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-md border border-amber-200 dark:border-amber-800">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-800 dark:text-amber-200">Cannot archive this project yet</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                          This project has attached data that must be deleted first:
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="mt-3 space-y-1 text-sm">
+                      {relatedDataCounts.tasks > 0 && (
+                        <li>• {relatedDataCounts.tasks} task{relatedDataCounts.tasks > 1 ? 's' : ''}</li>
+                      )}
+                      {relatedDataCounts.documents > 0 && (
+                        <li>• {relatedDataCounts.documents} document{relatedDataCounts.documents > 1 ? 's' : ''}</li>
+                      )}
+                      {relatedDataCounts.notes > 0 && (
+                        <li>• {relatedDataCounts.notes} note{relatedDataCounts.notes > 1 ? 's' : ''}</li>
+                      )}
+                      {(relatedDataCounts.timeLogs > 0 || relatedDataCounts.timeEntries > 0) && (
+                        <li>• {relatedDataCounts.timeLogs + relatedDataCounts.timeEntries} time log{(relatedDataCounts.timeLogs + relatedDataCounts.timeEntries) > 1 ? 's' : ''}</li>
+                      )}
+                    </ul>
+                    <p className="mt-3 text-sm">
+                      Please delete all documents, notes, tasks, and time logs from the project before archiving.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <p>Project "{deletingProject?.name}" has no attached data and is ready to be archived.</p>
+                    <p className="mt-2 text-muted-foreground text-sm">
+                      Once archived, the project can be permanently deleted.
+                    </p>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deletingProject && deleteMutation.mutate(deletingProject.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-delete"
-            >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
+            {!isLoadingCounts && !countsError && deletingProject?.status === "archived" && (
+              <AlertDialogAction
+                onClick={() => deletingProject && permanentDeleteMutation.mutate(deletingProject.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-permanent-delete"
+              >
+                {permanentDeleteMutation.isPending ? "Deleting..." : "Permanently Delete"}
+              </AlertDialogAction>
+            )}
+            {!isLoadingCounts && !countsError && deletingProject?.status !== "archived" && relatedDataCounts && !(relatedDataCounts.documents > 0 || relatedDataCounts.notes > 0 || relatedDataCounts.tasks > 0 || relatedDataCounts.timeLogs > 0 || relatedDataCounts.timeEntries > 0) && (
+              <AlertDialogAction
+                onClick={() => deletingProject && archiveMutation.mutate(deletingProject.id)}
+                data-testid="button-confirm-archive"
+              >
+                {archiveMutation.isPending ? "Archiving..." : "Archive Project"}
+              </AlertDialogAction>
+            )}
+            {!isLoadingCounts && !countsError && deletingProject?.status !== "archived" && relatedDataCounts && (relatedDataCounts.documents > 0 || relatedDataCounts.notes > 0 || relatedDataCounts.tasks > 0 || relatedDataCounts.timeLogs > 0 || relatedDataCounts.timeEntries > 0) && (
+              <Button
+                variant="outline"
+                onClick={() => setLocation(`/projects/${deletingProject?.id}`)}
+                data-testid="button-go-to-project"
+              >
+                Go to Project
+              </Button>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

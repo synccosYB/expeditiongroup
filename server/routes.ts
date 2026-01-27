@@ -276,6 +276,20 @@ export async function registerRoutes(
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      
+      const counts = await storage.getProjectRelatedDataCounts(parseInt(req.params.id));
+      if (!counts) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const hasData = counts.documents > 0 || counts.notes > 0 || counts.tasks > 0 || counts.timeLogs > 0 || counts.timeEntries > 0;
+      if (hasData) {
+        return res.status(400).json({ 
+          message: "Cannot delete project with attached data. Please delete all documents, notes, tasks, and time logs first, then archive the project.",
+          counts 
+        });
+      }
+      
       const deleted = await storage.deleteProject(parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Project not found" });
@@ -284,6 +298,60 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting project:", error);
       res.status(500).json({ message: "Failed to delete project" });
+    }
+  });
+
+  app.get("/api/projects/:id/related-data-counts", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const counts = await storage.getProjectRelatedDataCounts(parseInt(req.params.id));
+      if (!counts) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching project related data counts:", error);
+      res.status(500).json({ message: "Failed to fetch project related data counts" });
+    }
+  });
+
+  app.post("/api/projects/:id/archive", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.archiveProject(parseInt(req.params.id));
+      if (!result.success) {
+        const statusCode = result.error === "Project not found" ? 404 : 400;
+        return res.status(statusCode).json({ message: result.error });
+      }
+      res.json(result.project);
+    } catch (error) {
+      console.error("Error archiving project:", error);
+      res.status(500).json({ message: "Failed to archive project" });
+    }
+  });
+
+  app.delete("/api/projects/:id/permanent", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const result = await storage.permanentlyDeleteProject(parseInt(req.params.id));
+      if (!result.success) {
+        const statusCode = result.error === "Project not found" ? 404 : 400;
+        return res.status(statusCode).json({ message: result.error });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error permanently deleting project:", error);
+      res.status(500).json({ message: "Failed to permanently delete project" });
     }
   });
 

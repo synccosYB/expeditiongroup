@@ -108,6 +108,9 @@ export interface IStorage {
   updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
   getProjectsByStatus(): Promise<{ status: string; count: number }[]>;
+  getProjectRelatedDataCounts(id: number): Promise<{ documents: number; notes: number; tasks: number; timeLogs: number; timeEntries: number } | undefined>;
+  archiveProject(id: number): Promise<{ success: boolean; project?: Project; error?: string }>;
+  permanentlyDeleteProject(id: number): Promise<{ success: boolean; error?: string }>;
   
   // Tasks
   getTasks(): Promise<(Task & { project: Project })[]>;
@@ -491,6 +494,56 @@ export class DatabaseStorage implements IStorage {
       status: r.status,
       count: r.count,
     }));
+  }
+
+  async getProjectRelatedDataCounts(id: number): Promise<{ documents: number; notes: number; tasks: number; timeLogs: number; timeEntries: number } | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    if (!project) return undefined;
+
+    const [docsCount] = await db.select({ count: count() }).from(documents).where(eq(documents.projectId, id));
+    const [notesCount] = await db.select({ count: count() }).from(notes).where(eq(notes.projectId, id));
+    const [tasksCount] = await db.select({ count: count() }).from(tasks).where(eq(tasks.projectId, id));
+    const [timeLogsCount] = await db.select({ count: count() }).from(timeLogs).where(eq(timeLogs.projectId, id));
+    const [timeEntriesCount] = await db.select({ count: count() }).from(timeEntries).where(eq(timeEntries.projectId, id));
+
+    return {
+      documents: docsCount.count,
+      notes: notesCount.count,
+      tasks: tasksCount.count,
+      timeLogs: timeLogsCount.count,
+      timeEntries: timeEntriesCount.count,
+    };
+  }
+
+  async archiveProject(id: number): Promise<{ success: boolean; project?: Project; error?: string }> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    if (!project) {
+      return { success: false, error: "Project not found" };
+    }
+
+    const counts = await this.getProjectRelatedDataCounts(id);
+    if (counts && (counts.documents > 0 || counts.notes > 0 || counts.tasks > 0 || counts.timeLogs > 0 || counts.timeEntries > 0)) {
+      return { success: false, error: "Cannot archive project with attached data" };
+    }
+
+    const [updated] = await db
+      .update(projects)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
+    return { success: true, project: updated };
+  }
+
+  async permanentlyDeleteProject(id: number): Promise<{ success: boolean; error?: string }> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    if (!project) {
+      return { success: false, error: "Project not found" };
+    }
+    if (project.status !== "archived") {
+      return { success: false, error: "Project must be archived before permanent deletion" };
+    }
+    const result = await db.delete(projects).where(eq(projects.id, id));
+    return { success: (result.rowCount ?? 0) > 0 };
   }
 
   // Tasks
