@@ -1748,8 +1748,10 @@ export async function registerRoutes(
         return res.status(403).json({ message: "No client access" });
       }
 
-      const logs = await storage.getClientVisibleAuditLogs(user.clientId);
-      res.json(logs);
+      const logs = await storage.getAuditLogsByClientId(user.clientId);
+      // Filter to only show client-visible audit logs
+      const visibleLogs = logs.filter(log => log.isVisibleToClient);
+      res.json(visibleLogs);
     } catch (error) {
       console.error("Error fetching client activity:", error);
       res.status(500).json({ message: "Failed to fetch activity" });
@@ -1774,6 +1776,221 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching client todos:", error);
       res.status(500).json({ message: "Failed to fetch client todos" });
+    }
+  });
+
+  // Client Portal - Get dashboard stats
+  app.get("/api/client/dashboard/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      // Filter to only include visible projects for client stats
+      const visibleProjects = projects.filter(p => p.isVisibleToClient);
+      const visibleProjectIds = visibleProjects.map(p => p.id);
+      
+      let allTasks: any[] = [];
+      for (const projectId of visibleProjectIds) {
+        const tasks = await storage.getTasksByProjectId(projectId);
+        allTasks = allTasks.concat(tasks);
+      }
+
+      const invoices = await storage.getInvoicesByClientId(user.clientId);
+      // Filter invoices to only those linked to visible projects
+      const visibleInvoices = invoices.filter(inv => 
+        !inv.projectId || visibleProjectIds.includes(inv.projectId)
+      );
+
+      const activeProjects = visibleProjects.filter(p => 
+        p.status !== "completed" && p.status !== "cancelled" && p.status !== "archived"
+      ).length;
+      
+      const pendingTasks = allTasks.filter(t => t.status !== "done").length;
+      const completedTasks = allTasks.filter(t => t.status === "done").length;
+      
+      const unpaidInvoices = visibleInvoices.filter(i => i.status === "sent").length;
+      const totalOutstanding = visibleInvoices
+        .filter(i => i.status === "sent")
+        .reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+
+      res.json({
+        totalProjects: visibleProjects.length,
+        activeProjects,
+        pendingTasks,
+        completedTasks,
+        totalInvoices: visibleInvoices.length,
+        unpaidInvoices,
+        totalOutstanding,
+      });
+    } catch (error) {
+      console.error("Error fetching client dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Client Portal - Get all tasks
+  app.get("/api/client/tasks", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const allTasks: any[] = [];
+      
+      for (const project of projects) {
+        if (project.isVisibleToClient) {
+          const tasks = await storage.getTasksByProjectId(project.id);
+          tasks.forEach(t => allTasks.push({ ...t, project }));
+        }
+      }
+      
+      res.json(allTasks);
+    } catch (error) {
+      console.error("Error fetching client tasks:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Client Portal - Get projects by status
+  app.get("/api/client/projects/by-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const visibleProjects = projects.filter(p => p.isVisibleToClient);
+      
+      const statusCounts = visibleProjects.reduce((acc: Record<string, number>, project) => {
+        acc[project.status] = (acc[project.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const result = Object.entries(statusCounts).map(([status, count]) => ({
+        status,
+        count,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching client projects by status:", error);
+      res.status(500).json({ message: "Failed to fetch projects by status" });
+    }
+  });
+
+  // Client Portal - Get reminders
+  app.get("/api/client/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const allReminders: any[] = [];
+      
+      for (const project of projects) {
+        if (project.isVisibleToClient) {
+          const tasks = await storage.getTasksByProjectId(project.id);
+          for (const task of tasks) {
+            const reminders = await storage.getTaskReminders(task.id);
+            reminders.forEach((r: any) => allReminders.push({ 
+              ...r, 
+              task: { ...task, project } 
+            }));
+          }
+        }
+      }
+      
+      res.json(allReminders.sort((a, b) => 
+        new Date(b.scheduledAt || 0).getTime() - new Date(a.scheduledAt || 0).getTime()
+      ));
+    } catch (error) {
+      console.error("Error fetching client reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  // Client Portal - Get time entries
+  app.get("/api/client/time-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const allEntries: any[] = [];
+      
+      for (const project of projects) {
+        if (project.isVisibleToClient) {
+          const entries = await storage.getTimeEntriesByProjectId(project.id);
+          for (const entry of entries) {
+            const task = await storage.getTask(entry.taskId);
+            allEntries.push({ 
+              ...entry, 
+              project,
+              task 
+            });
+          }
+        }
+      }
+      
+      res.json(allEntries.sort((a, b) => 
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      ));
+    } catch (error) {
+      console.error("Error fetching client time entries:", error);
+      res.status(500).json({ message: "Failed to fetch time entries" });
+    }
+  });
+
+  // Client Portal - Get associates
+  app.get("/api/client/associates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const associateIds = new Set<number>();
+      const associateProjects: Record<number, any[]> = {};
+      
+      for (const project of projects) {
+        if (project.isVisibleToClient) {
+          const projectAssociates = await storage.getProjectAssociates(project.id);
+          for (const pa of projectAssociates) {
+            associateIds.add(pa.associateId);
+            if (!associateProjects[pa.associateId]) {
+              associateProjects[pa.associateId] = [];
+            }
+            associateProjects[pa.associateId].push(project);
+          }
+        }
+      }
+      
+      const associates: any[] = [];
+      for (const associateId of associateIds) {
+        const associate = await storage.getAssociate(associateId);
+        if (associate) {
+          associates.push({
+            ...associate,
+            projects: associateProjects[associateId] || [],
+          });
+        }
+      }
+      
+      res.json(associates);
+    } catch (error) {
+      console.error("Error fetching client associates:", error);
+      res.status(500).json({ message: "Failed to fetch associates" });
     }
   });
 

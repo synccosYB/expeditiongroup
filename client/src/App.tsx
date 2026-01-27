@@ -27,7 +27,18 @@ import TimeLogs from "@/pages/time-logs";
 import InvoiceDetail from "@/pages/invoice-detail";
 import Associates from "@/pages/associates";
 import AssociateDetail from "@/pages/associate-detail";
-import ClientPortal, { ClientProjectDetail, ClientInvoiceDetail } from "@/pages/client-portal";
+import ClientPortal from "@/pages/client-portal";
+import ClientDashboard from "@/pages/client/dashboard";
+import ClientProjects from "@/pages/client/projects";
+import ClientProjectDetailPage from "@/pages/client/project-detail";
+import ClientTasks from "@/pages/client/tasks";
+import ClientReminders from "@/pages/client/reminders";
+import ClientTimeLogs from "@/pages/client/time-logs";
+import ClientInvoices from "@/pages/client/invoices";
+import ClientInvoiceDetailPage from "@/pages/client/invoice-detail";
+import ClientActivityLogs from "@/pages/client/activity-logs";
+import ClientAssociates from "@/pages/client/associates";
+import ClientSettings from "@/pages/client/settings";
 import ForGeneralContractors from "@/pages/for-general-contractors";
 import ForPropertyDevelopers from "@/pages/for-property-developers";
 import ForArchitectsEngineers from "@/pages/for-architects-engineers";
@@ -90,11 +101,19 @@ function AdminRouter() {
 function ClientRouter() {
   return (
     <Switch>
-      <Route path="/" component={ClientPortal} />
-      <Route path="/dashboard" component={ClientPortal} />
-      <Route path="/auth" component={ClientPortal} />
-      <Route path="/project/:id" component={ClientProjectDetail} />
-      <Route path="/invoice/:id" component={ClientInvoiceDetail} />
+      <Route path="/" component={ClientDashboard} />
+      <Route path="/dashboard" component={ClientDashboard} />
+      <Route path="/auth" component={ClientDashboard} />
+      <Route path="/projects" component={ClientProjects} />
+      <Route path="/projects/:id" component={ClientProjectDetailPage} />
+      <Route path="/tasks" component={ClientTasks} />
+      <Route path="/reminders" component={ClientReminders} />
+      <Route path="/time-logs" component={ClientTimeLogs} />
+      <Route path="/invoices" component={ClientInvoices} />
+      <Route path="/invoices/:id" component={ClientInvoiceDetailPage} />
+      <Route path="/activity-logs" component={ClientActivityLogs} />
+      <Route path="/associates" component={ClientAssociates} />
+      <Route path="/settings" component={ClientSettings} />
       <Route component={NotFound} />
     </Switch>
   );
