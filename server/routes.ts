@@ -1910,7 +1910,10 @@ export async function registerRoutes(
       
       // Look up the document record to get the original filename
       const document = await storage.getDocumentByStoragePath(objectPath);
+      console.log("[Download] Looking up document by path:", objectPath);
+      console.log("[Download] Found document:", document ? { id: document.id, fileName: document.fileName, storagePath: document.storagePath } : "NOT FOUND");
       const downloadFilename = document?.fileName || undefined;
+      console.log("[Download] Using filename:", downloadFilename, "inline:", inline);
       
       // Check if user is authenticated
       const userId = req.session?.userId?.toString();
