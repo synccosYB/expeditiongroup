@@ -271,6 +271,7 @@ export interface IStorage {
   // Intake Applications
   getIntakeApplications(): Promise<IntakeApplication[]>;
   getIntakeApplication(id: number): Promise<IntakeApplication | undefined>;
+  getIntakeApplicationByProjectId(projectId: number): Promise<IntakeApplication | undefined>;
   createIntakeApplication(application: InsertIntakeApplication): Promise<IntakeApplication>;
   updateIntakeApplication(id: number, application: Partial<InsertIntakeApplication>): Promise<IntakeApplication | undefined>;
   deleteIntakeApplication(id: number): Promise<boolean>;
@@ -1697,6 +1698,11 @@ export class DatabaseStorage implements IStorage {
 
   async getIntakeApplication(id: number): Promise<IntakeApplication | undefined> {
     const [application] = await db.select().from(intakeApplications).where(eq(intakeApplications.id, id));
+    return application;
+  }
+
+  async getIntakeApplicationByProjectId(projectId: number): Promise<IntakeApplication | undefined> {
+    const [application] = await db.select().from(intakeApplications).where(eq(intakeApplications.linkedProjectId, projectId));
     return application;
   }
 

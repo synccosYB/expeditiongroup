@@ -2994,6 +2994,81 @@ export async function registerRoutes(
     }
   });
 
+  // Get intake application by project ID (returns null if no intake linked)
+  app.get("/api/projects/:projectId/intake", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.projectId);
+      const intake = await storage.getIntakeApplicationByProjectId(projectId);
+      // Return null if no intake linked (200 OK with null body to work with default fetcher)
+      res.json(intake || null);
+    } catch (error) {
+      console.error("Error fetching project intake:", error);
+      res.status(500).json({ message: "Failed to fetch project intake" });
+    }
+  });
+
+  // Link an intake to a project
+  app.post("/api/projects/:projectId/link-intake", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.projectId);
+      const { intakeId } = req.body;
+
+      if (!intakeId) {
+        return res.status(400).json({ message: "Intake ID is required" });
+      }
+
+      // Get the project to get the clientId
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      // Get the intake to check it exists and isn't already linked
+      const intake = await storage.getIntakeApplication(intakeId);
+      if (!intake) {
+        return res.status(404).json({ message: "Intake application not found" });
+      }
+
+      if (intake.linkedProjectId) {
+        return res.status(400).json({ message: "This intake is already linked to another project" });
+      }
+
+      // Update intake with linkage to project and client
+      const updatedIntake = await storage.updateIntakeApplication(intakeId, {
+        linkedProjectId: projectId,
+        linkedClientId: project.clientId,
+        convertedAt: new Date(),
+      });
+
+      // Log the action
+      await storage.createAuditLog({
+        userId: user.id,
+        action: "link_intake",
+        entityType: "project",
+        entityId: projectId.toString(),
+        description: `Linked intake application #${intakeId} to project #${projectId}`,
+        metadata: { intakeId, projectId, clientId: project.clientId },
+      });
+
+      res.json({ 
+        message: "Intake linked successfully", 
+        intake: updatedIntake,
+        project
+      });
+    } catch (error) {
+      console.error("Error linking intake to project:", error);
+      res.status(500).json({ message: "Failed to link intake to project" });
+    }
+  });
+
   // ===== Services (for proposals) =====
   app.get("/api/services", isAuthenticated, async (req: any, res) => {
     try {

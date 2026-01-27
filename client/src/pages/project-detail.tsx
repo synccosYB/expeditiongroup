@@ -65,6 +65,13 @@ import {
   EyeOff,
   Download,
   Archive,
+  ClipboardCheck,
+  Link2,
+  Mountain,
+  History,
+  Building,
+  Search,
+  Check,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -73,7 +80,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull, formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder } from "@shared/schema";
+import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder, IntakeApplication } from "@shared/schema";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -881,6 +888,141 @@ function TaskHierarchyItem({
   );
 }
 
+function IntakeLinkSection({ projectId }: { projectId: number }) {
+  const { toast } = useToast();
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [selectedIntakeId, setSelectedIntakeId] = useState<string>("");
+  const [intakeSearch, setIntakeSearch] = useState("");
+
+  const { data: intakeApplications = [] } = useQuery<IntakeApplication[]>({
+    queryKey: ["/api/intake-applications"],
+    enabled: showLinkDialog,
+  });
+
+  // Filter only unlinked intakes
+  const availableIntakes = intakeApplications.filter(
+    (intake) => !intake.linkedProjectId
+  ).filter(intake => 
+    (intake.projectName?.toLowerCase() || "").includes(intakeSearch.toLowerCase()) ||
+    (intake.ownerName?.toLowerCase() || "").includes(intakeSearch.toLowerCase()) ||
+    (intake.email?.toLowerCase() || "").includes(intakeSearch.toLowerCase())
+  );
+
+  const linkMutation = useMutation({
+    mutationFn: async (intakeId: number) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/link-intake`, { intakeId });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Intake Linked",
+        description: "The intake has been linked to this project.",
+      });
+      setShowLinkDialog(false);
+      setSelectedIntakeId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId.toString(), "intake"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/intake-applications"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Link Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleLink = () => {
+    if (!selectedIntakeId) {
+      toast({
+        title: "Intake Required",
+        description: "Please select an intake to link.",
+        variant: "destructive",
+      });
+      return;
+    }
+    linkMutation.mutate(parseInt(selectedIntakeId));
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <EmptyState
+          icon={ClipboardCheck}
+          title="No intake linked"
+          description="Link an existing intake application to view all intake information for this project"
+          actionLabel="Link Intake"
+          onAction={() => setShowLinkDialog(true)}
+        />
+      </CardContent>
+
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Link Intake to Project
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search Intakes</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by project name, owner, or email..."
+                  value={intakeSearch}
+                  onChange={(e) => setIntakeSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-intake-search"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Intake</label>
+              <Select value={selectedIntakeId} onValueChange={setSelectedIntakeId}>
+                <SelectTrigger data-testid="select-intake">
+                  <SelectValue placeholder="Choose an intake..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableIntakes.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No unlinked intakes found
+                    </div>
+                  ) : (
+                    availableIntakes.map((intake) => (
+                      <SelectItem key={intake.id} value={intake.id.toString()} data-testid={`select-intake-${intake.id}`}>
+                        <div className="flex flex-col">
+                          <span>{intake.projectName || "Unnamed Project"}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {intake.ownerName} - {intake.status}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowLinkDialog(false)} data-testid="button-cancel-link">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleLink} 
+              disabled={!selectedIntakeId || linkMutation.isPending}
+              data-testid="button-confirm-link"
+            >
+              {linkMutation.isPending ? "Linking..." : "Link Intake"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -974,6 +1116,10 @@ export default function ProjectDetail() {
 
   const { data: checklistTemplates } = useQuery<ChecklistTemplate[]>({
     queryKey: ["/api/checklist-templates"],
+  });
+
+  const { data: intake, isLoading: intakeLoading } = useQuery<IntakeApplication | null>({
+    queryKey: ["/api/projects", id, "intake"],
   });
 
   const { data: allReminders } = useQuery<(TaskReminder & { task: Task })[]>({
@@ -1937,6 +2083,10 @@ export default function ProjectDetail() {
           <TabsTrigger value="time-logs" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-time-logs">
             <Clock className="h-4 w-4 hidden sm:block" />
             Time ({(project.timeLogs?.length || 0) + (project.timeEntries?.length || 0)})
+          </TabsTrigger>
+          <TabsTrigger value="intake" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-intake">
+            <ClipboardCheck className="h-4 w-4 hidden sm:block" />
+            Intake {intake ? "" : "(None)"}
           </TabsTrigger>
         </TabsList>
 
@@ -3677,6 +3827,454 @@ export default function ProjectDetail() {
                 />
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        {/* Intake Tab */}
+        <TabsContent value="intake" className="mt-6">
+          {intakeLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="h-4 bg-muted animate-pulse rounded w-1/3" />
+                  <div className="h-4 bg-muted animate-pulse rounded w-2/3" />
+                  <div className="h-4 bg-muted animate-pulse rounded w-1/2" />
+                </div>
+              </CardContent>
+            </Card>
+          ) : intake ? (
+            <div className="space-y-6">
+              {/* Applicant Information */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <Users className="h-5 w-5" />
+                  <CardTitle>Applicant Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Owner Name</p>
+                      <p className="font-medium" data-testid="text-intake-owner-name">{intake.ownerName || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Business Name</p>
+                      <p className="font-medium" data-testid="text-intake-business-name">{intake.businessName || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="font-medium" data-testid="text-intake-email">{intake.email || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Home Phone</p>
+                      <p className="font-medium" data-testid="text-intake-home-phone">{intake.homeNumber || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Cell Phone</p>
+                      <p className="font-medium" data-testid="text-intake-cell-phone">{intake.cellNumber || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Date of Birth</p>
+                      <p className="font-medium" data-testid="text-intake-dob">{intake.dateOfBirth || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Current Address</p>
+                      <p className="font-medium" data-testid="text-intake-current-address">{intake.currentAddress || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Mailing Address</p>
+                      <p className="font-medium" data-testid="text-intake-mailing-address">{intake.mailingAddressSameAsCurrent ? "Same as current" : (intake.mailingAddress || "-")}</p>
+                    </div>
+                  </div>
+
+                  {intake.hasSecondOwner && (
+                    <>
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium mb-4">Second Owner</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Name</p>
+                            <p className="font-medium">{intake.secondOwnerName || "-"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Business</p>
+                            <p className="font-medium">{intake.secondOwnerBusinessName || "-"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Email</p>
+                            <p className="font-medium">{intake.secondOwnerEmail || "-"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Home Phone</p>
+                            <p className="font-medium">{intake.secondOwnerHomeNumber || "-"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Cell Phone</p>
+                            <p className="font-medium">{intake.secondOwnerCellNumber || "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Project Information */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <MapPin className="h-5 w-5" />
+                  <CardTitle>Intake Project Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Project Name</p>
+                      <p className="font-medium" data-testid="text-intake-project-name">{intake.projectName || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Section</p>
+                      <p className="font-medium" data-testid="text-intake-section">{intake.section || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Block</p>
+                      <p className="font-medium" data-testid="text-intake-block">{intake.block || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Lot</p>
+                      <p className="font-medium" data-testid="text-intake-lot">{intake.lot || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Current Zoning</p>
+                      <p className="font-medium" data-testid="text-intake-current-zoning">{intake.currentZoning || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Acreage</p>
+                      <p className="font-medium" data-testid="text-intake-acreage">{intake.acreageOfParcel || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Town</p>
+                      <p className="font-medium" data-testid="text-intake-town">{intake.locationTown || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Village</p>
+                      <p className="font-medium" data-testid="text-intake-village">{intake.locationVillage || "-"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Street</p>
+                      <p className="font-medium" data-testid="text-intake-street">{intake.locationStreet || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t mt-6 pt-4">
+                    <h4 className="font-medium mb-4">Districts</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Zoning District</p>
+                        <p className="font-medium" data-testid="text-intake-zoning-district">{intake.zoningDistrict || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">School District</p>
+                        <p className="font-medium" data-testid="text-intake-school-district">{intake.schoolDistrict || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Fire District</p>
+                        <p className="font-medium" data-testid="text-intake-fire-district">{intake.fireDistrict || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Ambulance District</p>
+                        <p className="font-medium" data-testid="text-intake-ambulance-district">{intake.ambulanceDistrict || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Water District</p>
+                        <p className="font-medium" data-testid="text-intake-water-district">{intake.waterDistrict || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Sewer District</p>
+                        <p className="font-medium" data-testid="text-intake-sewer-district">{intake.sewerDistrict || "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Project Details */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <FileText className="h-5 w-5" />
+                  <CardTitle>Project Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.needDemolishHouse === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                        {intake.needDemolishHouse === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-sm">Demolish House</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.wellBeingDone === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                        {intake.wellBeingDone === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-sm">Well Being Done</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.temporaryElectricGasNeeded === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                        {intake.temporaryElectricGasNeeded === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-sm">Temporary Electric/Gas Needed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.openSpaceOffered === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                        {intake.openSpaceOffered === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-sm">Open Space Offered</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Total Building Size</p>
+                        <p className="font-medium">{intake.totalBuildingSize || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Proposed Addition</p>
+                        <p className="font-medium">{intake.proposedAddition || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Dwelling Units</p>
+                        <p className="font-medium">{intake.numberOfDwellingUnits || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Subdivision Type</p>
+                        <p className="font-medium">{intake.subdivisionType || "-"}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Open Space Amount</p>
+                        <p className="font-medium">{intake.openSpaceAmount || "-"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {intake.specialPermitUse && (
+                    <div className="border-t pt-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Special Permit Use</p>
+                        <p className="font-medium">{intake.specialPermitUse}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {intake.projectDetails && (
+                    <div className="border-t pt-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Project Details</p>
+                        <p className="font-medium whitespace-pre-wrap">{intake.projectDetails}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Site Characteristics */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <Mountain className="h-5 w-5" />
+                  <CardTitle>Site Characteristics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.hasSlopesGreaterThan25 === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                          {intake.hasSlopesGreaterThan25 === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <span className="text-sm">Slopes greater than 25%</span>
+                      </div>
+                      {intake.hasSlopesGreaterThan25 === "yes" && intake.slopesDetails && (
+                        <p className="ml-6 mt-2 text-sm text-muted-foreground">{intake.slopesDetails}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.hasStreams === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                          {intake.hasStreams === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <span className="text-sm">Streams on site</span>
+                      </div>
+                      {intake.hasStreams === "yes" && intake.streamsNames && (
+                        <p className="ml-6 mt-2 text-sm text-muted-foreground">{intake.streamsNames}</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.hasWetlands === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                          {intake.hasWetlands === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <span className="text-sm">Wetlands on site</span>
+                      </div>
+                      {intake.hasWetlands === "yes" && intake.wetlandsDetails && (
+                        <p className="ml-6 mt-2 text-sm text-muted-foreground">{intake.wetlandsDetails}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* History & Proximity */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <History className="h-5 w-5" />
+                  <CardTitle>History & Proximity</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.hasBeenReviewedBefore === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                        {intake.hasBeenReviewedBefore === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      <span className="text-sm">Project reviewed before</span>
+                    </div>
+                    {intake.hasBeenReviewedBefore === "yes" && intake.projectHistoryNarrative && (
+                      <p className="ml-6 mt-2 text-sm text-muted-foreground">{intake.projectHistoryNarrative}</p>
+                    )}
+                  </div>
+
+                  {Array.isArray(intake.proximityFeatures) && intake.proximityFeatures.length > 0 && (
+                    <>
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium mb-3">Proximity Features (within 500 feet)</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(intake.proximityFeatures as string[]).map((feature) => (
+                            <Badge key={feature} variant="outline">{feature}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {Array.isArray(intake.referralAgencies) && intake.referralAgencies.length > 0 && (
+                    <>
+                      <div className="border-t pt-4">
+                        <h4 className="font-medium mb-3">Referral Agencies</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {(intake.referralAgencies as string[]).map((agency) => (
+                            <Badge key={agency} variant="outline">{agency}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {intake.adjacentMunicipality && (
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">Adjacent Municipality</p>
+                      <p className="font-medium">{intake.adjacentMunicipality}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Boards & Approvals */}
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-4">
+                  <Building className="h-5 w-5" />
+                  <CardTitle>Boards & Approvals</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {(() => {
+                    const boardsApprovals = (intake.boardsApprovals as Record<string, boolean>) || {};
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="font-medium mb-3">Boards</h4>
+                            <div className="space-y-2">
+                              {["planningBoard", "zoningBoardOfAppeals", "municipalBoard", "historicalBoard", "architecturalReviewBoard"].map((key) => (
+                                <div key={key} className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center ${boardsApprovals[key] ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                    {boardsApprovals[key] && <Check className="h-3 w-3 text-primary-foreground" />}
+                                  </div>
+                                  <span className="text-sm">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-medium mb-3">Application Type</h4>
+                            <div className="space-y-2">
+                              {["subdivision", "sitePlan", "prePreliminarySketch", "preliminary", "final"].map((key) => (
+                                <div key={key} className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center ${boardsApprovals[key] ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                    {boardsApprovals[key] && <Check className="h-3 w-3 text-primary-foreground" />}
+                                  </div>
+                                  <span className="text-sm">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <h4 className="font-medium mb-3">Special Permit / Zoning</h4>
+                              <div className="space-y-2">
+                                {["specialPermit", "zoningCodeAmendment", "variance", "conditionalUse", "zoneChange"].map((key) => (
+                                  <div key={key} className="flex items-center gap-2">
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${boardsApprovals[key] ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                      {boardsApprovals[key] && <Check className="h-3 w-3 text-primary-foreground" />}
+                                    </div>
+                                    <span className="text-sm">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-medium mb-3">Additional Applications</h4>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.nydecApplicationNeeded === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                    {intake.nydecApplicationNeeded === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                                  </div>
+                                  <span className="text-sm">NYDEC Application Needed</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded border flex items-center justify-center ${intake.usacoaApplicationNeeded === "yes" ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+                                    {intake.usacoaApplicationNeeded === "yes" && <Check className="h-3 w-3 text-primary-foreground" />}
+                                  </div>
+                                  <span className="text-sm">USACOA Application Needed</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {boardsApprovals.subdivision && intake.numberOfLots && (
+                          <div className="border-t pt-4">
+                            <div className="space-y-1">
+                              <p className="text-sm text-muted-foreground">Number of Lots</p>
+                              <p className="font-medium">{intake.numberOfLots}</p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+
+              {/* Link to original intake */}
+              <div className="flex justify-center">
+                <Link href={`/intake/${intake.id}`}>
+                  <Button variant="outline" data-testid="link-view-intake">
+                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                    View Full Intake Record
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <IntakeLinkSection projectId={parseInt(id!)} />
           )}
         </TabsContent>
       </Tabs>
