@@ -52,6 +52,22 @@ Preferred communication style: Simple, everyday language.
 - **Proposals**: Sales proposals with line items, totals, and status tracking
 - **Proposal Items**: Individual service line items within proposals
 
+### Project Archiving and Deletion
+Projects with attached data (documents, notes, tasks, time logs, or time entries) cannot be deleted directly to ensure data safety. The deletion workflow is:
+1. **Check for attached data**: When attempting to delete, the system checks for related records
+2. **Delete attached data first**: If data exists, user must navigate to the project and remove all related items
+3. **Archive the project**: Once no attached data exists, the project can be archived
+4. **Permanent deletion**: Only archived projects can be permanently deleted
+
+Status values: intake, in_progress, waiting_on_client, with_dob, completed, on_hold, cancelled, **archived**
+
+API Endpoints:
+- GET /api/projects/:id/related-data-counts - Returns counts of attached documents, notes, tasks, timeLogs, timeEntries
+- POST /api/projects/:id/archive - Archives a project (only if no attached data exists)
+- DELETE /api/projects/:id/permanent - Permanently deletes an archived project
+
+Note: The "archived" status is not available in the project edit form to prevent bypassing the archive workflow.
+
 ### Sales Pipeline
 - Proposal number format: PROP-YYYY-NNNN (e.g., PROP-2026-0001)
 - Proposals can be created from the Sales Pipeline page (/sales-pipeline)
