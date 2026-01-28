@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Bell, Calendar, Clock, User, Mail, Phone, Check, Eye, EyeOff, ExternalLink, MapPin } from "lucide-react";
+import { Bell, Calendar, Clock, User, Mail, Phone, Check, Eye, EyeOff, ExternalLink, MapPin, List, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
+import { CalendarView } from "@/components/calendar";
 import type { TaskReminder, Task, Project } from "@shared/schema";
 
 type ReminderWithContext = TaskReminder & { task: Task; project: Project };
@@ -119,6 +122,7 @@ function ReminderCard({ reminder, onToggleRead }: { reminder: ReminderWithContex
 
 export default function Reminders() {
   const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
 
   const { data: reminders, isLoading } = useQuery<ReminderWithContext[]>({
     queryKey: ["/api/reminders"],
@@ -170,60 +174,78 @@ export default function Reminders() {
         <div className="flex items-center gap-3">
           <Bell className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Reminders</h1>
+            <h1 className="text-2xl font-bold">Reminders & Calendar</h1>
             <p className="text-sm text-muted-foreground">
               {unreadReminders.length} unread, {readReminders.length} read
             </p>
           </div>
         </div>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "calendar")}>
+          <TabsList>
+            <TabsTrigger value="calendar" className="gap-2" data-testid="tab-calendar-view">
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </TabsTrigger>
+            <TabsTrigger value="list" className="gap-2" data-testid="tab-list-view">
+              <List className="h-4 w-4" />
+              List
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {reminders?.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">No Reminders</h3>
-            <p className="text-muted-foreground">You don't have any reminders yet.</p>
-          </CardContent>
-        </Card>
+      {viewMode === "calendar" ? (
+        <CalendarView />
       ) : (
-        <div className="space-y-6">
-          {unreadReminders.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Badge variant="default">{unreadReminders.length}</Badge>
-                Unread Reminders
-              </h2>
-              <div className="grid gap-4">
-                {unreadReminders.map(reminder => (
-                  <ReminderCard
-                    key={reminder.id}
-                    reminder={reminder}
-                    onToggleRead={handleToggleRead}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <>
+          {reminders?.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium">No Reminders</h3>
+                <p className="text-muted-foreground">You don't have any reminders yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {unreadReminders.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Badge variant="default">{unreadReminders.length}</Badge>
+                    Unread Reminders
+                  </h2>
+                  <div className="grid gap-4">
+                    {unreadReminders.map(reminder => (
+                      <ReminderCard
+                        key={reminder.id}
+                        reminder={reminder}
+                        onToggleRead={handleToggleRead}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {readReminders.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
-                <Badge variant="secondary">{readReminders.length}</Badge>
-                Read Reminders
-              </h2>
-              <div className="grid gap-4">
-                {readReminders.map(reminder => (
-                  <ReminderCard
-                    key={reminder.id}
-                    reminder={reminder}
-                    onToggleRead={handleToggleRead}
-                  />
-                ))}
-              </div>
+              {readReminders.length > 0 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 text-muted-foreground">
+                    <Badge variant="secondary">{readReminders.length}</Badge>
+                    Read Reminders
+                  </h2>
+                  <div className="grid gap-4">
+                    {readReminders.map(reminder => (
+                      <ReminderCard
+                        key={reminder.id}
+                        reminder={reminder}
+                        onToggleRead={handleToggleRead}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

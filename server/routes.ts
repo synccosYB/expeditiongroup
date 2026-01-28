@@ -2012,6 +2012,31 @@ export async function registerRoutes(
     }
   });
 
+  // Calendar Events - Aggregates tasks and reminders for calendar view
+  app.get("/api/calendar/events", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Get all tasks with due dates
+      const allTasks = await storage.getTasks();
+      const tasksWithProjects = allTasks.filter(t => t.dueDate);
+
+      // Get all reminders
+      const allReminders = await storage.getAllReminders();
+
+      res.json({
+        tasks: tasksWithProjects,
+        reminders: allReminders,
+      });
+    } catch (error) {
+      console.error("Error fetching calendar events:", error);
+      res.status(500).json({ message: "Failed to fetch calendar events" });
+    }
+  });
+
   // Task Reminders
   app.get("/api/reminders", isAuthenticated, async (req: any, res) => {
     try {
@@ -2033,7 +2058,7 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const { status, actionNote, isRead } = req.body;
+      const { status, actionNote, isRead, scheduledAt } = req.body;
       const updateData: any = {};
       if (status !== undefined) {
         updateData.status = status;
@@ -2041,6 +2066,7 @@ export async function registerRoutes(
       }
       if (actionNote !== undefined) updateData.actionNote = actionNote;
       if (isRead !== undefined) updateData.isRead = isRead;
+      if (scheduledAt !== undefined) updateData.scheduledAt = new Date(scheduledAt);
       
       const updated = await storage.updateTaskReminder(parseInt(req.params.id), updateData);
       if (!updated) {
