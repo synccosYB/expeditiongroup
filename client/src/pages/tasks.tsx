@@ -41,8 +41,12 @@ import {
   ExternalLink,
   ChevronRight,
   ChevronDown,
+  ChevronLeft,
   Clock,
   MoreHorizontal,
+  MapPin,
+  FileText,
+  User as UserIcon,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -96,6 +100,194 @@ const timeEntryFormSchema = z.object({
 
 type TimeEntryFormData = z.infer<typeof timeEntryFormSchema>;
 
+function flattenTasks(tasks: TaskWithSubtasks[]): TaskWithSubtasks[] {
+  const result: TaskWithSubtasks[] = [];
+  function traverse(task: TaskWithSubtasks) {
+    result.push(task);
+    if (task.subtasks) {
+      task.subtasks.forEach(traverse);
+    }
+  }
+  tasks.forEach(traverse);
+  return result;
+}
+
+function TaskDetailDialog({
+  task,
+  isOpen,
+  onClose,
+  onPrevious,
+  onNext,
+  hasPrevious,
+  hasNext,
+  currentIndex,
+  totalCount,
+  onToggle,
+  onLogTime,
+}: {
+  task: TaskWithSubtasks | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  currentIndex: number;
+  totalCount: number;
+  onToggle: (task: Task) => void;
+  onLogTime: (task: Task) => void;
+}) {
+  if (!task) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle className="text-xl flex-1 pr-4">{task.title}</DialogTitle>
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-sm text-muted-foreground" data-testid="text-task-position">
+              Task {currentIndex + 1} of {totalCount}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onPrevious}
+                disabled={!hasPrevious}
+                data-testid="button-previous-task"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onNext}
+                disabled={!hasNext}
+                data-testid="button-next-task"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
+            <Badge
+              variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'}
+            >
+              {task.priority || 'normal'}
+            </Badge>
+            <StatusBadge status={task.status} type="task" />
+            <Badge variant="outline">
+              <MapPin className="h-3 w-3 mr-1" />
+              {task.locationType || 'office'}
+            </Badge>
+          </div>
+
+          {task.description && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Description
+              </h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Project
+              </h4>
+              <Link
+                href={`/projects/${task.project?.id}`}
+                className="text-sm text-primary hover:underline"
+                data-testid={`link-task-detail-project-${task.projectId}`}
+              >
+                P-{task.project?.id}: {task.project?.name}
+              </Link>
+            </div>
+
+            {task.assignee && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <UserIcon className="h-4 w-4" />
+                  Assignee
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  {task.assignee.firstName} {task.assignee.lastName || ''}
+                </p>
+              </div>
+            )}
+
+            {task.dueDate && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Due Date
+                </h4>
+                <p className="text-sm text-muted-foreground">{formatLocalDate(task.dueDate)}</p>
+              </div>
+            )}
+
+            {task.subtasks && task.subtasks.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Subtasks</h4>
+                <p className="text-sm text-muted-foreground">
+                  {task.subtasks.filter(s => s.status === 'done').length} of {task.subtasks.length} completed
+                </p>
+              </div>
+            )}
+          </div>
+
+          {task.internalNotes && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Internal Notes</h4>
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                {task.internalNotes}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
+            <Button
+              variant={task.status === "done" ? "outline" : "default"}
+              onClick={() => onToggle(task)}
+              data-testid="button-toggle-task-status"
+            >
+              <Checkbox
+                checked={task.status === "done"}
+                className="mr-2"
+                onCheckedChange={() => {}}
+              />
+              {task.status === "done" ? "Mark Incomplete" : "Mark Complete"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => onLogTime(task)}
+              data-testid="button-log-time-detail"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Log Time
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/projects/${task.projectId}`} data-testid="link-view-project-detail">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Project
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function buildTaskHierarchy(tasks: TaskWithProject[]): TaskWithSubtasks[] {
   const taskMap = new Map<number, TaskWithSubtasks>();
   const rootTasks: TaskWithSubtasks[] = [];
@@ -122,6 +314,7 @@ function TaskHierarchyItem({
   level = 0, 
   onToggle,
   onLogTime,
+  onOpenDetail,
   expandedTasks,
   toggleExpand,
 }: { 
@@ -129,6 +322,7 @@ function TaskHierarchyItem({
   level?: number;
   onToggle: (task: Task) => void;
   onLogTime: (task: Task) => void;
+  onOpenDetail: (task: TaskWithSubtasks) => void;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
 }) {
@@ -161,9 +355,13 @@ function TaskHierarchyItem({
                 data-testid={`checkbox-task-${task.id}`}
               />
             </div>
-            <div className="flex-1 min-w-0">
+            <div 
+              className="flex-1 min-w-0 cursor-pointer"
+              onClick={() => onOpenDetail(task)}
+              data-testid={`button-open-task-${task.id}`}
+            >
               <div className="flex items-center gap-2 flex-wrap">
-                <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
+                <p className={`text-sm font-medium hover:text-primary transition-colors ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
                   {task.title}
                 </p>
                 <Badge variant="outline">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
@@ -189,6 +387,7 @@ function TaskHierarchyItem({
                   href={`/projects/${task.project?.id}`} 
                   className="flex items-center gap-1.5 font-medium text-foreground hover:text-primary transition-colors"
                   data-testid={`link-project-${task.projectId}`}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   P-{task.project?.id}: {task.project?.name}
                 </Link>
@@ -238,6 +437,7 @@ function TaskHierarchyItem({
               level={level + 1}
               onToggle={onToggle}
               onLogTime={onLogTime}
+              onOpenDetail={onOpenDetail}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
             />
@@ -262,6 +462,8 @@ export default function Tasks() {
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [selectedTaskForTimeLog, setSelectedTaskForTimeLog] = useState<Task | null>(null);
+  const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
+  const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
 
   const { data: tasks, isLoading } = useQuery<TaskWithProject[]>({
     queryKey: ["/api/tasks"],
@@ -412,6 +614,37 @@ export default function Tasks() {
   });
 
   const taskHierarchy = filteredTasks ? buildTaskHierarchy(filteredTasks) : [];
+  const flatTaskList = flattenTasks(taskHierarchy);
+
+  const handleOpenTaskDetail = (task: TaskWithSubtasks) => {
+    const index = flatTaskList.findIndex(t => t.id === task.id);
+    if (index !== -1) {
+      setSelectedTaskIndex(index);
+      setIsTaskDetailOpen(true);
+    }
+  };
+
+  const handlePreviousTask = () => {
+    if (selectedTaskIndex > 0) {
+      setSelectedTaskIndex(selectedTaskIndex - 1);
+    }
+  };
+
+  const handleNextTask = () => {
+    if (selectedTaskIndex < flatTaskList.length - 1) {
+      setSelectedTaskIndex(selectedTaskIndex + 1);
+    }
+  };
+
+  const selectedTask = flatTaskList[selectedTaskIndex] || null;
+
+  useEffect(() => {
+    if (isTaskDetailOpen && flatTaskList.length === 0) {
+      setIsTaskDetailOpen(false);
+    } else if (isTaskDetailOpen && selectedTaskIndex >= flatTaskList.length) {
+      setSelectedTaskIndex(Math.max(0, flatTaskList.length - 1));
+    }
+  }, [flatTaskList.length, isTaskDetailOpen, selectedTaskIndex]);
 
   if (isLoading) {
     return (
@@ -498,6 +731,7 @@ export default function Tasks() {
               task={task}
               onToggle={toggleTaskStatus}
               onLogTime={handleLogTime}
+              onOpenDetail={handleOpenTaskDetail}
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
             />
@@ -636,6 +870,20 @@ export default function Tasks() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <TaskDetailDialog
+        task={selectedTask}
+        isOpen={isTaskDetailOpen}
+        onClose={() => setIsTaskDetailOpen(false)}
+        onPrevious={handlePreviousTask}
+        onNext={handleNextTask}
+        hasPrevious={selectedTaskIndex > 0}
+        hasNext={selectedTaskIndex < flatTaskList.length - 1}
+        currentIndex={selectedTaskIndex}
+        totalCount={flatTaskList.length}
+        onToggle={toggleTaskStatus}
+        onLogTime={handleLogTime}
+      />
     </div>
   );
 }
