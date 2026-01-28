@@ -11,7 +11,7 @@ import {
   useSensors,
   closestCenter,
 } from "@dnd-kit/core";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, ClipboardList, Clock, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -175,7 +175,9 @@ export function CalendarView() {
 
     if (!targetDateStr.startsWith("day-")) return;
 
-    const targetDate = parseISO(targetDateStr.replace("day-", ""));
+    // Parse date string in local time to avoid timezone shifts
+    const dateStr = targetDateStr.replace("day-", "");
+    const targetDate = parse(dateStr, "yyyy-MM-dd", new Date());
     const calendarEvent = events.find((e) => e.id === eventId);
 
     if (!calendarEvent || isSameDay(calendarEvent.date, targetDate)) return;
