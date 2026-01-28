@@ -616,7 +616,9 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         ne(tasks.status, "done"),
         ne(tasks.status, "cancelled"),
-        sql`${tasks.dueDate} < NOW()`
+        isNotNull(tasks.dueDate),
+        // Task is overdue at 12:00 AM on its due date (due date <= today)
+        sql`DATE(${tasks.dueDate}) <= CURRENT_DATE`
       ))
       .orderBy(tasks.dueDate);
     
