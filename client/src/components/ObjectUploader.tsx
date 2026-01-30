@@ -105,6 +105,17 @@ export function ObjectUploader({
   const [selectedCategory, setSelectedCategory] = useState(defaultCategory);
   const [selectedFolderId, setSelectedFolderId] = useState(defaultFolderId);
   const [isVisibleToClient, setIsVisibleToClient] = useState(defaultVisibility);
+  
+  const selectedCategoryRef = useRef(selectedCategory);
+  const isVisibleToClientRef = useRef(isVisibleToClient);
+  
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory]);
+  
+  useEffect(() => {
+    isVisibleToClientRef.current = isVisibleToClient;
+  }, [isVisibleToClient]);
 
   const dashboardRef = useCallback((node: HTMLDivElement | null) => {
     setDashboardElement(node);
@@ -118,6 +129,8 @@ export function ObjectUploader({
     setSelectedCategory(defaultCategory);
     setSelectedFolderId(defaultFolderId);
     setIsVisibleToClient(defaultVisibility);
+    selectedCategoryRef.current = defaultCategory;
+    isVisibleToClientRef.current = defaultVisibility;
     if (uppyRef.current) {
       uppyRef.current.cancelAll();
     }
@@ -194,8 +207,8 @@ export function ObjectUploader({
       console.log("Uppy upload complete:", result);
       const stagedFilesClone = new Map(stagedFilesConfigRef.current);
       const settingsSnapshot = {
-        category: selectedCategory,
-        visibility: isVisibleToClient,
+        category: selectedCategoryRef.current,
+        visibility: isVisibleToClientRef.current,
       };
       setShowModal(false);
       resetState();
