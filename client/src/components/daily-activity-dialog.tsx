@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -146,6 +147,9 @@ export function DailyActivityDialog({
             <FileText className="h-5 w-5" />
             Log Daily Activity
           </DialogTitle>
+          <DialogDescription>
+            Record your daily work activities and hours.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">

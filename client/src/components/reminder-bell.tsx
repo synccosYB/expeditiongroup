@@ -310,6 +310,9 @@ export function ReminderBell() {
               <Bell className="h-5 w-5" />
               Reminder Details
             </DialogTitle>
+            <DialogDescription>
+              View reminder information and associated task details.
+            </DialogDescription>
           </DialogHeader>
           {viewReminder && (
             <div className="space-y-4">

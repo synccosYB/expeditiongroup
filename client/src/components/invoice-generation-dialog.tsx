@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -231,6 +232,9 @@ export function InvoiceGenerationDialog({
             <FileText className="h-5 w-5" />
             Generate Invoice
           </DialogTitle>
+          <DialogDescription>
+            Create an invoice from time entries and custom line items.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
