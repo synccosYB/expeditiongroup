@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -383,7 +384,7 @@ export default function ChartOfAccounts() {
               Add Account
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle>
                 {editingAccount ? "Edit Account" : "Add New Account"}

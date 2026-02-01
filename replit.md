@@ -38,6 +38,7 @@ Preferred communication style: Simple, everyday language.
 - **Project Archiving/Deletion**: Projects with attached data cannot be deleted directly; requires data removal, then archiving, then permanent deletion.
 - **Sales Pipeline**: Manages proposals (PROP-YYYY-NNNN format) through statuses (draft, sent, accepted, rejected, expired) with categorized services.
 - **Invoicing System**: Generates invoices (INV-YYYY-NNNN format) from time logs/entries, supports custom items, and allows client viewing. Invoices have statuses (draft, sent, paid, cancelled) and financial summaries.
+- **Chart of Accounts**: Hierarchical account structure with parent/sub-account relationships (e.g., "Payroll" as parent with "Payroll – Wages", "Payroll – Taxes" as sub-accounts). Supports asset, liability, equity, revenue, and expense account types with automatic numeric code sorting.
 - **Client Portal**: Provides read-only access to documents, invoices, client-visible notes, and project status with task timelines.
 - **Task Navigation**: Sequential navigation of tasks and subtasks with detailed dialogs and filtering.
 - **Document Management**: Supports single and bulk uploads, organization into folders and categories, and metadata tagging.
