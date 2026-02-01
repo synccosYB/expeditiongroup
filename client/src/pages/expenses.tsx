@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -479,6 +479,45 @@ export default function Expenses() {
   const activeVendors = vendors?.filter(v => v.isActive);
   const activeClients = clients?.filter(c => c.status === "active");
 
+  // Build hierarchical account list with parent accounts first, then children indented
+  const hierarchicalAccounts = useMemo(() => {
+    if (!expenseAccounts) return [];
+    
+    // Separate parent accounts (no parentAccountId) and child accounts
+    const parentAccounts = expenseAccounts.filter(a => !a.parentAccountId);
+    const childAccounts = expenseAccounts.filter(a => a.parentAccountId);
+    
+    // Build hierarchical list
+    const result: { account: Account; isChild: boolean }[] = [];
+    
+    parentAccounts
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .forEach(parent => {
+        result.push({ account: parent, isChild: false });
+        
+        // Add children immediately after their parent
+        const children = childAccounts
+          .filter(child => child.parentAccountId === parent.id)
+          .sort((a, b) => a.code.localeCompare(b.code));
+        
+        children.forEach(child => {
+          result.push({ account: child, isChild: true });
+        });
+      });
+    
+    // Add any orphaned child accounts (parent not found or inactive) at the end
+    const orphanedChildren = childAccounts.filter(
+      child => !parentAccounts.find(p => p.id === child.parentAccountId)
+    );
+    orphanedChildren
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .forEach(orphan => {
+        result.push({ account: orphan, isChild: true });
+      });
+    
+    return result;
+  }, [expenseAccounts]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -608,9 +647,14 @@ export default function Expenses() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {expenseAccounts?.map((account) => (
-                              <SelectItem key={account.id} value={account.id.toString()}>
-                                {account.code} - {account.name}
+                            {hierarchicalAccounts.map(({ account, isChild }) => (
+                              <SelectItem 
+                                key={account.id} 
+                                value={account.id.toString()}
+                                className={isChild ? "pl-8" : ""}
+                                data-testid={`select-option-account-${account.id}`}
+                              >
+                                {isChild ? "└ " : ""}{account.code} - {account.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
