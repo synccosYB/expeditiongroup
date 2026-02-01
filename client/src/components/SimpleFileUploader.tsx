@@ -260,11 +260,11 @@ export function SimpleFileUploader({
             <div className="flex items-center gap-3 text-sm">
               <Mail className="h-4 w-4 text-muted-foreground" />
               <a 
-                href="mailto:admin@synccos.com" 
+                href="mailto:admin@synkdex.com" 
                 className="text-foreground hover:underline"
                 data-testid="link-storage-email"
               >
-                admin@synccos.com
+                admin@synkdex.com
               </a>
             </div>
             <div className="flex items-center gap-3 text-sm">
