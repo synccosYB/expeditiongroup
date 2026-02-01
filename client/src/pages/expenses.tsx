@@ -619,7 +619,7 @@ export default function Expenses() {
         <CardContent>
           {!filteredExpenses || filteredExpenses.length === 0 ? (
             <EmptyState
-              icon={<Receipt className="h-12 w-12" />}
+              icon={Receipt}
               title="No expenses yet"
               description="Add your first expense to start tracking"
             />

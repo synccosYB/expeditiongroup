@@ -196,7 +196,7 @@ export default function BankAccounts() {
       setEditingAccount(account);
       form.reset({
         name: account.name,
-        bankName: account.bankName,
+        bankName: account.bankName || "",
         accountType: account.accountType as "checking" | "savings" | "credit_card" | "money_market" | "other",
         accountNumber: account.accountNumber || "",
         routingNumber: account.routingNumber || "",
@@ -221,7 +221,7 @@ export default function BankAccounts() {
 
   const filteredAccounts = bankAccounts?.filter((account) =>
     account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    account.bankName.toLowerCase().includes(searchQuery.toLowerCase())
+    (account.bankName || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const formatCurrency = (value: string | null) => {
@@ -469,7 +469,7 @@ export default function BankAccounts() {
         <CardContent>
           {!filteredAccounts || filteredAccounts.length === 0 ? (
             <EmptyState
-              icon={<Landmark className="h-12 w-12" />}
+              icon={Landmark}
               title="No bank accounts yet"
               description="Add your first bank account to start tracking transactions"
             />

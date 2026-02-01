@@ -453,30 +453,6 @@ export default function Bills() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="terms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Terms</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select terms" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="net_15">Net 15</SelectItem>
-                            <SelectItem value="net_30">Net 30</SelectItem>
-                            <SelectItem value="net_45">Net 45</SelectItem>
-                            <SelectItem value="net_60">Net 60</SelectItem>
-                            <SelectItem value="due_on_receipt">Due on Receipt</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 <div className="border rounded-lg p-4 space-y-4">
@@ -641,7 +617,7 @@ export default function Bills() {
         <CardContent>
           {!filteredBills || filteredBills.length === 0 ? (
             <EmptyState
-              icon={<FileText className="h-12 w-12" />}
+              icon={FileText}
               title="No bills yet"
               description="Add your first bill to start tracking payables"
             />

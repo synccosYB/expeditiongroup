@@ -81,13 +81,14 @@ export default function RebillCenter() {
       };
 
       const response = await apiRequest("POST", "/api/invoices", invoicePayload);
+      const invoiceData = await response.json();
       
       await apiRequest("POST", "/api/expenses/mark-rebilled", {
         expenseIds,
-        invoiceId: response.id,
+        invoiceId: invoiceData.id,
       });
 
-      return response;
+      return invoiceData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/rebillable"] });
@@ -260,7 +261,7 @@ export default function RebillCenter() {
         <CardContent>
           {!filteredExpenses || filteredExpenses.length === 0 ? (
             <EmptyState
-              icon={<Receipt className="h-12 w-12" />}
+              icon={Receipt}
               title="No unbilled expenses"
               description="All rebillable expenses have been invoiced"
             />

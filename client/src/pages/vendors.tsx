@@ -477,7 +477,7 @@ export default function Vendors() {
         <CardContent>
           {!filteredVendors || filteredVendors.length === 0 ? (
             <EmptyState
-              icon={<Building2 className="h-12 w-12" />}
+              icon={Building2}
               title="No vendors yet"
               description="Add your first vendor to start tracking payees"
             />
