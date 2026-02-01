@@ -830,6 +830,12 @@ export default function Expenses() {
                             Bill to: {expense.rebillableClient.name}
                           </span>
                         )}
+                        {expense.receiptUrl && (
+                          <span className="flex items-center gap-1 text-green-600 dark:text-green-400" data-testid={`receipt-indicator-${expense.id}`}>
+                            <Image className="h-3 w-3" />
+                            Receipt
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -855,6 +861,12 @@ export default function Expenses() {
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        {expense.receiptUrl && (
+                          <DropdownMenuItem onClick={() => window.open(expense.receiptUrl!, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
+                            <Image className="h-4 w-4 mr-2" />
+                            View Receipt
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => setDeletingExpense(expense)}
