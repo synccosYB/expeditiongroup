@@ -337,6 +337,7 @@ export interface IStorage {
   // Bookkeeping - Vendors
   getVendors(): Promise<Vendor[]>;
   getVendor(id: number): Promise<Vendor | undefined>;
+  getVendorBalances(): Promise<{ vendorId: number; balance: string }[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: number, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
   deleteVendor(id: number): Promise<boolean>;
@@ -2031,6 +2032,21 @@ export class DatabaseStorage implements IStorage {
   async getVendor(id: number): Promise<Vendor | undefined> {
     const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
     return vendor;
+  }
+
+  async getVendorBalances(): Promise<{ vendorId: number; balance: string }[]> {
+    const result = await db
+      .select({
+        vendorId: bills.vendorId,
+        balance: sql<string>`COALESCE(SUM(CAST(${bills.amountDue} AS DECIMAL(12,2))), 0)::text`,
+      })
+      .from(bills)
+      .where(
+        sql`${bills.status} NOT IN ('paid', 'void')`
+      )
+      .groupBy(bills.vendorId);
+    
+    return result;
   }
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {

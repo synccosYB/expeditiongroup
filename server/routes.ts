@@ -3807,6 +3807,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/vendors/balances", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const balances = await storage.getVendorBalances();
+      res.json(balances);
+    } catch (error) {
+      console.error("Error fetching vendor balances:", error);
+      res.status(500).json({ message: "Failed to fetch vendor balances" });
+    }
+  });
+
   app.get("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

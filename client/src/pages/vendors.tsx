@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, Mail, Phone, MapPin } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, Mail, Phone, DollarSign } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +74,26 @@ export default function Vendors() {
   const { data: vendors, isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
+
+  const { data: vendorBalances } = useQuery<{ vendorId: number; balance: string }[]>({
+    queryKey: ["/api/vendors/balances"],
+  });
+
+  const balanceMap = useMemo(() => {
+    const map = new Map<number, string>();
+    vendorBalances?.forEach((item) => {
+      map.set(item.vendorId, item.balance);
+    });
+    return map;
+  }, [vendorBalances]);
+
+  const formatCurrency = (amount: string | undefined): string => {
+    const num = parseFloat(amount || "0");
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(num);
+  };
 
   const form = useForm<VendorFormData>({
     resolver: zodResolver(vendorFormSchema),
@@ -514,7 +534,25 @@ export default function Vendors() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="text-right min-w-[100px]">
+                      {(() => {
+                        const balance = balanceMap.get(vendor.id);
+                        const numBalance = parseFloat(balance || "0");
+                        if (numBalance > 0) {
+                          return (
+                            <span className="font-medium text-amber-600 dark:text-amber-500" data-testid={`text-vendor-balance-${vendor.id}`}>
+                              {formatCurrency(balance)}
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-muted-foreground text-sm" data-testid={`text-vendor-balance-${vendor.id}`}>
+                            $0.00
+                          </span>
+                        );
+                      })()}
+                    </div>
                     {!vendor.isActive && (
                       <Badge variant="secondary">Inactive</Badge>
                     )}
