@@ -46,6 +46,7 @@ export const accountSubtypeEnum = pgEnum("account_subtype", [
 export const bankAccountTypeEnum = pgEnum("bank_account_type", ["checking", "savings", "credit_card", "cash", "other"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "transfer", "check", "payment", "refund"]);
 export const expenseStatusEnum = pgEnum("expense_status", ["pending", "paid", "void"]);
+export const expensePaymentTypeEnum = pgEnum("expense_payment_type", ["expense", "pay_bill", "check", "transfer", "other"]);
 export const billStatusEnum = pgEnum("bill_status", ["draft", "pending", "partial", "paid", "void"]);
 export const reconciliationStatusEnum = pgEnum("reconciliation_status", ["in_progress", "completed"]);
 
@@ -687,6 +688,8 @@ export const expenses = pgTable("expenses", {
   amount: varchar("amount", { length: 20 }).notNull(),
   description: text("description"),
   reference: varchar("reference", { length: 100 }),
+  paymentType: expensePaymentTypeEnum("payment_type").default("expense"),
+  billId: integer("bill_id").references(() => bills.id),
   status: expenseStatusEnum("status").default("pending"),
   isRebillable: boolean("is_rebillable").default(false),
   rebillableClientId: integer("rebillable_client_id").references(() => clients.id),

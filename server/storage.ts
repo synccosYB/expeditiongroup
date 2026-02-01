@@ -357,7 +357,7 @@ export interface IStorage {
   deleteBankTransaction(id: number): Promise<boolean>;
 
   // Bookkeeping - Expenses
-  getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project })[]>;
+  getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project; bill?: Bill })[]>;
   getExpense(id: number): Promise<Expense | undefined>;
   getRebillableExpenses(clientId?: number, projectId?: number): Promise<(Expense & { vendor?: Vendor })[]>;
   getUnrebilledExpenses(): Promise<(Expense & { vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]>;
@@ -2143,7 +2143,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Bookkeeping - Expenses
-  async getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project })[]> {
+  async getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project; bill?: Bill })[]> {
     const result = await db
       .select()
       .from(expenses)
@@ -2151,6 +2151,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(accounts, eq(expenses.accountId, accounts.id))
       .leftJoin(clients, eq(expenses.rebillableClientId, clients.id))
       .leftJoin(projects, eq(expenses.rebillableProjectId, projects.id))
+      .leftJoin(bills, eq(expenses.billId, bills.id))
       .orderBy(desc(expenses.expenseDate));
     
     return result.map(r => ({
@@ -2159,6 +2160,7 @@ export class DatabaseStorage implements IStorage {
       account: r.accounts || undefined,
       rebillableClient: r.clients || undefined,
       rebillableProject: r.projects || undefined,
+      bill: r.bills || undefined,
     }));
   }
 

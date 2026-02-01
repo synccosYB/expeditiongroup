@@ -4149,6 +4149,32 @@ export async function registerRoutes(
       
       const parsed = insertExpenseSchema.parse(data);
       const expense = await storage.createExpense(parsed);
+      
+      // Update bill status if this is a bill payment
+      if (parsed.paymentType === "pay_bill" && parsed.billId) {
+        const bill = await storage.getBill(parsed.billId);
+        if (bill) {
+          const paymentAmount = parseFloat(parsed.amount);
+          const currentAmountPaid = parseFloat(bill.amountPaid || "0");
+          const newAmountPaid = currentAmountPaid + paymentAmount;
+          const totalDue = parseFloat(bill.total);
+          const newAmountDue = Math.max(0, totalDue - newAmountPaid);
+          
+          let newStatus: "pending" | "partial" | "paid" = "pending";
+          if (newAmountDue <= 0) {
+            newStatus = "paid";
+          } else if (newAmountPaid > 0) {
+            newStatus = "partial";
+          }
+          
+          await storage.updateBill(parsed.billId, {
+            amountPaid: newAmountPaid.toFixed(2),
+            amountDue: newAmountDue.toFixed(2),
+            status: newStatus,
+          });
+        }
+      }
+      
       res.status(201).json(expense);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -4176,11 +4202,70 @@ export async function registerRoutes(
         data.receiptUrl = normalized;
       }
       
+      // Get current expense to check if bill payment is changing
+      const currentExpense = await storage.getExpense(parseInt(req.params.id));
+      
       const parsed = updateExpenseSchema.parse(data);
       const expense = await storage.updateExpense(parseInt(req.params.id), parsed);
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
+      
+      // Handle bill status updates when bill payment changes
+      if (currentExpense) {
+        const previousBillId = currentExpense.paymentType === "pay_bill" ? currentExpense.billId : null;
+        const newBillId = parsed.paymentType === "pay_bill" ? parsed.billId : null;
+        const previousAmount = parseFloat(currentExpense.amount);
+        const newAmount = parseFloat(parsed.amount || expense.amount);
+        
+        // Helper function to recalculate bill status
+        const updateBillStatus = async (billId: number, amountDelta: number) => {
+          const bill = await storage.getBill(billId);
+          if (bill) {
+            const currentAmountPaid = parseFloat(bill.amountPaid || "0");
+            const newAmountPaid = Math.max(0, currentAmountPaid + amountDelta);
+            const totalDue = parseFloat(bill.total);
+            const newAmountDue = Math.max(0, totalDue - newAmountPaid);
+            
+            let newStatus: "pending" | "partial" | "paid" = "pending";
+            if (newAmountDue <= 0) {
+              newStatus = "paid";
+            } else if (newAmountPaid > 0) {
+              newStatus = "partial";
+            }
+            
+            await storage.updateBill(billId, {
+              amountPaid: newAmountPaid.toFixed(2),
+              amountDue: newAmountDue.toFixed(2),
+              status: newStatus,
+            });
+          }
+        };
+        
+        // Case 1: Expense was linked to a bill, now linked to a different bill
+        if (previousBillId && newBillId && previousBillId !== newBillId) {
+          // Remove payment from old bill
+          await updateBillStatus(previousBillId, -previousAmount);
+          // Add payment to new bill
+          await updateBillStatus(newBillId, newAmount);
+        }
+        // Case 2: Expense was linked to a bill, now not linked to any bill (payment type changed)
+        else if (previousBillId && !newBillId) {
+          // Remove payment from old bill
+          await updateBillStatus(previousBillId, -previousAmount);
+        }
+        // Case 3: Expense was not linked to a bill, now linked to a bill
+        else if (!previousBillId && newBillId) {
+          // Add payment to new bill
+          await updateBillStatus(newBillId, newAmount);
+        }
+        // Case 4: Same bill, but amount might have changed
+        else if (previousBillId && newBillId && previousBillId === newBillId && previousAmount !== newAmount) {
+          // Adjust the bill by the difference
+          await updateBillStatus(newBillId, newAmount - previousAmount);
+        }
+      }
+      
       res.json(expense);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -4197,10 +4282,40 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      
+      // Get expense before deletion to handle bill status
+      const expense = await storage.getExpense(parseInt(req.params.id));
+      
       const success = await storage.deleteExpense(parseInt(req.params.id));
       if (!success) {
         return res.status(404).json({ message: "Expense not found" });
       }
+      
+      // Revert bill status if this was a bill payment
+      if (expense && expense.paymentType === "pay_bill" && expense.billId) {
+        const bill = await storage.getBill(expense.billId);
+        if (bill) {
+          const paymentAmount = parseFloat(expense.amount);
+          const currentAmountPaid = parseFloat(bill.amountPaid || "0");
+          const newAmountPaid = Math.max(0, currentAmountPaid - paymentAmount);
+          const totalDue = parseFloat(bill.total);
+          const newAmountDue = Math.max(0, totalDue - newAmountPaid);
+          
+          let newStatus: "pending" | "partial" | "paid" = "pending";
+          if (newAmountDue <= 0) {
+            newStatus = "paid";
+          } else if (newAmountPaid > 0) {
+            newStatus = "partial";
+          }
+          
+          await storage.updateBill(expense.billId, {
+            amountPaid: newAmountPaid.toFixed(2),
+            amountDue: newAmountDue.toFixed(2),
+            status: newStatus,
+          });
+        }
+      }
+      
       res.json({ message: "Expense deleted successfully" });
     } catch (error) {
       console.error("Error deleting expense:", error);

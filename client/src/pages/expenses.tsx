@@ -36,7 +36,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Expense, Vendor, Account, Client, Project } from "@shared/schema";
+import type { Expense, Vendor, Account, Client, Project, Bill } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -58,6 +58,14 @@ import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { Progress } from "@/components/ui/progress";
 
+const PAYMENT_TYPES = [
+  { value: "expense", label: "Expense" },
+  { value: "pay_bill", label: "Pay Bill" },
+  { value: "check", label: "Check" },
+  { value: "transfer", label: "Transfer" },
+  { value: "other", label: "Other" },
+] as const;
+
 const expenseFormSchema = z.object({
   expenseDate: z.string().min(1, "Date is required"),
   vendorId: z.string().optional(),
@@ -65,12 +73,22 @@ const expenseFormSchema = z.object({
   amount: z.string().min(1, "Amount is required"),
   description: z.string().min(1, "Description is required"),
   reference: z.string().optional(),
+  paymentType: z.string().default("expense"),
+  billId: z.string().optional(),
   isRebillable: z.boolean().default(false),
   rebillableClientId: z.string().optional(),
   rebillableProjectId: z.string().optional(),
   markupPercent: z.string().optional(),
   notes: z.string().optional(),
   receiptUrl: z.string().optional(),
+}).refine((data) => {
+  if (data.paymentType === "pay_bill" && !data.billId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please select a bill to pay",
+  path: ["billId"],
 });
 
 type ExpenseFormData = z.infer<typeof expenseFormSchema>;
@@ -80,6 +98,7 @@ type ExpenseWithRelations = Expense & {
   account?: Account;
   rebillableClient?: Client;
   rebillableProject?: Project;
+  bill?: Bill;
 };
 
 function ReceiptUploader({
@@ -279,6 +298,10 @@ export default function Expenses() {
     queryKey: ["/api/projects"],
   });
 
+  const { data: bills } = useQuery<Bill[]>({
+    queryKey: ["/api/bills"],
+  });
+
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
@@ -288,6 +311,8 @@ export default function Expenses() {
       amount: "",
       description: "",
       reference: "",
+      paymentType: "expense",
+      billId: "",
       isRebillable: false,
       rebillableClientId: "",
       rebillableProjectId: "",
@@ -300,6 +325,7 @@ export default function Expenses() {
   const receiptUrl = form.watch("receiptUrl");
 
   const isRebillable = form.watch("isRebillable");
+  const paymentType = form.watch("paymentType");
 
   const createMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
@@ -310,6 +336,8 @@ export default function Expenses() {
         amount: data.amount,
         description: data.description,
         reference: data.reference,
+        paymentType: data.paymentType || "expense",
+        billId: data.paymentType === "pay_bill" && data.billId ? parseInt(data.billId) : null,
         notes: data.notes,
         isRebillable: data.isRebillable,
         rebillableClientId: data.rebillableClientId ? parseInt(data.rebillableClientId) : null,
@@ -354,6 +382,8 @@ export default function Expenses() {
         amount: data.amount,
         description: data.description,
         reference: data.reference,
+        paymentType: data.paymentType || "expense",
+        billId: data.paymentType === "pay_bill" && data.billId ? parseInt(data.billId) : null,
         notes: data.notes,
         isRebillable: data.isRebillable,
         rebillableClientId: data.rebillableClientId ? parseInt(data.rebillableClientId) : null,
@@ -429,6 +459,8 @@ export default function Expenses() {
         amount: expense.amount || "",
         description: expense.description || "",
         reference: expense.reference || "",
+        paymentType: expense.paymentType || "expense",
+        billId: expense.billId?.toString() || "",
         isRebillable: expense.isRebillable ?? false,
         rebillableClientId: expense.rebillableClientId?.toString() || "",
         rebillableProjectId: expense.rebillableProjectId?.toString() || "",
@@ -473,6 +505,11 @@ export default function Expenses() {
       return <Badge variant="secondary">Rebillable</Badge>;
     }
     return null;
+  };
+
+  const getPaymentTypeLabel = (paymentType: string | null | undefined) => {
+    const type = PAYMENT_TYPES.find(t => t.value === paymentType);
+    return type?.label || "Expense";
   };
 
   const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
@@ -681,6 +718,59 @@ export default function Expenses() {
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="paymentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-payment-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PAYMENT_TYPES.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {paymentType === "pay_bill" && (
+                    <FormField
+                      control={form.control}
+                      name="billId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bill to Pay</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-bill">
+                                <SelectValue placeholder="Select bill" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {bills?.filter(b => b.status === "pending" || b.status === "partial").map((bill) => (
+                                <SelectItem key={bill.id} value={bill.id.toString()}>
+                                  {bill.billNumber} - ${bill.amountDue} due
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
                 
                 <div className="border rounded-lg p-4 space-y-4">
                   <FormField
@@ -865,17 +955,25 @@ export default function Expenses() {
                       <DollarSign className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium">{expense.description}</p>
+                        <Badge variant="outline" className="text-xs">
+                          {getPaymentTypeLabel(expense.paymentType)}
+                        </Badge>
                         {getStatusBadge(expense)}
                       </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {expense.expenseDate ? format(new Date(expense.expenseDate), "MMM d, yyyy") : "No date"}
                         </span>
                         {expense.vendor && (
                           <span>{expense.vendor.name}</span>
+                        )}
+                        {expense.bill && (
+                          <span className="text-blue-600 dark:text-blue-400">
+                            Pays: {expense.bill.billNumber}
+                          </span>
                         )}
                         {expense.rebillableClient && (
                           <span className="text-primary">
