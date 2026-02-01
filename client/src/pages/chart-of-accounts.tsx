@@ -24,11 +24,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, BarChart3 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, BarChart3, ChevronRight, CornerDownRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +61,7 @@ const accountFormSchema = z.object({
   accountType: z.enum(["asset", "liability", "equity", "revenue", "expense"]),
   accountSubtype: z.enum(["cash", "bank", "accounts_receivable", "other_current_asset", "fixed_asset", "accounts_payable", "credit_card", "other_current_liability", "long_term_liability", "owner_equity", "retained_earnings", "service_revenue", "other_income", "cost_of_goods", "operating_expense", "payroll_expense", "other_expense"]).optional().nullable(),
   description: z.string().optional(),
+  parentAccountId: z.number().optional().nullable(),
   isActive: z.boolean().default(true),
 });
 
@@ -103,6 +105,65 @@ const subtypesByType: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
+interface AccountWithChildren extends Account {
+  children?: AccountWithChildren[];
+}
+
+function compareAccountCodes(a: string, b: string): number {
+  const numA = parseInt(a, 10);
+  const numB = parseInt(b, 10);
+  if (!isNaN(numA) && !isNaN(numB)) {
+    return numA - numB;
+  }
+  return a.localeCompare(b);
+}
+
+function sortAccountTreeRecursively(accounts: AccountWithChildren[]): void {
+  accounts.sort((a, b) => compareAccountCodes(a.code, b.code));
+  accounts.forEach((account) => {
+    if (account.children && account.children.length > 0) {
+      sortAccountTreeRecursively(account.children);
+    }
+  });
+}
+
+function buildAccountTree(accounts: Account[]): AccountWithChildren[] {
+  const accountMap = new Map<number, AccountWithChildren>();
+  const rootAccounts: AccountWithChildren[] = [];
+
+  accounts.forEach((account) => {
+    accountMap.set(account.id, { ...account, children: [] });
+  });
+
+  accounts.forEach((account) => {
+    const accountWithChildren = accountMap.get(account.id)!;
+    if (account.parentAccountId && accountMap.has(account.parentAccountId)) {
+      const parent = accountMap.get(account.parentAccountId)!;
+      parent.children = parent.children || [];
+      parent.children.push(accountWithChildren);
+    } else {
+      rootAccounts.push(accountWithChildren);
+    }
+  });
+
+  sortAccountTreeRecursively(rootAccounts);
+
+  return rootAccounts;
+}
+
+function flattenAccountTreeForDisplay(accounts: AccountWithChildren[], depth = 0): { account: AccountWithChildren; depth: number }[] {
+  const result: { account: AccountWithChildren; depth: number }[] = [];
+  
+  accounts.forEach((account) => {
+    result.push({ account, depth });
+    if (account.children && account.children.length > 0) {
+      result.push(...flattenAccountTreeForDisplay(account.children, depth + 1));
+    }
+  });
+  
+  return result;
+}
+
 export default function ChartOfAccounts() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,11 +183,20 @@ export default function ChartOfAccounts() {
       accountType: "expense",
       accountSubtype: null,
       description: "",
+      parentAccountId: null,
       isActive: true,
     },
   });
 
   const selectedType = form.watch("accountType");
+
+  const availableParentAccounts = accounts?.filter((account) => {
+    if (!account.isActive) return false;
+    if (account.accountType !== selectedType) return false;
+    if (editingAccount && account.id === editingAccount.id) return false;
+    if (account.parentAccountId) return false;
+    return true;
+  }) || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: AccountFormData) => {
@@ -227,12 +297,27 @@ export default function ChartOfAccounts() {
         accountType: account.accountType as "asset" | "liability" | "equity" | "revenue" | "expense",
         accountSubtype: account.accountSubtype || null,
         description: account.description || "",
+        parentAccountId: account.parentAccountId || null,
         isActive: account.isActive ?? true,
       });
     } else {
       setEditingAccount(null);
       form.reset();
     }
+    setIsDialogOpen(true);
+  };
+
+  const handleAddSubAccount = (parentAccount: Account) => {
+    setEditingAccount(null);
+    form.reset({
+      code: "",
+      name: "",
+      accountType: parentAccount.accountType as "asset" | "liability" | "equity" | "revenue" | "expense",
+      accountSubtype: parentAccount.accountSubtype || null,
+      description: "",
+      parentAccountId: parentAccount.id,
+      isActive: true,
+    });
     setIsDialogOpen(true);
   };
 
@@ -249,14 +334,11 @@ export default function ChartOfAccounts() {
     account.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const groupedAccounts = filteredAccounts?.reduce((groups, account) => {
-    const type = account.accountType;
-    if (!groups[type]) {
-      groups[type] = [];
-    }
-    groups[type].push(account);
-    return groups;
-  }, {} as Record<string, Account[]>);
+  const groupedAccountsByType = (typeValue: string) => {
+    const typeAccounts = filteredAccounts?.filter((a) => a.accountType === typeValue) || [];
+    const tree = buildAccountTree(typeAccounts);
+    return flattenAccountTreeForDisplay(tree);
+  };
 
   const getTypeBadgeVariant = (type: string) => {
     switch (type) {
@@ -267,6 +349,10 @@ export default function ChartOfAccounts() {
       case "expense": return "destructive";
       default: return "secondary";
     }
+  };
+
+  const hasChildAccounts = (accountId: number) => {
+    return accounts?.some((a) => a.parentAccountId === accountId) || false;
   };
 
   if (isLoading) {
@@ -329,7 +415,13 @@ export default function ChartOfAccounts() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Type *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("parentAccountId", null);
+                          }} 
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-account-type">
                               <SelectValue placeholder="Select type" />
@@ -361,6 +453,37 @@ export default function ChartOfAccounts() {
                           data-testid="input-account-name"
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="parentAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Parent Account</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} 
+                        value={field.value?.toString() || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-parent-account">
+                            <SelectValue placeholder="Select parent account (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None (Top-level account)</SelectItem>
+                          {availableParentAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id.toString()}>
+                              {account.code} - {account.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Create a sub-account by selecting a parent (e.g., "Payroll - Wages" under "Payroll")
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -476,13 +599,13 @@ export default function ChartOfAccounts() {
           ) : (
             <div className="space-y-6">
               {accountTypes.map((typeInfo) => {
-                const typeAccounts = groupedAccounts?.[typeInfo.value];
-                if (!typeAccounts || typeAccounts.length === 0) return null;
+                const flattenedAccounts = groupedAccountsByType(typeInfo.value);
+                if (flattenedAccounts.length === 0) return null;
                 return (
                   <div key={typeInfo.value}>
                     <h3 className="text-lg font-medium mb-3 capitalize">{typeInfo.label}</h3>
                     <div className="border rounded-lg divide-y">
-                      {typeAccounts.map((account) => (
+                      {flattenedAccounts.map(({ account, depth }) => (
                         <div
                           key={account.id}
                           className="flex items-center justify-between p-4 hover-elevate"
@@ -492,11 +615,35 @@ export default function ChartOfAccounts() {
                             <span className="font-mono text-sm text-muted-foreground w-16">
                               {account.code}
                             </span>
-                            <div>
-                              <p className="font-medium">{account.name}</p>
-                              {account.description && (
-                                <p className="text-sm text-muted-foreground">{account.description}</p>
+                            <div className="flex items-center gap-2">
+                              {depth > 0 && (
+                                <div 
+                                  className="flex items-center text-muted-foreground"
+                                  style={{ paddingLeft: `${(depth - 1) * 16}px` }}
+                                >
+                                  <CornerDownRight className="h-4 w-4 mr-1" />
+                                </div>
                               )}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className={`font-medium ${depth > 0 ? 'text-sm' : ''}`}>
+                                    {account.name}
+                                  </p>
+                                  {depth === 0 && hasChildAccounts(account.id) && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Parent
+                                    </Badge>
+                                  )}
+                                  {depth > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Sub-account
+                                    </Badge>
+                                  )}
+                                </div>
+                                {account.description && (
+                                  <p className="text-sm text-muted-foreground">{account.description}</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -514,6 +661,15 @@ export default function ChartOfAccounts() {
                                   <Pencil className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
+                                {depth === 0 && !account.parentAccountId && (
+                                  <DropdownMenuItem 
+                                    onClick={() => handleAddSubAccount(account)}
+                                    data-testid={`button-add-subaccount-${account.id}`}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Sub-account
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   className="text-destructive"
                                   onClick={() => setDeletingAccount(account)}
@@ -540,7 +696,13 @@ export default function ChartOfAccounts() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Account</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deletingAccount?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{deletingAccount?.name}"? 
+              {deletingAccount && hasChildAccounts(deletingAccount.id) && (
+                <span className="block mt-2 text-destructive font-medium">
+                  Warning: This account has sub-accounts. They will become top-level accounts.
+                </span>
+              )}
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
