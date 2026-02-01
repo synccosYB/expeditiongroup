@@ -46,6 +46,7 @@ Preferred communication style: Simple, everyday language.
 - **Reminders System**: Schedules task reminders with status tracking (read/unread, pending, sent, done, postponed, cancelled, failed).
 - **Daily Activity Logs**: Generates daily activity summaries from application data (time entries, tasks completed, documents, audit logs).
 - **Expense Receipts**: Allows attaching receipt images to expenses. Receipts are stored in object storage and served through a secure backend proxy that validates user authorization.
+- **Expense Payment Types**: Expenses can be categorized by payment type (Expense, Pay Bill, Check, Transfer, Other). When payment type is "Pay Bill", the expense is linked to a specific vendor bill, automatically updating the bill's amountPaid, amountDue, and status (pending/partial/paid). Bill balances are correctly maintained when expenses are created, edited, or deleted.
 
 ### UI/UX & Design
 - **Design System**: Productivity tool patterns (Linear, Notion) emphasizing information density.
