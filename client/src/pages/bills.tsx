@@ -302,7 +302,7 @@ export default function Bills() {
     }
   };
 
-  const filteredBills = bills?.filter((bill) =>
+  const filteredBills = bills?.filter(Boolean).filter((bill) =>
     bill.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bill.billNumber?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -331,7 +331,7 @@ export default function Bills() {
   };
 
   const calculateBalance = (bill: BillWithRelations) => {
-    const total = parseFloat(bill.total || "0");
+    const total = parseFloat(bill?.total || "0");
     const paid = parseFloat(bill.amountPaid || "0");
     return total - paid;
   };
@@ -647,7 +647,7 @@ export default function Bills() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-medium text-lg">
-                        {formatCurrency(bill.total || "0")}
+                        {formatCurrency(bill?.total || "0")}
                       </p>
                       {bill.status !== "paid" && parseFloat(bill.amountPaid || "0") > 0 && (
                         <p className="text-xs text-muted-foreground">

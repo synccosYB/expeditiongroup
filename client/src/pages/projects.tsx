@@ -401,7 +401,7 @@ export default function Projects() {
     }
   };
 
-  const filteredProjects = projects?.filter((project) => {
+  const filteredProjects = projects?.filter(Boolean).filter((project) => {
     const matchesSearch =
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.client?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

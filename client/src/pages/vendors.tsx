@@ -213,7 +213,7 @@ export default function Vendors() {
     }
   };
 
-  const filteredVendors = vendors?.filter((vendor) =>
+  const filteredVendors = vendors?.filter(Boolean).filter((vendor) =>
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     vendor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     vendor.company?.toLowerCase().includes(searchQuery.toLowerCase())

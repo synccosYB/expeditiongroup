@@ -273,7 +273,7 @@ export default function Expenses() {
     }
   };
 
-  const filteredExpenses = expenses?.filter((expense) =>
+  const filteredExpenses = expenses?.filter(Boolean).filter((expense) =>
     expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     expense.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     expense.reference?.toLowerCase().includes(searchQuery.toLowerCase())

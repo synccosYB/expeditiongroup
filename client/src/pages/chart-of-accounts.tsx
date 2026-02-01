@@ -244,7 +244,7 @@ export default function ChartOfAccounts() {
     }
   };
 
-  const filteredAccounts = accounts?.filter((account) =>
+  const filteredAccounts = accounts?.filter(Boolean).filter((account) =>
     account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     account.code.toLowerCase().includes(searchQuery.toLowerCase())
   );

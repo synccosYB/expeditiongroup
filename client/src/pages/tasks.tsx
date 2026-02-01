@@ -593,7 +593,7 @@ export default function Tasks() {
     });
   };
 
-  const filteredTasks = tasks?.filter((task) => {
+  const filteredTasks = tasks?.filter(Boolean).filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.project?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
