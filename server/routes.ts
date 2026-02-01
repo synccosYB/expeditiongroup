@@ -4374,8 +4374,97 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const parsed = insertBillPaymentSchema.parse({ ...req.body, billId: parseInt(req.params.id) });
+      
+      const billId = parseInt(req.params.id);
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      // Parse and validate input data up front
+      const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
+      const parsedBankAccountId = parseInt(bankAccountId);
+      const parsedAmount = amount?.toString() || "0";
+      const parsedPaymentDate = new Date(paymentDate);
+      
+      if (isNaN(parsedBankAccountId)) {
+        return res.status(400).json({ message: "Bank account is required" });
+      }
+      if (!parsedAmount || parseFloat(parsedAmount) <= 0) {
+        return res.status(400).json({ message: "Valid payment amount is required" });
+      }
+      if (isNaN(parsedPaymentDate.getTime())) {
+        return res.status(400).json({ message: "Valid payment date is required" });
+      }
+      
+      // Get the bank account to update balance and get account details
+      const bankAccount = await storage.getBankAccount(parsedBankAccountId);
+      if (!bankAccount) {
+        return res.status(400).json({ message: "Bank account not found" });
+      }
+      
+      // Create bank transaction for this payment
+      // For credit cards, this is a charge; for checking/savings, it's a withdrawal
+      const transactionType = bankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+      
+      const bankTransaction = await storage.createBankTransaction({
+        bankAccountId: parsedBankAccountId,
+        transactionDate: parsedPaymentDate,
+        transactionType,
+        payee: bill.vendor?.name || "Bill Payment",
+        vendorId: bill.vendorId,
+        description: `Bill Payment - ${bill.billNumber || `Bill #${billId}`}`,
+        reference: reference || undefined,
+        amount: parsedAmount,
+      });
+      
+      // Update bank account balance
+      const currentBalance = parseFloat(bankAccount.currentBalance || "0");
+      const paymentAmountNum = parseFloat(parsedAmount);
+      let newBalance: number;
+      
+      if (bankAccount.accountType === "credit_card") {
+        // Credit card: payment increases the balance (owed more)
+        newBalance = currentBalance + paymentAmountNum;
+      } else {
+        // Checking/Savings: payment decreases the balance
+        newBalance = currentBalance - paymentAmountNum;
+      }
+      
+      await storage.updateBankAccount(parsedBankAccountId, {
+        currentBalance: newBalance.toFixed(2),
+      });
+      
+      // Create the bill payment record
+      const parsed = insertBillPaymentSchema.parse({ 
+        billId,
+        bankAccountId: parsedBankAccountId,
+        bankTransactionId: bankTransaction.id,
+        paymentDate: parsedPaymentDate,
+        amount: parsedAmount,
+        paymentMethod,
+        reference,
+      });
       const payment = await storage.createBillPayment(parsed);
+      
+      // Update bill's amountPaid and status
+      const previousPaid = parseFloat(bill.amountPaid || "0");
+      const newPaid = previousPaid + paymentAmountNum;
+      const total = parseFloat(bill.total || "0");
+      
+      let newStatus: "pending" | "partial" | "paid" = "pending";
+      if (newPaid >= total) {
+        newStatus = "paid";
+      } else if (newPaid > 0) {
+        newStatus = "partial";
+      }
+      
+      await storage.updateBill(billId, {
+        amountPaid: newPaid.toFixed(2),
+        amountDue: (total - newPaid).toFixed(2),
+        status: newStatus,
+      });
+      
       res.status(201).json(payment);
     } catch (error) {
       if (error instanceof ZodError) {

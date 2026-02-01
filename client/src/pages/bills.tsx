@@ -35,7 +35,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Bill, BillItem, Vendor, Account, BillPayment } from "@shared/schema";
+import type { Bill, BillItem, Vendor, Account, BillPayment, BankAccount } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -87,6 +87,10 @@ export default function Bills() {
   const [deletingBill, setDeletingBill] = useState<BillWithRelations | null>(null);
   const [payingBill, setPayingBill] = useState<BillWithRelations | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentBankAccountId, setPaymentBankAccountId] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [paymentMethod, setPaymentMethod] = useState("check");
+  const [paymentReference, setPaymentReference] = useState("");
 
   const { data: bills, isLoading } = useQuery<BillWithRelations[]>({
     queryKey: ["/api/bills"],
@@ -98,6 +102,10 @@ export default function Bills() {
 
   const { data: accounts } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
+  });
+
+  const { data: bankAccounts } = useQuery<BankAccount[]>({
+    queryKey: ["/api/bank-accounts"],
   });
 
   const form = useForm<BillFormData>({
@@ -238,18 +246,33 @@ export default function Bills() {
   });
 
   const paymentMutation = useMutation({
-    mutationFn: async ({ billId, amount }: { billId: number; amount: string }) => {
+    mutationFn: async ({ billId, amount, bankAccountId, paymentDate, paymentMethod, reference }: { 
+      billId: number; 
+      amount: string; 
+      bankAccountId: number;
+      paymentDate: string;
+      paymentMethod: string;
+      reference?: string;
+    }) => {
       return await apiRequest("POST", `/api/bills/${billId}/payments`, {
         amount,
-        paymentDate: new Date(),
-        paymentMethod: "check",
+        bankAccountId,
+        paymentDate: new Date(paymentDate),
+        paymentMethod,
+        reference,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
       toast({ title: "Payment recorded successfully" });
       setPayingBill(null);
       setPaymentAmount("");
+      setPaymentBankAccountId("");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setPaymentMethod("check");
+      setPaymentReference("");
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -338,6 +361,7 @@ export default function Bills() {
 
   const activeVendors = vendors?.filter(v => v.isActive);
   const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
+  const activeBankAccounts = bankAccounts?.filter(a => a.isActive);
 
   if (isLoading) {
     return (
@@ -712,7 +736,13 @@ export default function Bills() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!payingBill} onOpenChange={() => setPayingBill(null)}>
+      <Dialog open={!!payingBill} onOpenChange={() => {
+        setPayingBill(null);
+        setPaymentBankAccountId("");
+        setPaymentDate(new Date().toISOString().split("T")[0]);
+        setPaymentMethod("check");
+        setPaymentReference("");
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
@@ -723,23 +753,84 @@ export default function Bills() {
               <p className="text-lg font-medium">Balance: {formatCurrency(calculateBalance(payingBill!).toString())}</p>
             </div>
             <div>
-              <label className="text-sm font-medium">Payment Amount</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="0.00"
-                data-testid="input-payment-amount"
-              />
+              <label className="text-sm font-medium">Pay From Account *</label>
+              <Select value={paymentBankAccountId} onValueChange={setPaymentBankAccountId}>
+                <SelectTrigger data-testid="select-payment-account">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeBankAccounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()}>
+                      {account.name} ({account.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Payment Date *</label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  data-testid="input-payment-date"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Amount *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  data-testid="input-payment-amount"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Payment Method</label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger data-testid="select-payment-method">
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="ach">ACH Transfer</SelectItem>
+                    <SelectItem value="wire">Wire Transfer</SelectItem>
+                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="debit_card">Debit Card</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Reference / Check #</label>
+                <Input
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-payment-reference"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPayingBill(null)}>
                 Cancel
               </Button>
               <Button
-                onClick={() => payingBill && paymentMutation.mutate({ billId: payingBill.id, amount: paymentAmount })}
-                disabled={paymentMutation.isPending || !paymentAmount}
+                onClick={() => payingBill && paymentMutation.mutate({ 
+                  billId: payingBill.id, 
+                  amount: paymentAmount,
+                  bankAccountId: parseInt(paymentBankAccountId),
+                  paymentDate,
+                  paymentMethod,
+                  reference: paymentReference || undefined,
+                })}
+                disabled={paymentMutation.isPending || !paymentAmount || !paymentBankAccountId}
                 data-testid="button-confirm-payment"
               >
                 Record Payment
