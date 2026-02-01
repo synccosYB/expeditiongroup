@@ -28,7 +28,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, BarChart3 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -58,7 +58,7 @@ const accountFormSchema = z.object({
   code: z.string().min(1, "Account code is required"),
   name: z.string().min(1, "Account name is required"),
   accountType: z.enum(["asset", "liability", "equity", "revenue", "expense"]),
-  accountSubtype: z.enum(["bank", "accounts_receivable", "current_asset", "fixed_asset", "other_asset", "accounts_payable", "credit_card", "current_liability", "long_term_liability", "equity", "retained_earnings", "income", "other_income", "cost_of_goods_sold", "operating_expense", "other_expense"]).optional().nullable(),
+  accountSubtype: z.enum(["cash", "bank", "accounts_receivable", "other_current_asset", "fixed_asset", "accounts_payable", "credit_card", "other_current_liability", "long_term_liability", "owner_equity", "retained_earnings", "service_revenue", "other_income", "cost_of_goods", "operating_expense", "payroll_expense", "other_expense"]).optional().nullable(),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -75,29 +75,30 @@ const accountTypes = [
 
 const subtypesByType: Record<string, { value: string; label: string }[]> = {
   asset: [
+    { value: "cash", label: "Cash" },
     { value: "bank", label: "Bank" },
     { value: "accounts_receivable", label: "Accounts Receivable" },
-    { value: "current_asset", label: "Current Asset" },
+    { value: "other_current_asset", label: "Other Current Asset" },
     { value: "fixed_asset", label: "Fixed Asset" },
-    { value: "other_asset", label: "Other Asset" },
   ],
   liability: [
     { value: "accounts_payable", label: "Accounts Payable" },
     { value: "credit_card", label: "Credit Card" },
-    { value: "current_liability", label: "Current Liability" },
+    { value: "other_current_liability", label: "Other Current Liability" },
     { value: "long_term_liability", label: "Long Term Liability" },
   ],
   equity: [
-    { value: "equity", label: "Equity" },
+    { value: "owner_equity", label: "Owner's Equity" },
     { value: "retained_earnings", label: "Retained Earnings" },
   ],
   revenue: [
-    { value: "income", label: "Income" },
+    { value: "service_revenue", label: "Service Revenue" },
     { value: "other_income", label: "Other Income" },
   ],
   expense: [
-    { value: "cost_of_goods_sold", label: "Cost of Goods Sold" },
+    { value: "cost_of_goods", label: "Cost of Goods" },
     { value: "operating_expense", label: "Operating Expense" },
+    { value: "payroll_expense", label: "Payroll Expense" },
     { value: "other_expense", label: "Other Expense" },
   ],
 };
@@ -468,7 +469,7 @@ export default function ChartOfAccounts() {
         <CardContent>
           {!filteredAccounts || filteredAccounts.length === 0 ? (
             <EmptyState
-              icon={<span className="text-4xl">📊</span>}
+              icon={BarChart3}
               title="No accounts yet"
               description="Create your first account to start tracking finances"
             />

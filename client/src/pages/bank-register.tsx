@@ -29,7 +29,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -330,7 +330,7 @@ export default function BankRegister() {
         <Card>
           <CardContent className="p-6">
             <EmptyState
-              icon={<span className="text-4xl">📋</span>}
+              icon={ClipboardList}
               title="No account selected"
               description="Please select a bank account to view its register"
             />
@@ -643,7 +643,7 @@ export default function BankRegister() {
           {!transactionsWithBalance || transactionsWithBalance.length === 0 ? (
             <div className="p-6">
               <EmptyState
-                icon={<span className="text-4xl">📋</span>}
+                icon={ClipboardList}
                 title="No transactions yet"
                 description="Add your first transaction to start tracking"
               />
