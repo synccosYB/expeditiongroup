@@ -696,6 +696,7 @@ export const expenses = pgTable("expenses", {
   rebilledInvoiceId: integer("rebilled_invoice_id").references(() => invoices.id),
   rebilledAt: timestamp("rebilled_at"),
   notes: text("notes"),
+  receiptUrl: text("receipt_url"),
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
