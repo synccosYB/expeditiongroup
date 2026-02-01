@@ -4190,6 +4190,20 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/expenses/upload-url", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL("expense-receipts");
+      res.json({ method: "PUT", url: uploadUrl });
+    } catch (error) {
+      console.error("Error generating expense upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
   // ===== Bookkeeping - Bills =====
   app.get("/api/bills", isAuthenticated, async (req: any, res) => {
     try {
