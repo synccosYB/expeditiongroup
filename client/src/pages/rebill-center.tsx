@@ -38,7 +38,7 @@ export default function RebillCenter() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExpenses, setSelectedExpenses] = useState<Set<number>>(new Set());
-  const [filterClient, setFilterClient] = useState<string>("");
+  const [filterClient, setFilterClient] = useState<string>("all");
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
 
   const { data: expenses, isLoading } = useQuery<ExpenseWithRelations[]>({
@@ -124,7 +124,7 @@ export default function RebillCenter() {
       expense.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       expense.rebillableClient?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesClient = !filterClient || expense.rebillableClientId?.toString() === filterClient;
+    const matchesClient = filterClient === "all" || expense.rebillableClientId?.toString() === filterClient;
     
     return matchesSearch && matchesClient;
   });
@@ -248,7 +248,7 @@ export default function RebillCenter() {
                 <SelectValue placeholder="All clients" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All clients</SelectItem>
+                <SelectItem value="all">All clients</SelectItem>
                 {activeClients?.map((client) => (
                   <SelectItem key={client.id} value={client.id.toString()}>
                     {client.name}

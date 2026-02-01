@@ -1,0 +1,145 @@
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+9The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+9The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+29f984523fe7bd8e.js:2 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+29f984523fe7bd8e.js:2 Download the Apollo DevTools for a better development experience: https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm
+29f984523fe7bd8e.js:2   WARN  [Statsig] SessionReplay event is too large (~12278007 bytes) and will not be logged Object
+(anonymous) @ 29f984523fe7bd8e.js:2Understand this warning
+29f984523fe7bd8e.js:2 [ai-chat] Creating connection with chat proxy enabled
+(anonymous) @ 29f984523fe7bd8e.js:2Understand this warning
+29f984523fe7bd8e.js:2 [LaunchDarkly] LaunchDarkly client initialized
+29f984523fe7bd8e.js:2 [Coframe] Replit Enterprise watcher loaded
+29f984523fe7bd8e.js:2   WARN  [Statsig] SessionReplay event is too large (~12317628 bytes) and will not be logged Object
+(anonymous) @ 29f984523fe7bd8e.js:2Understand this warning
+229f984523fe7bd8e.js:2 [ai-chat] Creating connection with chat proxy enabled
+(anonymous) @ 29f984523fe7bd8e.js:2Understand this warning
+Expition-Plus:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+29f984523fe7bd8e.js:2 Extension Error: An error occurred while loading the extension manifest: Manifest does not exist for extension 88d1957f-e5f9-4bbe-8b56-60edc458561a Object
+(anonymous) @ 29f984523fe7bd8e.js:2Understand this error
+8Expition-Plus:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+5Expition-Plus:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+977Connecting to '<URL>' violates the following Content Security Policy directive: "connect-src 'none'". The policy is report-only, so the violation has been logged but no further action has been taken.
+9a2446c69ceea6f9.js:2 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+z @ 9a2446c69ceea6f9.js:2Understand this error
+9a2446c69ceea6f9.js:2 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+z @ 9a2446c69ceea6f9.js:2Understand this error
+9a2446c69ceea6f9.js:2 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+z @ 9a2446c69ceea6f9.js:2Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arjo%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+client:536 WebSocket connection to 'wss://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/vite-hmr?token=y93_nzOkJAZO' failed: 
+setupWebSocket @ client:536Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=y93_nzOkJAZO' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)Understand this error
+main.tsx:9 SW registered: https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/
+5Expition-Plus:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this error
+2@radix-ui_react-select.js:873 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js:14325:28)
+    at beginWork (chunk-RPCDYKBN.js:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js:19137:13)Understand this error
+ The above error occurred in the <SelectItem> component:
+
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:846:7
+    at _c1 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/select.tsx:208:12)
+    at div
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=f0404044:42:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:39:15
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:757:13
+    at div
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:39:15
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:300:58
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=f0404044:42:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AFLIZ4FI.js?v=f0404044:260:22
+    at SelectPortal
+    at _c7 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/select.tsx:123:12)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at CollectionProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:29:13)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Popper (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4XNOAIBL.js?v=f0404044:1921:11)
+    at Select (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:88:5)
+    at div
+    at div
+    at _c3 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/card.tsx:45:12)
+    at div
+    at _c (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at RebillCenter (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/pages/rebill-center.tsx:48:21)
+    at Route (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f0404044:265:16)
+    at Switch (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f0404044:321:17)
+    at AdminRouter
+    at div
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at TooltipProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f0404044:64:5)
+    at SidebarProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at AuthenticatedLayout (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/App.tsx?v=NRSzyUf3TJAa0RJ08COBc:355:23)
+    at Router (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/App.tsx?v=NRSzyUf3TJAa0RJ08COBc:437:42)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at TooltipProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f0404044:64:5)
+    at QueryClientProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f0404044:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js:14032Understand this error
+chunk-RPCDYKBN.js:9129 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js:14325:28)
+    at beginWork (chunk-RPCDYKBN.js:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js:18879:28)Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+1012 log entries are not shown.
