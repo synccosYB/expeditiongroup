@@ -76,13 +76,13 @@ export function PublicFooter() {
           <div className="text-center mt-4 text-sm text-muted-foreground">
             Site powered by{" "}
             <a 
-              href="https://www.synccos.com" 
+              href="https://www.synkdex.com" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="font-medium text-primary underline"
-              data-testid="link-synccos-footer"
+              data-testid="link-synkdex-footer"
             >
-              www.synccos.com
+              www.synkdex.com
             </a>
           </div>
         </div>

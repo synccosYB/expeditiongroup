@@ -384,13 +384,13 @@ export default function AuthPage() {
               <div>
                 <span>Site powered by </span>
                 <a 
-                  href="https://www.synccos.com" 
+                  href="https://www.synkdex.com" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="font-medium text-primary underline"
-                  data-testid="link-synccos"
+                  data-testid="link-synkdex"
                 >
-                  www.synccos.com
+                  www.synkdex.com
                 </a>
               </div>
             </div>
