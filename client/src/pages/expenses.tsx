@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
+import { Progress } from "@/components/ui/progress";
 
 const expenseFormSchema = z.object({
   expenseDate: z.string().min(1, "Date is required"),
@@ -69,6 +70,7 @@ const expenseFormSchema = z.object({
   rebillableProjectId: z.string().optional(),
   markupPercent: z.string().optional(),
   notes: z.string().optional(),
+  receiptUrl: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseFormSchema>;
@@ -79,6 +81,169 @@ type ExpenseWithRelations = Expense & {
   rebillableClient?: Client;
   rebillableProject?: Project;
 };
+
+function ReceiptUploader({
+  receiptUrl,
+  onUploadComplete,
+  onRemove,
+}: {
+  receiptUrl: string | null | undefined;
+  onUploadComplete: (url: string) => void;
+  onRemove: () => void;
+}) {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (JPG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const response = await apiRequest("POST", "/api/expenses/upload-url", {});
+      const { url, method } = await response.json();
+
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
+        }
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Upload failed"));
+
+        xhr.open(method, url);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+
+      const uploadedUrl = url.split("?")[0];
+      onUploadComplete(uploadedUrl);
+      toast({ title: "Receipt uploaded successfully" });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload receipt. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  if (receiptUrl) {
+    return (
+      <div className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium flex items-center gap-2">
+            <Image className="h-4 w-4" />
+            Receipt Attached
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(receiptUrl, "_blank")}
+              data-testid="button-view-receipt"
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              View
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={onRemove}
+              data-testid="button-remove-receipt"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="aspect-video bg-muted rounded-md overflow-hidden">
+          <img
+            src={receiptUrl}
+            alt="Receipt"
+            className="w-full h-full object-contain"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium flex items-center gap-2">
+          <Receipt className="h-4 w-4" />
+          Receipt Image
+        </span>
+      </div>
+      {uploading ? (
+        <div className="space-y-2">
+          <Progress value={uploadProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center">
+            Uploading... {uploadProgress}%
+          </p>
+        </div>
+      ) : (
+        <div
+          className="flex flex-col items-center justify-center py-4 cursor-pointer hover-elevate rounded-md transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">Click to upload receipt</p>
+          <p className="text-xs text-muted-foreground mt-1">JPG, PNG up to 10MB</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+            data-testid="input-receipt-file"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Expenses() {
   const { toast } = useToast();
@@ -121,8 +286,11 @@ export default function Expenses() {
       rebillableProjectId: "",
       markupPercent: "0",
       notes: "",
+      receiptUrl: "",
     },
   });
+
+  const receiptUrl = form.watch("receiptUrl");
 
   const isRebillable = form.watch("isRebillable");
 
@@ -140,6 +308,7 @@ export default function Expenses() {
         rebillableClientId: data.rebillableClientId ? parseInt(data.rebillableClientId) : null,
         rebillableProjectId: data.rebillableProjectId ? parseInt(data.rebillableProjectId) : null,
         markupPercent: data.markupPercent || "0",
+        receiptUrl: data.receiptUrl || null,
       };
       return await apiRequest("POST", "/api/expenses", payload);
     },
@@ -183,6 +352,7 @@ export default function Expenses() {
         rebillableClientId: data.rebillableClientId ? parseInt(data.rebillableClientId) : null,
         rebillableProjectId: data.rebillableProjectId ? parseInt(data.rebillableProjectId) : null,
         markupPercent: data.markupPercent || "0",
+        receiptUrl: data.receiptUrl || null,
       };
       return await apiRequest("PATCH", `/api/expenses/${id}`, payload);
     },
@@ -257,6 +427,7 @@ export default function Expenses() {
         rebillableProjectId: expense.rebillableProjectId?.toString() || "",
         markupPercent: expense.markupPercent || "0",
         notes: expense.notes || "",
+        receiptUrl: expense.receiptUrl || "",
       });
     } else {
       setEditingExpense(null);
@@ -577,6 +748,12 @@ export default function Expenses() {
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+
+                <ReceiptUploader
+                  receiptUrl={receiptUrl}
+                  onUploadComplete={(url) => form.setValue("receiptUrl", url)}
+                  onRemove={() => form.setValue("receiptUrl", "")}
                 />
 
                 <div className="flex justify-end gap-2 pt-4">
