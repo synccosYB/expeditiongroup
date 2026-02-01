@@ -647,7 +647,7 @@ export default function Bills() {
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-medium text-lg">
-                        {formatCurrency(bill.total)}
+                        {formatCurrency(bill.total || "0")}
                       </p>
                       {bill.status !== "paid" && parseFloat(bill.amountPaid || "0") > 0 && (
                         <p className="text-xs text-muted-foreground">
