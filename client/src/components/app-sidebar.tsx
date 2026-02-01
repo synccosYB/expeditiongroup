@@ -25,6 +25,11 @@ import {
   Bell,
   TrendingUp,
   DollarSign,
+  Landmark,
+  Receipt,
+  Building2,
+  BookOpen,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,6 +49,15 @@ const adminMenuItems = [
   { title: "Activity Logs", url: "/activity-logs", icon: FileText },
   { title: "Associates", url: "/associates", icon: UserCog },
   { title: "Settings", url: "/settings", icon: Settings },
+];
+
+const bookkeepingMenuItems = [
+  { title: "Chart of Accounts", url: "/chart-of-accounts", icon: BookOpen },
+  { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+  { title: "Expenses", url: "/expenses", icon: Receipt },
+  { title: "Vendors", url: "/vendors", icon: Building2 },
+  { title: "Bills", url: "/bills", icon: FileText },
+  { title: "Rebill Center", url: "/rebill-center", icon: RefreshCw },
 ];
 
 const clientMenuItems = [
@@ -89,7 +103,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="overflow-hidden">
+      <SidebarContent className="overflow-auto">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wide font-medium text-muted-foreground px-4 py-2">
             {isAdmin ? "Administration" : "Portal"}
@@ -117,6 +131,36 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wide font-medium text-muted-foreground px-4 py-2">
+              Bookkeeping
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {bookkeepingMenuItems.map((item) => {
+                  const isActive = location === item.url || 
+                    (item.url !== "/" && location.startsWith(item.url));
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        className={isActive ? "bg-sidebar-accent" : ""}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        <Link href={item.url}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

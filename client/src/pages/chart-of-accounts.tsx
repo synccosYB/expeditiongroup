@@ -1,0 +1,558 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/loading-skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import type { Account } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+
+const accountFormSchema = z.object({
+  code: z.string().min(1, "Account code is required"),
+  name: z.string().min(1, "Account name is required"),
+  accountType: z.enum(["asset", "liability", "equity", "revenue", "expense"]),
+  accountSubtype: z.enum(["bank", "accounts_receivable", "current_asset", "fixed_asset", "other_asset", "accounts_payable", "credit_card", "current_liability", "long_term_liability", "equity", "retained_earnings", "income", "other_income", "cost_of_goods_sold", "operating_expense", "other_expense"]).optional().nullable(),
+  description: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+type AccountFormData = z.infer<typeof accountFormSchema>;
+
+const accountTypes = [
+  { value: "asset", label: "Asset" },
+  { value: "liability", label: "Liability" },
+  { value: "equity", label: "Equity" },
+  { value: "revenue", label: "Revenue" },
+  { value: "expense", label: "Expense" },
+];
+
+const subtypesByType: Record<string, { value: string; label: string }[]> = {
+  asset: [
+    { value: "bank", label: "Bank" },
+    { value: "accounts_receivable", label: "Accounts Receivable" },
+    { value: "current_asset", label: "Current Asset" },
+    { value: "fixed_asset", label: "Fixed Asset" },
+    { value: "other_asset", label: "Other Asset" },
+  ],
+  liability: [
+    { value: "accounts_payable", label: "Accounts Payable" },
+    { value: "credit_card", label: "Credit Card" },
+    { value: "current_liability", label: "Current Liability" },
+    { value: "long_term_liability", label: "Long Term Liability" },
+  ],
+  equity: [
+    { value: "equity", label: "Equity" },
+    { value: "retained_earnings", label: "Retained Earnings" },
+  ],
+  revenue: [
+    { value: "income", label: "Income" },
+    { value: "other_income", label: "Other Income" },
+  ],
+  expense: [
+    { value: "cost_of_goods_sold", label: "Cost of Goods Sold" },
+    { value: "operating_expense", label: "Operating Expense" },
+    { value: "other_expense", label: "Other Expense" },
+  ],
+};
+
+export default function ChartOfAccounts() {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
+
+  const { data: accounts, isLoading } = useQuery<Account[]>({
+    queryKey: ["/api/accounts"],
+  });
+
+  const form = useForm<AccountFormData>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      code: "",
+      name: "",
+      accountType: "expense",
+      accountSubtype: null,
+      description: "",
+      isActive: true,
+    },
+  });
+
+  const selectedType = form.watch("accountType");
+
+  const createMutation = useMutation({
+    mutationFn: async (data: AccountFormData) => {
+      return await apiRequest("POST", "/api/accounts", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      toast({ title: "Account created successfully" });
+      setIsDialogOpen(false);
+      form.reset();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: AccountFormData }) => {
+      return await apiRequest("PATCH", `/api/accounts/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      toast({ title: "Account updated successfully" });
+      setIsDialogOpen(false);
+      setEditingAccount(null);
+      form.reset();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/accounts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/accounts"] });
+      toast({ title: "Account deleted successfully" });
+      setDeletingAccount(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenDialog = (account?: Account) => {
+    if (account) {
+      setEditingAccount(account);
+      form.reset({
+        code: account.code,
+        name: account.name,
+        accountType: account.accountType as "asset" | "liability" | "equity" | "revenue" | "expense",
+        accountSubtype: account.accountSubtype || null,
+        description: account.description || "",
+        isActive: account.isActive ?? true,
+      });
+    } else {
+      setEditingAccount(null);
+      form.reset();
+    }
+    setIsDialogOpen(true);
+  };
+
+  const onSubmit = (data: AccountFormData) => {
+    if (editingAccount) {
+      updateMutation.mutate({ id: editingAccount.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  const filteredAccounts = accounts?.filter((account) =>
+    account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    account.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const groupedAccounts = filteredAccounts?.reduce((groups, account) => {
+    const type = account.accountType;
+    if (!groups[type]) {
+      groups[type] = [];
+    }
+    groups[type].push(account);
+    return groups;
+  }, {} as Record<string, Account[]>);
+
+  const getTypeBadgeVariant = (type: string) => {
+    switch (type) {
+      case "asset": return "default";
+      case "liability": return "secondary";
+      case "equity": return "outline";
+      case "revenue": return "default";
+      case "expense": return "destructive";
+      default: return "secondary";
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold text-foreground">Chart of Accounts</h1>
+            <p className="text-muted-foreground mt-1">Manage your accounting categories</p>
+          </div>
+        </div>
+        <ListSkeleton rows={5} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">Chart of Accounts</h1>
+          <p className="text-muted-foreground mt-1">Manage your accounting categories</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => handleOpenDialog()} data-testid="button-add-account">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Account
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {editingAccount ? "Edit Account" : "Add New Account"}
+              </DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code *</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g., 1000"
+                            {...field}
+                            data-testid="input-account-code"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="accountType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-account-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {accountTypes.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter account name"
+                          {...field}
+                          data-testid="input-account-name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {selectedType && subtypesByType[selectedType] && (
+                  <FormField
+                    control={form.control}
+                    name="accountSubtype"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subtype</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-account-subtype">
+                              <SelectValue placeholder="Select subtype (optional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subtypesByType[selectedType].map((subtype) => (
+                              <SelectItem key={subtype.value} value={subtype.value}>
+                                {subtype.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter description (optional)"
+                          {...field}
+                          data-testid="input-account-description"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <FormLabel>Active</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Inactive accounts won't appear in dropdowns
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-account-active"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                    data-testid="button-save-account"
+                  >
+                    {editingAccount ? "Update" : "Create"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search accounts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-accounts"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!filteredAccounts || filteredAccounts.length === 0 ? (
+            <EmptyState
+              icon={<span className="text-4xl">📊</span>}
+              title="No accounts yet"
+              description="Create your first account to start tracking finances"
+            />
+          ) : (
+            <div className="space-y-6">
+              {accountTypes.map((typeInfo) => {
+                const typeAccounts = groupedAccounts?.[typeInfo.value];
+                if (!typeAccounts || typeAccounts.length === 0) return null;
+                return (
+                  <div key={typeInfo.value}>
+                    <h3 className="text-lg font-medium mb-3 capitalize">{typeInfo.label}</h3>
+                    <div className="border rounded-lg divide-y">
+                      {typeAccounts.map((account) => (
+                        <div
+                          key={account.id}
+                          className="flex items-center justify-between p-4 hover-elevate"
+                          data-testid={`account-row-${account.id}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="font-mono text-sm text-muted-foreground w-16">
+                              {account.code}
+                            </span>
+                            <div>
+                              <p className="font-medium">{account.name}</p>
+                              {account.description && (
+                                <p className="text-sm text-muted-foreground">{account.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {!account.isActive && (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="icon" variant="ghost" data-testid={`button-account-menu-${account.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenDialog(account)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => setDeletingAccount(account)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!deletingAccount} onOpenChange={() => setDeletingAccount(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deletingAccount?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingAccount && deleteMutation.mutate(deletingAccount.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

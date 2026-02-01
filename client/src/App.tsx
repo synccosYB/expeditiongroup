@@ -54,6 +54,14 @@ import Reminders from "@/pages/reminders";
 import SalesPipeline from "@/pages/sales-pipeline";
 import ProposalDetail from "@/pages/proposal-detail";
 import Invoices from "@/pages/invoices";
+import ChartOfAccounts from "@/pages/chart-of-accounts";
+import Vendors from "@/pages/vendors";
+import BankAccounts from "@/pages/bank-accounts";
+import BankRegister from "@/pages/bank-register";
+import Expenses from "@/pages/expenses";
+import Bills from "@/pages/bills";
+import RebillCenter from "@/pages/rebill-center";
+import BankReconciliation from "@/pages/bank-reconciliation";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -92,6 +100,14 @@ function AdminRouter() {
       <Route path="/sales-pipeline" component={SalesPipeline} />
       <Route path="/proposals/new" component={ProposalDetail} />
       <Route path="/proposals/:id" component={ProposalDetail} />
+      <Route path="/chart-of-accounts" component={ChartOfAccounts} />
+      <Route path="/vendors" component={Vendors} />
+      <Route path="/bank-accounts" component={BankAccounts} />
+      <Route path="/bank-register/:id" component={BankRegister} />
+      <Route path="/bank-reconciliation/:id" component={BankReconciliation} />
+      <Route path="/expenses" component={Expenses} />
+      <Route path="/bills" component={Bills} />
+      <Route path="/rebill-center" component={RebillCenter} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
