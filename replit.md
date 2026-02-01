@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Intake Applications**: Multi-step wizard for permit application intake, including conditional fields, draft saving, and conversion to projects linked to existing clients.
 - **Reminders System**: Schedules task reminders with status tracking (read/unread, pending, sent, done, postponed, cancelled, failed).
 - **Daily Activity Logs**: Generates daily activity summaries from application data (time entries, tasks completed, documents, audit logs).
+- **Expense Receipts**: Allows attaching receipt images to expenses. Receipts are stored in object storage and served through a secure backend proxy that validates user authorization.
 
 ### UI/UX & Design
 - **Design System**: Productivity tool patterns (Linear, Notion) emphasizing information density.
