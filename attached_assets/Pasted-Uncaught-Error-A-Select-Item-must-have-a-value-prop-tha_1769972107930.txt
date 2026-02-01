@@ -1,0 +1,391 @@
+Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js:14325:28)
+    at beginWork (chunk-RPCDYKBN.js:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js:18879:28)Understand this error
+stallwart.build.js:1 stallwart: failed ping 1
+1012 log entries are not shown.Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'ambient-light-sensor'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'battery'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'execution-while-not-rendered'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'execution-while-out-of-viewport'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'layout-animations'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'legacy-image-formats'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'navigation-override'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'oversized-images'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'publickey-credentials'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'speaker-selection'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'unoptimized-images'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'unsized-media'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'pointer-lock'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Allow attribute will take precedence over 'allowfullscreen'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Allow attribute will take precedence over 'allowpaymentrequest'.
+z @ 9a2446c69ceea6f9.js:2
+(anonymous) @ 9a2446c69ceea6f9.js:2
+oU @ 9a2446c69ceea6f9.js:2
+oI @ 9a2446c69ceea6f9.js:2
+oO @ 9a2446c69ceea6f9.js:2
+oE @ 9a2446c69ceea6f9.js:2
+C @ 9a2446c69ceea6f9.js:2
+M @ 9a2446c69ceea6f9.js:2Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Arkq%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+client:536 WebSocket connection to 'wss://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/vite-hmr?token=Ho2lDKwv2c8Y' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=Ho2lDKwv2c8Y' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+main.tsx:9 SW registered: https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/
+@radix-ui_react-select.js?v=f0404044:873 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=f0404044:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js?v=f0404044:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=f0404044:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=f0404044:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=f0404044:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=f0404044:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=f0404044:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f0404044:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f0404044:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f0404044:19137:13)
+(anonymous) @ @radix-ui_react-select.js?v=f0404044:873
+renderWithHooks @ chunk-RPCDYKBN.js?v=f0404044:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=f0404044:14325
+beginWork @ chunk-RPCDYKBN.js?v=f0404044:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=f0404044:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=f0404044:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=f0404044:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=f0404044:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=f0404044:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=f0404044:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=f0404044:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=f0404044:555
+flush @ @tanstack_react-query.js?v=f0404044:569
+batch @ @tanstack_react-query.js?v=f0404044:587
+dispatch_fn @ @tanstack_react-query.js?v=f0404044:996
+setData @ @tanstack_react-query.js?v=f0404044:696
+onSuccess @ @tanstack_react-query.js?v=f0404044:897
+resolve @ @tanstack_react-query.js?v=f0404044:456
+Promise.then
+run @ @tanstack_react-query.js?v=f0404044:498
+start @ @tanstack_react-query.js?v=f0404044:536
+fetch @ @tanstack_react-query.js?v=f0404044:926
+executeFetch_fn @ @tanstack_react-query.js?v=f0404044:2211
+onSubscribe @ @tanstack_react-query.js?v=f0404044:1898
+subscribe @ @tanstack_react-query.js?v=f0404044:24
+(anonymous) @ @tanstack_react-query.js?v=f0404044:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=f0404044:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f0404044:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f0404044:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f0404044:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f0404044:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f0404044:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f0404044:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f0404044:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f0404044:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f0404044:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627Understand this error
+@radix-ui_react-select.js?v=f0404044:873 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=f0404044:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js?v=f0404044:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=f0404044:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=f0404044:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=f0404044:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=f0404044:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=f0404044:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f0404044:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f0404044:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f0404044:19137:13)
+(anonymous) @ @radix-ui_react-select.js?v=f0404044:873
+renderWithHooks @ chunk-RPCDYKBN.js?v=f0404044:11548
+updateForwardRef @ chunk-RPCDYKBN.js?v=f0404044:14325
+beginWork @ chunk-RPCDYKBN.js?v=f0404044:15946
+callCallback2 @ chunk-RPCDYKBN.js?v=f0404044:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=f0404044:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=f0404044:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=f0404044:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=f0404044:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=f0404044:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=f0404044:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=f0404044:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=f0404044:555
+flush @ @tanstack_react-query.js?v=f0404044:569
+batch @ @tanstack_react-query.js?v=f0404044:587
+dispatch_fn @ @tanstack_react-query.js?v=f0404044:996
+setData @ @tanstack_react-query.js?v=f0404044:696
+onSuccess @ @tanstack_react-query.js?v=f0404044:897
+resolve @ @tanstack_react-query.js?v=f0404044:456
+Promise.then
+run @ @tanstack_react-query.js?v=f0404044:498
+start @ @tanstack_react-query.js?v=f0404044:536
+fetch @ @tanstack_react-query.js?v=f0404044:926
+executeFetch_fn @ @tanstack_react-query.js?v=f0404044:2211
+onSubscribe @ @tanstack_react-query.js?v=f0404044:1898
+subscribe @ @tanstack_react-query.js?v=f0404044:24
+(anonymous) @ @tanstack_react-query.js?v=f0404044:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=f0404044:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f0404044:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f0404044:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f0404044:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f0404044:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f0404044:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f0404044:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f0404044:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f0404044:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f0404044:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627Understand this error
+chunk-RPCDYKBN.js?v=f0404044:14032 The above error occurred in the <SelectItem> component:
+
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:846:7
+    at _c1 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/select.tsx:208:12)
+    at div
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=f0404044:42:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:39:15
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:757:13
+    at div
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:39:15
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:300:58
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:79:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=f0404044:56:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=f0404044:42:13
+    at https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AFLIZ4FI.js?v=f0404044:260:22
+    at SelectPortal
+    at _c7 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/select.tsx:123:12)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at CollectionProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=f0404044:29:13)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at Popper (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4XNOAIBL.js?v=f0404044:1921:11)
+    at Select (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=f0404044:88:5)
+    at div
+    at div
+    at _c3 (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/card.tsx:45:12)
+    at div
+    at _c (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at RebillCenter (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/pages/rebill-center.tsx:48:21)
+    at Route (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f0404044:265:16)
+    at Switch (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=f0404044:321:17)
+    at AdminRouter
+    at div
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at TooltipProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f0404044:64:5)
+    at SidebarProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at AuthenticatedLayout (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/App.tsx?v=EtEQVQaSKSxVXZrP9o3xH:355:23)
+    at Router (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/src/App.tsx?v=EtEQVQaSKSxVXZrP9o3xH:437:42)
+    at Provider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=f0404044:38:15)
+    at TooltipProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=f0404044:64:5)
+    at QueryClientProvider (https://376c4d4a-8c65-4df2-b096-7d9c76c3e062-00-12tfhjnrc9tj0.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=f0404044:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=f0404044:14032
+update.callback @ chunk-RPCDYKBN.js?v=f0404044:14052
+callCallback @ chunk-RPCDYKBN.js?v=f0404044:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=f0404044:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=f0404044:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=f0404044:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=f0404044:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=f0404044:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=f0404044:19353
+commitRoot @ chunk-RPCDYKBN.js?v=f0404044:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=f0404044:555
+flush @ @tanstack_react-query.js?v=f0404044:569
+batch @ @tanstack_react-query.js?v=f0404044:587
+dispatch_fn @ @tanstack_react-query.js?v=f0404044:996
+setData @ @tanstack_react-query.js?v=f0404044:696
+onSuccess @ @tanstack_react-query.js?v=f0404044:897
+resolve @ @tanstack_react-query.js?v=f0404044:456
+Promise.then
+run @ @tanstack_react-query.js?v=f0404044:498
+start @ @tanstack_react-query.js?v=f0404044:536
+fetch @ @tanstack_react-query.js?v=f0404044:926
+executeFetch_fn @ @tanstack_react-query.js?v=f0404044:2211
+onSubscribe @ @tanstack_react-query.js?v=f0404044:1898
+subscribe @ @tanstack_react-query.js?v=f0404044:24
+(anonymous) @ @tanstack_react-query.js?v=f0404044:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=f0404044:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=f0404044:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=f0404044:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=f0404044:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=f0404044:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=f0404044:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=f0404044:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=f0404044:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=f0404044:19416
+commitRoot @ chunk-RPCDYKBN.js?v=f0404044:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=f0404044:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=f0404044:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=f0404044:18627Understand this error
+chunk-RPCDYKBN.js?v=f0404044:9129 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=f0404044:873:13
+    at renderWithHooks (chunk-RPCDYKBN.js?v=f0404044:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=f0404044:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=f0404044:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=f0404044:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=f0404044:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=f0404044:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=f0404044:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=f0404044:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js?v=f0404044:18879:28)
