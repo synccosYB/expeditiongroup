@@ -374,7 +374,9 @@ export interface IStorage {
   getNextBillNumber(): Promise<string>;
 
   // Bookkeeping - Bill Payments
+  getBillPayment(id: number): Promise<BillPayment | undefined>;
   createBillPayment(payment: InsertBillPayment): Promise<BillPayment>;
+  updateBillPayment(id: number, payment: Partial<InsertBillPayment>): Promise<BillPayment | undefined>;
   deleteBillPayment(id: number): Promise<boolean>;
 
   // Bookkeeping - Bank Reconciliations
@@ -2308,9 +2310,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Bookkeeping - Bill Payments
+  async getBillPayment(id: number): Promise<BillPayment | undefined> {
+    const [payment] = await db.select().from(billPayments).where(eq(billPayments.id, id));
+    return payment;
+  }
+
   async createBillPayment(payment: InsertBillPayment): Promise<BillPayment> {
     const [newPayment] = await db.insert(billPayments).values(payment).returning();
     return newPayment;
+  }
+
+  async updateBillPayment(id: number, payment: Partial<InsertBillPayment>): Promise<BillPayment | undefined> {
+    const [updated] = await db.update(billPayments).set(payment).where(eq(billPayments.id, id)).returning();
+    return updated;
   }
 
   async deleteBillPayment(id: number): Promise<boolean> {

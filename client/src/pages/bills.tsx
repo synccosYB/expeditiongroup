@@ -91,6 +91,9 @@ export default function Bills() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState("check");
   const [paymentReference, setPaymentReference] = useState("");
+  const [viewingPaymentsBill, setViewingPaymentsBill] = useState<BillWithRelations | null>(null);
+  const [editingPayment, setEditingPayment] = useState<BillPayment | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState<BillPayment | null>(null);
 
   const { data: bills, isLoading } = useQuery<BillWithRelations[]>({
     queryKey: ["/api/bills"],
@@ -289,6 +292,86 @@ export default function Bills() {
       toast({
         title: "Error",
         description: "Failed to record payment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePaymentMutation = useMutation({
+    mutationFn: async ({ paymentId, amount, bankAccountId, paymentDate, paymentMethod, reference }: { 
+      paymentId: number; 
+      amount: string; 
+      bankAccountId: number;
+      paymentDate: string;
+      paymentMethod: string;
+      reference?: string;
+    }) => {
+      return await apiRequest("PATCH", `/api/bill-payments/${paymentId}`, {
+        amount,
+        bankAccountId,
+        paymentDate: new Date(paymentDate),
+        paymentMethod,
+        reference,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
+      toast({ title: "Payment updated successfully" });
+      setEditingPayment(null);
+      setPaymentAmount("");
+      setPaymentBankAccountId("");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setPaymentMethod("check");
+      setPaymentReference("");
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update payment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (paymentId: number) => {
+      return await apiRequest("DELETE", `/api/bill-payments/${paymentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
+      toast({ title: "Payment deleted successfully" });
+      setDeletingPayment(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete payment",
         variant: "destructive",
       });
     },
@@ -695,6 +778,12 @@ export default function Bills() {
                             Record Payment
                           </DropdownMenuItem>
                         )}
+                        {bill.payments && bill.payments.length > 0 && (
+                          <DropdownMenuItem onClick={() => setViewingPaymentsBill(bill)}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            View Payments ({bill.payments.length})
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleOpenDialog(bill)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
@@ -839,6 +928,194 @@ export default function Bills() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!viewingPaymentsBill} onOpenChange={() => setViewingPaymentsBill(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment History</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Bill to {viewingPaymentsBill?.vendor?.name}</p>
+              <p className="text-sm">
+                Total: {formatCurrency(viewingPaymentsBill?.total || "0")} | 
+                Paid: {formatCurrency(viewingPaymentsBill?.amountPaid || "0")} |
+                Balance: {formatCurrency(viewingPaymentsBill ? calculateBalance(viewingPaymentsBill).toString() : "0")}
+              </p>
+            </div>
+            <div className="border rounded-md divide-y">
+              {viewingPaymentsBill?.payments?.map((payment) => {
+                const bankAccount = activeBankAccounts?.find(a => a.id === payment.bankAccountId);
+                return (
+                  <div key={payment.id} className="p-3 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {formatCurrency(payment.amount)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(payment.paymentDate), "MMM d, yyyy")} via {payment.paymentMethod}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {bankAccount?.name || "Unknown account"}
+                        {payment.reference && ` - Ref: ${payment.reference}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingPayment(payment);
+                          setPaymentAmount(payment.amount);
+                          setPaymentBankAccountId(payment.bankAccountId.toString());
+                          setPaymentDate(new Date(payment.paymentDate).toISOString().split("T")[0]);
+                          setPaymentMethod(payment.paymentMethod || "check");
+                          setPaymentReference(payment.reference || "");
+                        }}
+                        data-testid={`button-edit-payment-${payment.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setDeletingPayment(payment)}
+                        data-testid={`button-delete-payment-${payment.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {(!viewingPaymentsBill?.payments || viewingPaymentsBill.payments.length === 0) && (
+                <p className="p-3 text-sm text-muted-foreground text-center">No payments recorded</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingPayment} onOpenChange={() => {
+        setEditingPayment(null);
+        setPaymentBankAccountId("");
+        setPaymentDate(new Date().toISOString().split("T")[0]);
+        setPaymentMethod("check");
+        setPaymentReference("");
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Pay From Account *</label>
+              <Select value={paymentBankAccountId} onValueChange={setPaymentBankAccountId}>
+                <SelectTrigger data-testid="select-edit-payment-account">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeBankAccounts?.map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()}>
+                      {account.name} ({account.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Payment Date *</label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  data-testid="input-edit-payment-date"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Amount *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  data-testid="input-edit-payment-amount"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Payment Method</label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger data-testid="select-edit-payment-method">
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="ach">ACH Transfer</SelectItem>
+                    <SelectItem value="wire">Wire Transfer</SelectItem>
+                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="debit_card">Debit Card</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Reference / Check #</label>
+                <Input
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="Optional"
+                  data-testid="input-edit-payment-reference"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditingPayment(null)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => editingPayment && updatePaymentMutation.mutate({ 
+                  paymentId: editingPayment.id, 
+                  amount: paymentAmount,
+                  bankAccountId: parseInt(paymentBankAccountId),
+                  paymentDate,
+                  paymentMethod,
+                  reference: paymentReference || undefined,
+                })}
+                disabled={updatePaymentMutation.isPending || !paymentAmount || !paymentBankAccountId}
+                data-testid="button-confirm-edit-payment"
+              >
+                Update Payment
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deletingPayment} onOpenChange={() => setDeletingPayment(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment of {formatCurrency(deletingPayment?.amount || "0")}? 
+              This will reverse the bank account balance and update the bill status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingPayment && deletePaymentMutation.mutate(deletingPayment.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

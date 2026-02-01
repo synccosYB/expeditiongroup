@@ -4475,16 +4475,206 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/bill-payments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const paymentId = parseInt(req.params.id);
+      const existingPayment = await storage.getBillPayment(paymentId);
+      if (!existingPayment) {
+        return res.status(404).json({ message: "Bill payment not found" });
+      }
+
+      const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
+      const parsedBankAccountId = bankAccountId ? parseInt(bankAccountId) : existingPayment.bankAccountId;
+      const parsedAmount = amount?.toString() || existingPayment.amount;
+      const parsedPaymentDate = paymentDate ? new Date(paymentDate) : existingPayment.paymentDate;
+
+      // Get the old and new bank accounts
+      const oldBankAccount = await storage.getBankAccount(existingPayment.bankAccountId);
+      const newBankAccount = parsedBankAccountId !== existingPayment.bankAccountId 
+        ? await storage.getBankAccount(parsedBankAccountId)
+        : oldBankAccount;
+
+      if (!newBankAccount) {
+        return res.status(400).json({ message: "Bank account not found" });
+      }
+
+      const oldAmount = parseFloat(existingPayment.amount);
+      const newAmount = parseFloat(parsedAmount);
+      
+      if (isNaN(newAmount) || newAmount <= 0) {
+        return res.status(400).json({ message: "Valid payment amount is required" });
+      }
+
+      // Handle balance updates - use net delta approach for same-account edits
+      if (parsedBankAccountId === existingPayment.bankAccountId && oldBankAccount) {
+        // Same account - calculate net change
+        const amountDelta = newAmount - oldAmount;
+        const currentBalance = parseFloat(oldBankAccount.currentBalance || "0");
+        let newBalance: number;
+        
+        if (oldBankAccount.accountType === "credit_card") {
+          // Credit card: positive delta increases balance
+          newBalance = currentBalance + amountDelta;
+        } else {
+          // Checking/Savings: positive delta decreases balance
+          newBalance = currentBalance - amountDelta;
+        }
+        
+        await storage.updateBankAccount(parsedBankAccountId, {
+          currentBalance: newBalance.toFixed(2),
+        });
+      } else {
+        // Different accounts - reverse old and apply new
+        if (oldBankAccount) {
+          const oldBalance = parseFloat(oldBankAccount.currentBalance || "0");
+          let reversedBalance: number;
+          if (oldBankAccount.accountType === "credit_card") {
+            reversedBalance = oldBalance - oldAmount;
+          } else {
+            reversedBalance = oldBalance + oldAmount;
+          }
+          await storage.updateBankAccount(existingPayment.bankAccountId, {
+            currentBalance: reversedBalance.toFixed(2),
+          });
+        }
+
+        // Apply new bank account balance
+        const currentNewBalance = parseFloat(newBankAccount.currentBalance || "0");
+        let updatedNewBalance: number;
+        if (newBankAccount.accountType === "credit_card") {
+          updatedNewBalance = currentNewBalance + newAmount;
+        } else {
+          updatedNewBalance = currentNewBalance - newAmount;
+        }
+        await storage.updateBankAccount(parsedBankAccountId, {
+          currentBalance: updatedNewBalance.toFixed(2),
+        });
+      }
+
+      // Update the bank transaction if it exists
+      if (existingPayment.bankTransactionId) {
+        const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+        await storage.updateBankTransaction(existingPayment.bankTransactionId, {
+          bankAccountId: parsedBankAccountId,
+          transactionDate: parsedPaymentDate,
+          transactionType,
+          amount: parsedAmount,
+          reference: reference || undefined,
+        });
+      }
+
+      // Update the payment record
+      const updatedPayment = await storage.updateBillPayment(paymentId, {
+        bankAccountId: parsedBankAccountId,
+        paymentDate: parsedPaymentDate,
+        amount: parsedAmount,
+        paymentMethod: paymentMethod || existingPayment.paymentMethod,
+        reference,
+      });
+
+      // Update bill's amountPaid and status
+      const bill = await storage.getBill(existingPayment.billId);
+      if (bill) {
+        const amountDifference = newAmount - oldAmount;
+        const previousPaid = parseFloat(bill.amountPaid || "0");
+        const newPaid = previousPaid + amountDifference;
+        const total = parseFloat(bill.total || "0");
+
+        let newStatus: "pending" | "partial" | "paid" = "pending";
+        if (newPaid >= total) {
+          newStatus = "paid";
+        } else if (newPaid > 0) {
+          newStatus = "partial";
+        }
+
+        await storage.updateBill(existingPayment.billId, {
+          amountPaid: newPaid.toFixed(2),
+          amountDue: (total - newPaid).toFixed(2),
+          status: newStatus,
+        });
+      }
+
+      res.json(updatedPayment);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating bill payment:", error);
+      res.status(500).json({ message: "Failed to update bill payment" });
+    }
+  });
+
   app.delete("/api/bill-payments/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const success = await storage.deleteBillPayment(parseInt(req.params.id));
+
+      const paymentId = parseInt(req.params.id);
+      const payment = await storage.getBillPayment(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Bill payment not found" });
+      }
+
+      // Reverse the bank account balance
+      const bankAccount = await storage.getBankAccount(payment.bankAccountId);
+      if (bankAccount) {
+        const currentBalance = parseFloat(bankAccount.currentBalance || "0");
+        const paymentAmount = parseFloat(payment.amount);
+        let reversedBalance: number;
+
+        if (bankAccount.accountType === "credit_card") {
+          // Credit card: payment was a charge, so reduce the balance
+          reversedBalance = currentBalance - paymentAmount;
+        } else {
+          // Checking/Savings: payment reduced balance, so add it back
+          reversedBalance = currentBalance + paymentAmount;
+        }
+
+        await storage.updateBankAccount(payment.bankAccountId, {
+          currentBalance: reversedBalance.toFixed(2),
+        });
+      }
+
+      // Delete the associated bank transaction if it exists
+      if (payment.bankTransactionId) {
+        await storage.deleteBankTransaction(payment.bankTransactionId);
+      }
+
+      // Update bill's amountPaid and status
+      const bill = await storage.getBill(payment.billId);
+      if (bill) {
+        const paymentAmount = parseFloat(payment.amount);
+        const previousPaid = parseFloat(bill.amountPaid || "0");
+        const newPaid = Math.max(0, previousPaid - paymentAmount);
+        const total = parseFloat(bill.total || "0");
+
+        let newStatus: "pending" | "partial" | "paid" = "pending";
+        if (newPaid >= total) {
+          newStatus = "paid";
+        } else if (newPaid > 0) {
+          newStatus = "partial";
+        }
+
+        await storage.updateBill(payment.billId, {
+          amountPaid: newPaid.toFixed(2),
+          amountDue: (total - newPaid).toFixed(2),
+          status: newStatus,
+        });
+      }
+
+      // Delete the payment record
+      const success = await storage.deleteBillPayment(paymentId);
       if (!success) {
         return res.status(404).json({ message: "Bill payment not found" });
       }
+
       res.json({ message: "Bill payment deleted successfully" });
     } catch (error) {
       console.error("Error deleting bill payment:", error);
