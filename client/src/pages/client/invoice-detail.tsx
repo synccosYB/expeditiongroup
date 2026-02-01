@@ -206,7 +206,7 @@ export default function ClientInvoiceDetail() {
             <Separator className="my-2" />
             <div className="flex justify-between font-medium">
               <span>Total Due</span>
-              <span className="text-lg">${parseFloat(invoice.total || "0").toLocaleString()}</span>
+              <span className="text-lg">${parseFloat(invoice?.total || "0").toLocaleString()}</span>
             </div>
           </CardContent>
         </Card>
@@ -250,7 +250,7 @@ export default function ClientInvoiceDetail() {
               <TableRow>
                 <TableCell colSpan={3} className="text-right text-lg font-bold">Total</TableCell>
                 <TableCell className="text-right text-lg font-bold">
-                  ${parseFloat(invoice.total || "0").toFixed(2)}
+                  ${parseFloat(invoice?.total || "0").toFixed(2)}
                 </TableCell>
               </TableRow>
             </TableFooter>

@@ -256,7 +256,7 @@ export default function Dashboard() {
                   <td>${inv.project?.name ?? "-"}</td>
                   <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "-"}</td>
                   <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-"}</td>
-                  <td>$${parseFloat(inv.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                  <td>$${parseFloat(inv?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
                 </tr>
               `).join("")}
               <tr style="font-weight: bold; background: #f0f0f0;">

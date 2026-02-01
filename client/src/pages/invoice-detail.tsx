@@ -96,7 +96,7 @@ export default function InvoiceDetail() {
 
   const statusInfo = invoiceStatusConfig[invoice.status] || { label: invoice.status, variant: "outline" as const };
   const subtotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.amount || "0"), 0) || 0;
-  const total = parseFloat(invoice.total || "0");
+  const total = parseFloat(invoice?.total || "0");
   const invoiceDate = invoice.createdAt ? new Date(invoice.createdAt) : new Date();
 
   return (

@@ -334,7 +334,7 @@ function InvoiceCard({ invoice, onView }: { invoice: InvoiceWithProject; onView:
             )}
           </div>
           <p className="text-lg font-semibold">
-            ${Number(invoice.total || 0).toLocaleString()}
+            ${Number(invoice?.total || 0).toLocaleString()}
           </p>
         </div>
         <Button variant="outline" size="sm" className="w-full" onClick={onView} data-testid={`button-view-invoice-${invoice.id}`}>
@@ -889,7 +889,7 @@ export function ClientInvoiceDetail() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold" data-testid="text-total-amount">
-              ${Number(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              ${Number(invoice?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
           </CardContent>
         </Card>
@@ -943,7 +943,7 @@ export function ClientInvoiceDetail() {
                   <tr className="text-lg">
                     <td colSpan={3} className="text-right py-3 px-2 font-bold">Total</td>
                     <td className="text-right py-3 px-2 font-bold" data-testid="text-invoice-total">
-                      ${Number(invoice.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ${Number(invoice?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
                 </tfoot>

@@ -480,7 +480,7 @@ export default function ClientDetail() {
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <p className="font-semibold text-lg">
-                                ${parseFloat(invoice.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                ${parseFloat(invoice?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
                               </p>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

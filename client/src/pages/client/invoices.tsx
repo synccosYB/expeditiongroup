@@ -210,7 +210,7 @@ export default function ClientInvoices() {
                       {invoice.dueDate ? format(new Date(invoice.dueDate), "MMM d, yyyy") : "-"}
                     </TableCell>
                     <TableCell className="font-medium">
-                      ${parseFloat(invoice.total || "0").toLocaleString()}
+                      ${parseFloat(invoice?.total || "0").toLocaleString()}
                     </TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell className="text-right">

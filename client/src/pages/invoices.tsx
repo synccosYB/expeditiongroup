@@ -263,7 +263,7 @@ export default function Invoices() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium" data-testid={`text-amount-${invoice.id}`}>
-                      {formatCurrency(parseFloat(invoice.total || "0"))}
+                      {formatCurrency(parseFloat(invoice?.total || "0"))}
                     </TableCell>
                     <TableCell>
                       {invoice.dueDate ? formatLocalDate(new Date(invoice.dueDate)) : "-"}

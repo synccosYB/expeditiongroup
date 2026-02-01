@@ -210,7 +210,7 @@ export default function SalesPipeline() {
                     </TableCell>
                     <TableCell>{proposal.items.length} items</TableCell>
                     <TableCell className="text-right font-medium">
-                      ${parseFloat(proposal.total || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${parseFloat(proposal?.total || "0").toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {proposal.createdAt ? formatLocalDate(new Date(proposal.createdAt)) : "-"}
