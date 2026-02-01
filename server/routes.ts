@@ -4316,6 +4316,12 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const { items, ...billData } = req.body;
+      
+      // Auto-generate bill number if not provided
+      if (!billData.billNumber) {
+        billData.billNumber = await storage.getNextBillNumber();
+      }
+      
       const parsedBill = insertBillSchema.parse({ ...billData, createdByUserId: req.session.userId });
       const parsedItems = (items || []).map((item: any) => insertBillItemSchema.parse(item));
       const bill = await storage.createBill(parsedBill, parsedItems);
