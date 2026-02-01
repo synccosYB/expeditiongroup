@@ -332,7 +332,7 @@ export default function Bills() {
 
   const calculateBalance = (bill: BillWithRelations) => {
     const total = parseFloat(bill?.total || "0");
-    const paid = parseFloat(bill.amountPaid || "0");
+    const paid = parseFloat(bill?.amountPaid || "0");
     return total - paid;
   };
 
@@ -649,7 +649,7 @@ export default function Bills() {
                       <p className="font-medium text-lg">
                         {formatCurrency(bill?.total || "0")}
                       </p>
-                      {bill.status !== "paid" && parseFloat(bill.amountPaid || "0") > 0 && (
+                      {bill?.status !== "paid" && parseFloat(bill?.amountPaid || "0") > 0 && (
                         <p className="text-xs text-muted-foreground">
                           Balance: {formatCurrency(calculateBalance(bill).toString())}
                         </p>

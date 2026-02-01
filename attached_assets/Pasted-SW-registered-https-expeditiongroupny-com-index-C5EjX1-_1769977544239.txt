@@ -1,0 +1,84 @@
+SW registered: https://expeditiongroupny.com/
+index-C5EjX1_T.js:40 TypeError: Cannot read properties of null (reading 'amountPaid')
+    at L (index-C5EjX1_T.js:776:146183)
+    at YNe (index-C5EjX1_T.js:776:154272)
+    at J1 (index-C5EjX1_T.js:38:17018)
+    at m0 (index-C5EjX1_T.js:40:3139)
+    at k5 (index-C5EjX1_T.js:40:44833)
+    at N5 (index-C5EjX1_T.js:40:39790)
+    at qW (index-C5EjX1_T.js:40:39718)
+    at ay (index-C5EjX1_T.js:40:39570)
+    at C0 (index-C5EjX1_T.js:40:35934)
+    at V_ (index-C5EjX1_T.js:40:36738)
+h0 @ index-C5EjX1_T.js:40
+s.callback @ index-C5EjX1_T.js:40
+N_ @ index-C5EjX1_T.js:38
+$_ @ index-C5EjX1_T.js:40
+v5 @ index-C5EjX1_T.js:40
+UW @ index-C5EjX1_T.js:40
+WW @ index-C5EjX1_T.js:40
+Dc @ index-C5EjX1_T.js:40
+V_ @ index-C5EjX1_T.js:40
+xc @ index-C5EjX1_T.js:38
+(anonymous) @ index-C5EjX1_T.js:40
+setTimeout
+i @ index-C5EjX1_T.js:48
+o @ index-C5EjX1_T.js:48
+batch @ index-C5EjX1_T.js:48
+vo @ index-C5EjX1_T.js:48
+setData @ index-C5EjX1_T.js:48
+onSuccess @ index-C5EjX1_T.js:48
+h @ index-C5EjX1_T.js:48
+Promise.then
+j @ index-C5EjX1_T.js:48
+start @ index-C5EjX1_T.js:48
+fetch @ index-C5EjX1_T.js:48
+Am @ index-C5EjX1_T.js:48
+onSubscribe @ index-C5EjX1_T.js:48
+subscribe @ index-C5EjX1_T.js:48
+(anonymous) @ index-C5EjX1_T.js:48
+VF @ index-C5EjX1_T.js:38
+Tv @ index-C5EjX1_T.js:40
+bu @ index-C5EjX1_T.js:40
+WW @ index-C5EjX1_T.js:40
+Dc @ index-C5EjX1_T.js:40
+V_ @ index-C5EjX1_T.js:40
+xc @ index-C5EjX1_T.js:38
+(anonymous) @ index-C5EjX1_T.js:40
+setTimeout
+i @ index-C5EjX1_T.js:48
+o @ index-C5EjX1_T.js:48
+batch @ index-C5EjX1_T.js:48
+vo @ index-C5EjX1_T.js:48
+setData @ index-C5EjX1_T.js:48
+onSuccess @ index-C5EjX1_T.js:48
+h @ index-C5EjX1_T.js:48
+Promise.then
+j @ index-C5EjX1_T.js:48
+start @ index-C5EjX1_T.js:48
+fetch @ index-C5EjX1_T.js:48
+Am @ index-C5EjX1_T.js:48
+onSubscribe @ index-C5EjX1_T.js:48
+subscribe @ index-C5EjX1_T.js:48
+(anonymous) @ index-C5EjX1_T.js:48
+VF @ index-C5EjX1_T.js:38
+Tv @ index-C5EjX1_T.js:40
+bu @ index-C5EjX1_T.js:40
+V_ @ index-C5EjX1_T.js:40
+xc @ index-C5EjX1_T.js:38
+WW @ index-C5EjX1_T.js:40
+Dc @ index-C5EjX1_T.js:40
+j5 @ index-C5EjX1_T.js:40
+k @ index-C5EjX1_T.js:25
+N @ index-C5EjX1_T.js:25Understand this error
+index-C5EjX1_T.js:776 Uncaught TypeError: Cannot read properties of null (reading 'amountPaid')
+    at L (index-C5EjX1_T.js:776:146183)
+    at YNe (index-C5EjX1_T.js:776:154272)
+    at J1 (index-C5EjX1_T.js:38:17018)
+    at m0 (index-C5EjX1_T.js:40:3139)
+    at k5 (index-C5EjX1_T.js:40:44833)
+    at N5 (index-C5EjX1_T.js:40:39790)
+    at qW (index-C5EjX1_T.js:40:39718)
+    at ay (index-C5EjX1_T.js:40:39570)
+    at C0 (index-C5EjX1_T.js:40:35934)
+    at V_ (index-C5EjX1_T.js:40:36738)
