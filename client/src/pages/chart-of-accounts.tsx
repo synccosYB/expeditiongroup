@@ -310,8 +310,9 @@ export default function ChartOfAccounts() {
 
   const handleAddSubAccount = (parentAccount: Account) => {
     setEditingAccount(null);
+    const nextCode = generateNextSubAccountCode(parentAccount.id);
     form.reset({
-      code: "",
+      code: nextCode,
       name: "",
       accountType: parentAccount.accountType as "asset" | "liability" | "equity" | "revenue" | "expense",
       accountSubtype: parentAccount.accountSubtype || null,
@@ -354,6 +355,28 @@ export default function ChartOfAccounts() {
 
   const hasChildAccounts = (accountId: number) => {
     return accounts?.some((a) => a.parentAccountId === accountId) || false;
+  };
+
+  const generateNextSubAccountCode = (parentAccountId: number): string => {
+    const parentAccount = accounts?.find((a) => a.id === parentAccountId);
+    if (!parentAccount) return "";
+    
+    const parentCode = parentAccount.code;
+    const childAccounts = accounts?.filter((a) => a.parentAccountId === parentAccountId) || [];
+    
+    if (childAccounts.length === 0) {
+      return `${parentCode}-1`;
+    }
+    
+    const childNumbers = childAccounts
+      .map((child) => {
+        const match = child.code.match(new RegExp(`^${parentCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`));
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((num) => num > 0);
+    
+    const maxNumber = childNumbers.length > 0 ? Math.max(...childNumbers) : 0;
+    return `${parentCode}-${maxNumber + 1}`;
   };
 
   if (isLoading) {
@@ -465,7 +488,16 @@ export default function ChartOfAccounts() {
                     <FormItem>
                       <FormLabel>Parent Account</FormLabel>
                       <Select 
-                        onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} 
+                        onValueChange={(value) => {
+                          const parentId = value === "none" ? null : parseInt(value);
+                          field.onChange(parentId);
+                          if (parentId && !editingAccount) {
+                            const nextCode = generateNextSubAccountCode(parentId);
+                            form.setValue("code", nextCode);
+                          } else if (!parentId && !editingAccount) {
+                            form.setValue("code", "");
+                          }
+                        }} 
                         value={field.value?.toString() || "none"}
                       >
                         <FormControl>
