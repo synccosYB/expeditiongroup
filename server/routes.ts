@@ -4122,7 +4122,18 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const parsed = insertExpenseSchema.parse({ ...req.body, createdByUserId: req.session.userId });
+      const data = { ...req.body, createdByUserId: req.session.userId };
+      
+      // Normalize and validate receiptUrl if provided
+      if (data.receiptUrl) {
+        const normalized = objectStorageService.normalizeObjectEntityPath(data.receiptUrl);
+        if (!normalized.startsWith("/objects/")) {
+          return res.status(400).json({ message: "Invalid receipt URL" });
+        }
+        data.receiptUrl = normalized;
+      }
+      
+      const parsed = insertExpenseSchema.parse(data);
       const expense = await storage.createExpense(parsed);
       res.status(201).json(expense);
     } catch (error) {
@@ -4140,7 +4151,18 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const parsed = updateExpenseSchema.parse(req.body);
+      const data = { ...req.body };
+      
+      // Normalize and validate receiptUrl if provided
+      if (data.receiptUrl) {
+        const normalized = objectStorageService.normalizeObjectEntityPath(data.receiptUrl);
+        if (!normalized.startsWith("/objects/")) {
+          return res.status(400).json({ message: "Invalid receipt URL" });
+        }
+        data.receiptUrl = normalized;
+      }
+      
+      const parsed = updateExpenseSchema.parse(data);
       const expense = await storage.updateExpense(parseInt(req.params.id), parsed);
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
@@ -4201,6 +4223,43 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error generating expense upload URL:", error);
       res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  app.get("/api/expenses/receipt/:expenseId", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const expenseId = parseInt(req.params.expenseId);
+      if (isNaN(expenseId)) {
+        return res.status(400).json({ message: "Invalid expense ID" });
+      }
+
+      const expense = await storage.getExpense(expenseId);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      if (!expense.receiptUrl) {
+        return res.status(404).json({ message: "No receipt attached to this expense" });
+      }
+
+      const objectPath = expense.receiptUrl;
+      if (!objectPath.startsWith("/objects/")) {
+        return res.status(400).json({ message: "Invalid receipt URL format" });
+      }
+
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      await objectStorageService.downloadObject(objectFile, res, { inline: true });
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ message: "Receipt file not found" });
+      }
+      console.error("Error fetching expense receipt:", error);
+      res.status(500).json({ message: "Failed to fetch receipt" });
     }
   });
 

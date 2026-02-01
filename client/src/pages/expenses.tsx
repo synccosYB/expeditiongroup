@@ -84,10 +84,12 @@ type ExpenseWithRelations = Expense & {
 
 function ReceiptUploader({
   receiptUrl,
+  expenseId,
   onUploadComplete,
   onRemove,
 }: {
   receiptUrl: string | null | undefined;
+  expenseId?: number;
   onUploadComplete: (url: string) => void;
   onRemove: () => void;
 }) {
@@ -168,6 +170,9 @@ function ReceiptUploader({
   };
 
   if (receiptUrl) {
+    // Use backend proxy for viewing if we have an expenseId, otherwise use raw URL for preview during creation
+    const viewUrl = expenseId ? `/api/expenses/receipt/${expenseId}` : receiptUrl;
+    
     return (
       <div className="border rounded-lg p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -176,16 +181,18 @@ function ReceiptUploader({
             Receipt Attached
           </span>
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => window.open(receiptUrl, "_blank")}
-              data-testid="button-view-receipt"
-            >
-              <ExternalLink className="h-4 w-4 mr-1" />
-              View
-            </Button>
+            {expenseId && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(viewUrl, "_blank")}
+                data-testid="button-view-receipt"
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                View
+              </Button>
+            )}
             <Button
               type="button"
               size="icon"
@@ -199,7 +206,7 @@ function ReceiptUploader({
         </div>
         <div className="aspect-video bg-muted rounded-md overflow-hidden">
           <img
-            src={receiptUrl}
+            src={viewUrl}
             alt="Receipt"
             className="w-full h-full object-contain"
           />
@@ -752,6 +759,7 @@ export default function Expenses() {
 
                 <ReceiptUploader
                   receiptUrl={receiptUrl}
+                  expenseId={editingExpense?.id}
                   onUploadComplete={(url) => form.setValue("receiptUrl", url)}
                   onRemove={() => form.setValue("receiptUrl", "")}
                 />
@@ -862,7 +870,7 @@ export default function Expenses() {
                           Edit
                         </DropdownMenuItem>
                         {expense.receiptUrl && (
-                          <DropdownMenuItem onClick={() => window.open(expense.receiptUrl!, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
+                          <DropdownMenuItem onClick={() => window.open(`/api/expenses/receipt/${expense.id}`, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
                             <Image className="h-4 w-4 mr-2" />
                             View Receipt
                           </DropdownMenuItem>
