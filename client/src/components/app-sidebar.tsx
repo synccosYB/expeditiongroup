@@ -28,6 +28,7 @@ import {
   Landmark,
   Receipt,
   Building2,
+  Scale,
   BookOpen,
   RefreshCw,
 } from "lucide-react";
@@ -54,6 +55,7 @@ const adminMenuItems = [
 const bookkeepingMenuItems = [
   { title: "Chart of Accounts", url: "/chart-of-accounts", icon: BookOpen },
   { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+  { title: "Reconciliation", url: "/reconciliation", icon: Scale },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Vendors", url: "/vendors", icon: Building2 },
   { title: "Bills", url: "/bills", icon: FileText },
