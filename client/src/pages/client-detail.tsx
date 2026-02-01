@@ -441,9 +441,9 @@ export default function ClientDetail() {
             </TabsContent>
 
             <TabsContent value="invoices" className="mt-4 space-y-4">
-              {invoices && invoices.length > 0 ? (
+              {invoices && invoices.filter(Boolean).length > 0 ? (
                 <div className="space-y-3">
-                  {invoices.map((invoice) => {
+                  {invoices.filter(Boolean).map((invoice) => {
                     const statusInfo = invoiceStatusConfig[invoice.status] || { label: invoice.status, variant: "outline" as const };
                     return (
                       <Card key={invoice.id} className="hover-elevate" data-testid={`card-invoice-${invoice.id}`}>

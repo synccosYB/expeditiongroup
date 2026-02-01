@@ -57,7 +57,7 @@ export default function ClientInvoices() {
     return <DashboardSkeleton />;
   }
 
-  const filteredInvoices = invoices?.filter((invoice) => {
+  const filteredInvoices = invoices?.filter(Boolean).filter((invoice) => {
     const matchesSearch =
       invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.project?.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -66,12 +66,14 @@ export default function ClientInvoices() {
   }) || [];
 
   const unpaidTotal = filteredInvoices
+    .filter(Boolean)
     .filter(i => i.status === "sent")
-    .reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+    .reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
 
   const paidTotal = filteredInvoices
+    .filter(Boolean)
     .filter(i => i.status === "paid")
-    .reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+    .reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
 
   const getStatusBadge = (status: string) => {
     switch (status) {

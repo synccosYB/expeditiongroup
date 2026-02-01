@@ -2283,7 +2283,8 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const invoices = await storage.getInvoices();
-      res.json(invoices);
+      // Filter out any null items to prevent client-side errors
+      res.json(invoices?.filter(Boolean) || []);
     } catch (error) {
       console.error("Error fetching invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
@@ -2384,7 +2385,8 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const invoices = await storage.getInvoicesByClientId(parseInt(req.params.clientId));
-      res.json(invoices);
+      // Filter out any null items to prevent client-side errors
+      res.json(invoices?.filter(Boolean) || []);
     } catch (error) {
       console.error("Error fetching client invoices:", error);
       res.status(500).json({ message: "Failed to fetch client invoices" });
@@ -3492,7 +3494,8 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const proposals = await storage.getProposals();
-      res.json(proposals);
+      // Filter out any null items to prevent client-side errors
+      res.json(proposals?.filter(Boolean) || []);
     } catch (error) {
       console.error("Error fetching proposals:", error);
       res.status(500).json({ message: "Failed to fetch proposals" });

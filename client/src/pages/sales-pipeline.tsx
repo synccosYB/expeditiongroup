@@ -77,11 +77,11 @@ export default function SalesPipeline() {
   });
 
   const stats = {
-    total: proposals?.length || 0,
-    draft: proposals?.filter(p => p.status === "draft").length || 0,
-    sent: proposals?.filter(p => p.status === "sent").length || 0,
-    accepted: proposals?.filter(p => p.status === "accepted").length || 0,
-    totalValue: proposals?.reduce((sum, p) => sum + parseFloat(p.total || "0"), 0) || 0,
+    total: proposals?.filter(Boolean).length || 0,
+    draft: proposals?.filter(Boolean).filter(p => p.status === "draft").length || 0,
+    sent: proposals?.filter(Boolean).filter(p => p.status === "sent").length || 0,
+    accepted: proposals?.filter(Boolean).filter(p => p.status === "accepted").length || 0,
+    totalValue: proposals?.filter(Boolean).reduce((sum, p) => sum + parseFloat(p?.total || "0"), 0) || 0,
   };
 
   if (isLoading) {

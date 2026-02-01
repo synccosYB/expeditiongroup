@@ -93,9 +93,9 @@ export default function TimeLogs() {
   // Build sets of already-billed time log/entry IDs (excluding cancelled invoices)
   const billedTimeLogIds = new Set<number>();
   const billedTimeEntryIds = new Set<number>();
-  invoices?.forEach(invoice => {
-    if (invoice.status !== "cancelled") {
-      invoice.items?.forEach(item => {
+  invoices?.filter(Boolean).forEach(invoice => {
+    if (invoice?.status !== "cancelled") {
+      invoice?.items?.forEach(item => {
         if (item.timeLogId) billedTimeLogIds.add(item.timeLogId);
         if (item.timeEntryId) billedTimeEntryIds.add(item.timeEntryId);
       });

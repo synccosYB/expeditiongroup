@@ -1,0 +1,147 @@
+SW registered: https://expeditiongroupny.com/
+index-ZXiyDj1s.js:40 TypeError: Cannot read properties of null (reading 'total')
+    at L (index-ZXiyDj1s.js:776:145927)
+    at YNe (index-ZXiyDj1s.js:776:154027)
+    at J1 (index-ZXiyDj1s.js:38:17018)
+    at m0 (index-ZXiyDj1s.js:40:3139)
+    at k5 (index-ZXiyDj1s.js:40:44833)
+    at N5 (index-ZXiyDj1s.js:40:39790)
+    at qW (index-ZXiyDj1s.js:40:39718)
+    at ay (index-ZXiyDj1s.js:40:39570)
+    at C0 (index-ZXiyDj1s.js:40:35934)
+    at V_ (index-ZXiyDj1s.js:40:36738)
+h0 @ index-ZXiyDj1s.js:40
+s.callback @ index-ZXiyDj1s.js:40
+N_ @ index-ZXiyDj1s.js:38
+$_ @ index-ZXiyDj1s.js:40
+v5 @ index-ZXiyDj1s.js:40
+UW @ index-ZXiyDj1s.js:40
+WW @ index-ZXiyDj1s.js:40
+Dc @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+(anonymous) @ index-ZXiyDj1s.js:40
+setTimeout
+i @ index-ZXiyDj1s.js:48
+o @ index-ZXiyDj1s.js:48
+batch @ index-ZXiyDj1s.js:48
+vo @ index-ZXiyDj1s.js:48
+setData @ index-ZXiyDj1s.js:48
+onSuccess @ index-ZXiyDj1s.js:48
+h @ index-ZXiyDj1s.js:48
+Promise.then
+j @ index-ZXiyDj1s.js:48
+start @ index-ZXiyDj1s.js:48
+fetch @ index-ZXiyDj1s.js:48
+Am @ index-ZXiyDj1s.js:48
+onSubscribe @ index-ZXiyDj1s.js:48
+subscribe @ index-ZXiyDj1s.js:48
+(anonymous) @ index-ZXiyDj1s.js:48
+VF @ index-ZXiyDj1s.js:38
+Tv @ index-ZXiyDj1s.js:40
+bu @ index-ZXiyDj1s.js:40
+WW @ index-ZXiyDj1s.js:40
+Dc @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+(anonymous) @ index-ZXiyDj1s.js:40
+setTimeout
+i @ index-ZXiyDj1s.js:48
+o @ index-ZXiyDj1s.js:48
+batch @ index-ZXiyDj1s.js:48
+vo @ index-ZXiyDj1s.js:48
+setData @ index-ZXiyDj1s.js:48
+onSuccess @ index-ZXiyDj1s.js:48
+h @ index-ZXiyDj1s.js:48
+Promise.then
+j @ index-ZXiyDj1s.js:48
+start @ index-ZXiyDj1s.js:48
+fetch @ index-ZXiyDj1s.js:48
+Am @ index-ZXiyDj1s.js:48
+onSubscribe @ index-ZXiyDj1s.js:48
+subscribe @ index-ZXiyDj1s.js:48
+(anonymous) @ index-ZXiyDj1s.js:48
+VF @ index-ZXiyDj1s.js:38
+Tv @ index-ZXiyDj1s.js:40
+bu @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+WW @ index-ZXiyDj1s.js:40
+Dc @ index-ZXiyDj1s.js:40
+j5 @ index-ZXiyDj1s.js:40
+k @ index-ZXiyDj1s.js:25
+N @ index-ZXiyDj1s.js:25Understand this error
+index-ZXiyDj1s.js:776 Uncaught TypeError: Cannot read properties of null (reading 'total')
+    at L (index-ZXiyDj1s.js:776:145927)
+    at YNe (index-ZXiyDj1s.js:776:154027)
+    at J1 (index-ZXiyDj1s.js:38:17018)
+    at m0 (index-ZXiyDj1s.js:40:3139)
+    at k5 (index-ZXiyDj1s.js:40:44833)
+    at N5 (index-ZXiyDj1s.js:40:39790)
+    at qW (index-ZXiyDj1s.js:40:39718)
+    at ay (index-ZXiyDj1s.js:40:39570)
+    at C0 (index-ZXiyDj1s.js:40:35934)
+    at V_ (index-ZXiyDj1s.js:40:36738)
+L @ index-ZXiyDj1s.js:776
+YNe @ index-ZXiyDj1s.js:776
+J1 @ index-ZXiyDj1s.js:38
+m0 @ index-ZXiyDj1s.js:40
+k5 @ index-ZXiyDj1s.js:40
+N5 @ index-ZXiyDj1s.js:40
+qW @ index-ZXiyDj1s.js:40
+ay @ index-ZXiyDj1s.js:40
+C0 @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+(anonymous) @ index-ZXiyDj1s.js:40
+setTimeout
+i @ index-ZXiyDj1s.js:48
+o @ index-ZXiyDj1s.js:48
+batch @ index-ZXiyDj1s.js:48
+vo @ index-ZXiyDj1s.js:48
+setData @ index-ZXiyDj1s.js:48
+onSuccess @ index-ZXiyDj1s.js:48
+h @ index-ZXiyDj1s.js:48
+Promise.then
+j @ index-ZXiyDj1s.js:48
+start @ index-ZXiyDj1s.js:48
+fetch @ index-ZXiyDj1s.js:48
+Am @ index-ZXiyDj1s.js:48
+onSubscribe @ index-ZXiyDj1s.js:48
+subscribe @ index-ZXiyDj1s.js:48
+(anonymous) @ index-ZXiyDj1s.js:48
+VF @ index-ZXiyDj1s.js:38
+Tv @ index-ZXiyDj1s.js:40
+bu @ index-ZXiyDj1s.js:40
+WW @ index-ZXiyDj1s.js:40
+Dc @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+(anonymous) @ index-ZXiyDj1s.js:40
+setTimeout
+i @ index-ZXiyDj1s.js:48
+o @ index-ZXiyDj1s.js:48
+batch @ index-ZXiyDj1s.js:48
+vo @ index-ZXiyDj1s.js:48
+setData @ index-ZXiyDj1s.js:48
+onSuccess @ index-ZXiyDj1s.js:48
+h @ index-ZXiyDj1s.js:48
+Promise.then
+j @ index-ZXiyDj1s.js:48
+start @ index-ZXiyDj1s.js:48
+fetch @ index-ZXiyDj1s.js:48
+Am @ index-ZXiyDj1s.js:48
+onSubscribe @ index-ZXiyDj1s.js:48
+subscribe @ index-ZXiyDj1s.js:48
+(anonymous) @ index-ZXiyDj1s.js:48
+VF @ index-ZXiyDj1s.js:38
+Tv @ index-ZXiyDj1s.js:40
+bu @ index-ZXiyDj1s.js:40
+V_ @ index-ZXiyDj1s.js:40
+xc @ index-ZXiyDj1s.js:38
+WW @ index-ZXiyDj1s.js:40
+Dc @ index-ZXiyDj1s.js:40
+j5 @ index-ZXiyDj1s.js:40
+k @ index-ZXiyDj1s.js:25
+N @ index-ZXiyDj1s.js:25Understand this error
+bills:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received

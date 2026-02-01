@@ -100,8 +100,8 @@ export default function ClientPortal() {
   ) || [];
   const completedProjects = projects?.filter(p => p.status === "completed") || [];
   const pendingTodos = clientTodos?.filter(t => t.status !== "done") || [];
-  const unpaidInvoices = invoices?.filter(inv => inv.status === "sent") || [];
-  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0);
+  const unpaidInvoices = invoices?.filter(Boolean).filter(inv => inv.status === "sent") || [];
+  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + Number(inv?.total || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -190,9 +190,9 @@ export default function ClientPortal() {
               </Badge>
             )}
           </div>
-          {invoices && invoices.length > 0 ? (
+          {invoices && invoices.filter(Boolean).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {invoices.slice(0, 6).map((invoice) => (
+              {invoices.filter(Boolean).slice(0, 6).map((invoice) => (
                 <InvoiceCard key={invoice.id} invoice={invoice} onView={() => setLocation(`/invoice/${invoice.id}`)} />
               ))}
             </div>

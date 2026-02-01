@@ -108,15 +108,15 @@ export default function Dashboard() {
   const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading || timeEntriesLoading;
 
   // Invoice stats (unpaid = draft + sent, not paid or cancelled)
-  const unpaidInvoices = invoices?.filter(i => i.status === "draft" || i.status === "sent") || [];
-  const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
-  const paidInvoices = invoices?.filter(i => i.status === "paid") || [];
+  const unpaidInvoices = invoices?.filter(Boolean).filter(i => i.status === "draft" || i.status === "sent") || [];
+  const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
+  const paidInvoices = invoices?.filter(Boolean).filter(i => i.status === "paid") || [];
 
   // Calculate unbilled hours from time entries (all entries not yet on an invoice)
   const billedTimeEntryIds = new Set<number>();
-  invoices?.forEach(invoice => {
-    if (invoice.status !== "cancelled") {
-      invoice.items?.forEach((item: any) => {
+  invoices?.filter(Boolean).forEach(invoice => {
+    if (invoice?.status !== "cancelled") {
+      invoice?.items?.forEach((item: any) => {
         if (item.timeEntryId) billedTimeEntryIds.add(item.timeEntryId);
       });
     }
@@ -233,13 +233,13 @@ export default function Dashboard() {
         </div>
       `;
     } else if (reportType === "invoices") {
-      const draftInvoices = invoices?.filter(i => i.status === "draft") || [];
-      const sentInvoices = invoices?.filter(i => i.status === "sent") || [];
-      const paidInvoicesList = invoices?.filter(i => i.status === "paid") || [];
+      const draftInvoices = invoices?.filter(Boolean).filter(i => i.status === "draft") || [];
+      const sentInvoices = invoices?.filter(Boolean).filter(i => i.status === "sent") || [];
+      const paidInvoicesList = invoices?.filter(Boolean).filter(i => i.status === "paid") || [];
       
-      const draftTotal = draftInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
-      const sentTotal = sentInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
-      const paidTotal = paidInvoicesList.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+      const draftTotal = draftInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
+      const sentTotal = sentInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
+      const paidTotal = paidInvoicesList.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
       
       const renderInvoiceTable = (invList: any[], sectionTitle: string, total: number) => {
         if (invList.length === 0) return "";
@@ -352,7 +352,7 @@ export default function Dashboard() {
     },
     {
       title: "Invoices",
-      value: invoices?.filter(i => i.status !== "cancelled").length ?? 0,
+      value: invoices?.filter(Boolean).filter(i => i.status !== "cancelled").length ?? 0,
       subtitle: `${unpaidInvoices.length} unpaid`,
       icon: DollarSign,
       color: "text-chart-5",

@@ -88,8 +88,8 @@ export default function ClientDashboard() {
 
   const totalPipelineProjects = projectsByStatus?.reduce((sum, item) => sum + item.count, 0) ?? 0;
 
-  const unpaidInvoices = invoices?.filter(i => i.status === "sent") || [];
-  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+  const unpaidInvoices = invoices?.filter(Boolean).filter(i => i.status === "sent") || [];
+  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
 
   const statCards = [
     {
