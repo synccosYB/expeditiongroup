@@ -34,6 +34,21 @@ export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "pai
 export const serviceCategoryEnum = pgEnum("service_category", ["accounting", "write_up", "bookkeeping", "cfo"]);
 export const proposalStatusEnum = pgEnum("proposal_status", ["draft", "sent", "accepted", "rejected", "expired"]);
 
+// Bookkeeping enums
+export const accountTypeEnum = pgEnum("account_type", ["asset", "liability", "equity", "revenue", "expense"]);
+export const accountSubtypeEnum = pgEnum("account_subtype", [
+  "cash", "bank", "accounts_receivable", "other_current_asset", "fixed_asset",
+  "accounts_payable", "credit_card", "other_current_liability", "long_term_liability",
+  "owner_equity", "retained_earnings",
+  "service_revenue", "other_income",
+  "cost_of_goods", "operating_expense", "payroll_expense", "other_expense"
+]);
+export const bankAccountTypeEnum = pgEnum("bank_account_type", ["checking", "savings", "credit_card", "cash", "other"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "transfer", "check", "payment", "refund"]);
+export const expenseStatusEnum = pgEnum("expense_status", ["pending", "paid", "void"]);
+export const billStatusEnum = pgEnum("bill_status", ["draft", "pending", "partial", "paid", "void"]);
+export const reconciliationStatusEnum = pgEnum("reconciliation_status", ["in_progress", "completed"]);
+
 // Client Portal enums
 export const documentStatusEnum = pgEnum("document_status", ["uploaded", "under_review", "accepted", "rejected"]);
 export const auditActionEnum = pgEnum("audit_action", ["login", "logout", "upload", "download", "view", "create", "update", "delete", "status_change", "document_uploaded", "document_reviewed", "document_accepted", "document_rejected"]);
@@ -589,6 +604,168 @@ export const proposalItems = pgTable("proposal_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ==================== BOOKKEEPING SYSTEM ====================
+
+// Chart of Accounts
+export const accounts = pgTable("accounts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  code: varchar("code", { length: 20 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  accountType: accountTypeEnum("account_type").notNull(),
+  accountSubtype: accountSubtypeEnum("account_subtype"),
+  parentAccountId: integer("parent_account_id"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Vendors (payees)
+export const vendors = pgTable("vendors", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 50 }),
+  zip: varchar("zip", { length: 20 }),
+  taxId: varchar("tax_id", { length: 50 }),
+  notes: text("notes"),
+  defaultExpenseAccountId: integer("default_expense_account_id").references(() => accounts.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bank Accounts
+export const bankAccounts = pgTable("bank_accounts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  accountType: bankAccountTypeEnum("account_type").notNull(),
+  accountNumber: varchar("account_number", { length: 50 }),
+  routingNumber: varchar("routing_number", { length: 50 }),
+  bankName: varchar("bank_name", { length: 255 }),
+  openingBalance: varchar("opening_balance", { length: 20 }).default("0"),
+  currentBalance: varchar("current_balance", { length: 20 }).default("0"),
+  linkedAccountId: integer("linked_account_id").references(() => accounts.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bank Transactions (Register entries)
+export const bankTransactions = pgTable("bank_transactions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id, { onDelete: "cascade" }),
+  transactionDate: timestamp("transaction_date").notNull(),
+  transactionType: transactionTypeEnum("transaction_type").notNull(),
+  payee: varchar("payee", { length: 255 }),
+  vendorId: integer("vendor_id").references(() => vendors.id),
+  description: text("description"),
+  reference: varchar("reference", { length: 100 }),
+  checkNumber: varchar("check_number", { length: 20 }),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  accountId: integer("account_id").references(() => accounts.id),
+  isCleared: boolean("is_cleared").default(false),
+  isReconciled: boolean("is_reconciled").default(false),
+  reconciliationId: integer("reconciliation_id"),
+  transferToBankAccountId: integer("transfer_to_bank_account_id").references(() => bankAccounts.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Expenses (with rebillable tracking)
+export const expenses = pgTable("expenses", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  vendorId: integer("vendor_id").references(() => vendors.id),
+  bankAccountId: integer("bank_account_id").references(() => bankAccounts.id),
+  bankTransactionId: integer("bank_transaction_id").references(() => bankTransactions.id),
+  expenseDate: timestamp("expense_date").notNull(),
+  accountId: integer("account_id").references(() => accounts.id),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  description: text("description"),
+  reference: varchar("reference", { length: 100 }),
+  status: expenseStatusEnum("status").default("pending"),
+  isRebillable: boolean("is_rebillable").default(false),
+  rebillableClientId: integer("rebillable_client_id").references(() => clients.id),
+  rebillableProjectId: integer("rebillable_project_id").references(() => projects.id),
+  markupPercent: varchar("markup_percent", { length: 10 }),
+  isRebilled: boolean("is_rebilled").default(false),
+  rebilledInvoiceId: integer("rebilled_invoice_id").references(() => invoices.id),
+  rebilledAt: timestamp("rebilled_at"),
+  notes: text("notes"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bills (vendor bills)
+export const bills = pgTable("bills", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  billNumber: varchar("bill_number", { length: 50 }).notNull(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id),
+  billDate: timestamp("bill_date").notNull(),
+  dueDate: timestamp("due_date"),
+  status: billStatusEnum("status").default("pending"),
+  subtotal: varchar("subtotal", { length: 20 }).notNull(),
+  tax: varchar("tax", { length: 20 }),
+  total: varchar("total", { length: 20 }).notNull(),
+  amountPaid: varchar("amount_paid", { length: 20 }).default("0"),
+  amountDue: varchar("amount_due", { length: 20 }).notNull(),
+  notes: text("notes"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bill Items (line items on a bill)
+export const billItems = pgTable("bill_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").references(() => accounts.id),
+  description: text("description").notNull(),
+  quantity: varchar("quantity", { length: 20 }).default("1"),
+  unitPrice: varchar("unit_price", { length: 20 }).notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  isRebillable: boolean("is_rebillable").default(false),
+  rebillableClientId: integer("rebillable_client_id").references(() => clients.id),
+  rebillableProjectId: integer("rebillable_project_id").references(() => projects.id),
+  markupPercent: varchar("markup_percent", { length: 10 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Bill Payments
+export const billPayments = pgTable("bill_payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: "cascade" }),
+  bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id),
+  bankTransactionId: integer("bank_transaction_id").references(() => bankTransactions.id),
+  paymentDate: timestamp("payment_date").notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  reference: varchar("reference", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Bank Reconciliations
+export const bankReconciliations = pgTable("bank_reconciliations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id),
+  statementDate: timestamp("statement_date").notNull(),
+  statementEndingBalance: varchar("statement_ending_balance", { length: 20 }).notNull(),
+  clearedBalance: varchar("cleared_balance", { length: 20 }),
+  difference: varchar("difference", { length: 20 }),
+  status: reconciliationStatusEnum("status").default("in_progress"),
+  completedAt: timestamp("completed_at"),
+  completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   client: one(clients, {
@@ -880,6 +1057,153 @@ export const proposalItemsRelations = relations(proposalItems, ({ one }) => ({
   }),
 }));
 
+// Bookkeeping Relations
+export const accountsRelations = relations(accounts, ({ one, many }) => ({
+  parentAccount: one(accounts, {
+    fields: [accounts.parentAccountId],
+    references: [accounts.id],
+    relationName: "subaccounts",
+  }),
+  subaccounts: many(accounts, { relationName: "subaccounts" }),
+  bankAccounts: many(bankAccounts),
+  bankTransactions: many(bankTransactions),
+  expenses: many(expenses),
+  billItems: many(billItems),
+}));
+
+export const vendorsRelations = relations(vendors, ({ one, many }) => ({
+  defaultExpenseAccount: one(accounts, {
+    fields: [vendors.defaultExpenseAccountId],
+    references: [accounts.id],
+  }),
+  expenses: many(expenses),
+  bills: many(bills),
+  bankTransactions: many(bankTransactions),
+}));
+
+export const bankAccountsRelations = relations(bankAccounts, ({ one, many }) => ({
+  linkedAccount: one(accounts, {
+    fields: [bankAccounts.linkedAccountId],
+    references: [accounts.id],
+  }),
+  transactions: many(bankTransactions),
+  expenses: many(expenses),
+  billPayments: many(billPayments),
+  reconciliations: many(bankReconciliations),
+}));
+
+export const bankTransactionsRelations = relations(bankTransactions, ({ one }) => ({
+  bankAccount: one(bankAccounts, {
+    fields: [bankTransactions.bankAccountId],
+    references: [bankAccounts.id],
+  }),
+  vendor: one(vendors, {
+    fields: [bankTransactions.vendorId],
+    references: [vendors.id],
+  }),
+  account: one(accounts, {
+    fields: [bankTransactions.accountId],
+    references: [accounts.id],
+  }),
+  transferToBankAccount: one(bankAccounts, {
+    fields: [bankTransactions.transferToBankAccountId],
+    references: [bankAccounts.id],
+  }),
+}));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [expenses.vendorId],
+    references: [vendors.id],
+  }),
+  bankAccount: one(bankAccounts, {
+    fields: [expenses.bankAccountId],
+    references: [bankAccounts.id],
+  }),
+  bankTransaction: one(bankTransactions, {
+    fields: [expenses.bankTransactionId],
+    references: [bankTransactions.id],
+  }),
+  account: one(accounts, {
+    fields: [expenses.accountId],
+    references: [accounts.id],
+  }),
+  rebillableClient: one(clients, {
+    fields: [expenses.rebillableClientId],
+    references: [clients.id],
+  }),
+  rebillableProject: one(projects, {
+    fields: [expenses.rebillableProjectId],
+    references: [projects.id],
+  }),
+  rebilledInvoice: one(invoices, {
+    fields: [expenses.rebilledInvoiceId],
+    references: [invoices.id],
+  }),
+  createdByUser: one(users, {
+    fields: [expenses.createdByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const billsRelations = relations(bills, ({ one, many }) => ({
+  vendor: one(vendors, {
+    fields: [bills.vendorId],
+    references: [vendors.id],
+  }),
+  createdByUser: one(users, {
+    fields: [bills.createdByUserId],
+    references: [users.id],
+  }),
+  items: many(billItems),
+  payments: many(billPayments),
+}));
+
+export const billItemsRelations = relations(billItems, ({ one }) => ({
+  bill: one(bills, {
+    fields: [billItems.billId],
+    references: [bills.id],
+  }),
+  account: one(accounts, {
+    fields: [billItems.accountId],
+    references: [accounts.id],
+  }),
+  rebillableClient: one(clients, {
+    fields: [billItems.rebillableClientId],
+    references: [clients.id],
+  }),
+  rebillableProject: one(projects, {
+    fields: [billItems.rebillableProjectId],
+    references: [projects.id],
+  }),
+}));
+
+export const billPaymentsRelations = relations(billPayments, ({ one }) => ({
+  bill: one(bills, {
+    fields: [billPayments.billId],
+    references: [bills.id],
+  }),
+  bankAccount: one(bankAccounts, {
+    fields: [billPayments.bankAccountId],
+    references: [bankAccounts.id],
+  }),
+  bankTransaction: one(bankTransactions, {
+    fields: [billPayments.bankTransactionId],
+    references: [bankTransactions.id],
+  }),
+}));
+
+export const bankReconciliationsRelations = relations(bankReconciliations, ({ one }) => ({
+  bankAccount: one(bankAccounts, {
+    fields: [bankReconciliations.bankAccountId],
+    references: [bankAccounts.id],
+  }),
+  completedByUser: one(users, {
+    fields: [bankReconciliations.completedByUserId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -956,6 +1280,28 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({ id: tru
 });
 export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({ id: true, createdAt: true });
 
+// Bookkeeping insert schemas
+export const insertAccountSchema = createInsertSchema(accounts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  transactionDate: requiredDateCoercion,
+});
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true, rebilledAt: true }).extend({
+  expenseDate: requiredDateCoercion,
+});
+export const insertBillSchema = createInsertSchema(bills).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  billDate: requiredDateCoercion,
+  dueDate: dateCoercion,
+});
+export const insertBillItemSchema = createInsertSchema(billItems).omit({ id: true, createdAt: true });
+export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ id: true, createdAt: true }).extend({
+  paymentDate: requiredDateCoercion,
+});
+export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true }).extend({
+  statementDate: requiredDateCoercion,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -1013,3 +1359,23 @@ export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
 export type InsertProposalItem = z.infer<typeof insertProposalItemSchema>;
 export type ProposalItem = typeof proposalItems.$inferSelect;
+
+// Bookkeeping types
+export type InsertAccount = z.infer<typeof insertAccountSchema>;
+export type Account = typeof accounts.$inferSelect;
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+export type BankAccount = typeof bankAccounts.$inferSelect;
+export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
+export type BankTransaction = typeof bankTransactions.$inferSelect;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
+export type InsertBill = z.infer<typeof insertBillSchema>;
+export type Bill = typeof bills.$inferSelect;
+export type InsertBillItem = z.infer<typeof insertBillItemSchema>;
+export type BillItem = typeof billItems.$inferSelect;
+export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;
+export type BillPayment = typeof billPayments.$inferSelect;
+export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;
+export type BankReconciliation = typeof bankReconciliations.$inferSelect;

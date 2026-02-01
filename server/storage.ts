@@ -25,6 +25,15 @@ import {
   services,
   proposals,
   proposalItems,
+  accounts,
+  vendors,
+  bankAccounts,
+  bankTransactions,
+  expenses,
+  bills,
+  billItems,
+  billPayments,
+  bankReconciliations,
   type User,
   type UpsertUser,
   type Client,
@@ -76,6 +85,24 @@ import {
   type InsertProposal,
   type ProposalItem,
   type InsertProposalItem,
+  type Account,
+  type InsertAccount,
+  type Vendor,
+  type InsertVendor,
+  type BankAccount,
+  type InsertBankAccount,
+  type BankTransaction,
+  type InsertBankTransaction,
+  type Expense,
+  type InsertExpense,
+  type Bill,
+  type InsertBill,
+  type BillItem,
+  type InsertBillItem,
+  type BillPayment,
+  type InsertBillPayment,
+  type BankReconciliation,
+  type InsertBankReconciliation,
 } from "@shared/schema";
 import { db } from "./db";
 export { db };
@@ -299,6 +326,63 @@ export interface IStorage {
   addProposalItem(item: InsertProposalItem): Promise<ProposalItem>;
   updateProposalItem(id: number, item: Partial<InsertProposalItem>): Promise<ProposalItem | undefined>;
   deleteProposalItem(id: number): Promise<boolean>;
+  
+  // Bookkeeping - Accounts
+  getAccounts(): Promise<Account[]>;
+  getAccount(id: number): Promise<Account | undefined>;
+  createAccount(account: InsertAccount): Promise<Account>;
+  updateAccount(id: number, account: Partial<InsertAccount>): Promise<Account | undefined>;
+  deleteAccount(id: number): Promise<boolean>;
+
+  // Bookkeeping - Vendors
+  getVendors(): Promise<Vendor[]>;
+  getVendor(id: number): Promise<Vendor | undefined>;
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: number, vendor: Partial<InsertVendor>): Promise<Vendor | undefined>;
+  deleteVendor(id: number): Promise<boolean>;
+
+  // Bookkeeping - Bank Accounts
+  getBankAccounts(): Promise<BankAccount[]>;
+  getBankAccount(id: number): Promise<BankAccount | undefined>;
+  createBankAccount(bankAccount: InsertBankAccount): Promise<BankAccount>;
+  updateBankAccount(id: number, bankAccount: Partial<InsertBankAccount>): Promise<BankAccount | undefined>;
+  deleteBankAccount(id: number): Promise<boolean>;
+
+  // Bookkeeping - Bank Transactions
+  getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account })[]>;
+  getBankTransaction(id: number): Promise<BankTransaction | undefined>;
+  createBankTransaction(transaction: InsertBankTransaction): Promise<BankTransaction>;
+  updateBankTransaction(id: number, transaction: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
+  deleteBankTransaction(id: number): Promise<boolean>;
+
+  // Bookkeeping - Expenses
+  getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project })[]>;
+  getExpense(id: number): Promise<Expense | undefined>;
+  getRebillableExpenses(clientId?: number, projectId?: number): Promise<(Expense & { vendor?: Vendor })[]>;
+  getUnrebilledExpenses(): Promise<(Expense & { vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense | undefined>;
+  deleteExpense(id: number): Promise<boolean>;
+  markExpensesAsRebilled(expenseIds: number[], invoiceId: number): Promise<boolean>;
+
+  // Bookkeeping - Bills
+  getBills(): Promise<(Bill & { vendor: Vendor; items: BillItem[] })[]>;
+  getBill(id: number): Promise<(Bill & { vendor: Vendor; items: BillItem[]; payments: BillPayment[] }) | undefined>;
+  createBill(bill: InsertBill, items: InsertBillItem[]): Promise<Bill & { items: BillItem[] }>;
+  updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined>;
+  deleteBill(id: number): Promise<boolean>;
+  getNextBillNumber(): Promise<string>;
+
+  // Bookkeeping - Bill Payments
+  createBillPayment(payment: InsertBillPayment): Promise<BillPayment>;
+  deleteBillPayment(id: number): Promise<boolean>;
+
+  // Bookkeeping - Bank Reconciliations
+  getBankReconciliations(bankAccountId: number): Promise<BankReconciliation[]>;
+  getBankReconciliation(id: number): Promise<BankReconciliation | undefined>;
+  createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
+  updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined>;
+  completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1906,6 +1990,369 @@ export class DatabaseStorage implements IStorage {
   async deleteProposalItem(id: number): Promise<boolean> {
     const result = await db.delete(proposalItems).where(eq(proposalItems.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Accounts
+  async getAccounts(): Promise<Account[]> {
+    return await db.select().from(accounts).orderBy(accounts.accountType, accounts.code);
+  }
+
+  async getAccount(id: number): Promise<Account | undefined> {
+    const [account] = await db.select().from(accounts).where(eq(accounts.id, id));
+    return account;
+  }
+
+  async createAccount(account: InsertAccount): Promise<Account> {
+    const [newAccount] = await db.insert(accounts).values(account).returning();
+    return newAccount;
+  }
+
+  async updateAccount(id: number, account: Partial<InsertAccount>): Promise<Account | undefined> {
+    const [updated] = await db
+      .update(accounts)
+      .set({ ...account, updatedAt: new Date() })
+      .where(eq(accounts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAccount(id: number): Promise<boolean> {
+    const result = await db.delete(accounts).where(eq(accounts.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Vendors
+  async getVendors(): Promise<Vendor[]> {
+    return await db.select().from(vendors).orderBy(vendors.name);
+  }
+
+  async getVendor(id: number): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
+    return vendor;
+  }
+
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const [newVendor] = await db.insert(vendors).values(vendor).returning();
+    return newVendor;
+  }
+
+  async updateVendor(id: number, vendor: Partial<InsertVendor>): Promise<Vendor | undefined> {
+    const [updated] = await db
+      .update(vendors)
+      .set({ ...vendor, updatedAt: new Date() })
+      .where(eq(vendors.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteVendor(id: number): Promise<boolean> {
+    const result = await db.delete(vendors).where(eq(vendors.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Bank Accounts
+  async getBankAccounts(): Promise<BankAccount[]> {
+    return await db.select().from(bankAccounts).orderBy(bankAccounts.name);
+  }
+
+  async getBankAccount(id: number): Promise<BankAccount | undefined> {
+    const [bankAccount] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, id));
+    return bankAccount;
+  }
+
+  async createBankAccount(bankAccount: InsertBankAccount): Promise<BankAccount> {
+    const [newBankAccount] = await db.insert(bankAccounts).values(bankAccount).returning();
+    return newBankAccount;
+  }
+
+  async updateBankAccount(id: number, bankAccount: Partial<InsertBankAccount>): Promise<BankAccount | undefined> {
+    const [updated] = await db
+      .update(bankAccounts)
+      .set({ ...bankAccount, updatedAt: new Date() })
+      .where(eq(bankAccounts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBankAccount(id: number): Promise<boolean> {
+    const result = await db.delete(bankAccounts).where(eq(bankAccounts.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Bank Transactions
+  async getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account })[]> {
+    let query = db
+      .select()
+      .from(bankTransactions)
+      .leftJoin(vendors, eq(bankTransactions.vendorId, vendors.id))
+      .leftJoin(accounts, eq(bankTransactions.accountId, accounts.id))
+      .orderBy(desc(bankTransactions.transactionDate));
+    
+    if (bankAccountId) {
+      query = query.where(eq(bankTransactions.bankAccountId, bankAccountId)) as typeof query;
+    }
+    
+    const result = await query;
+    return result.map(r => ({
+      ...r.bank_transactions,
+      vendor: r.vendors || undefined,
+      account: r.accounts || undefined,
+    }));
+  }
+
+  async getBankTransaction(id: number): Promise<BankTransaction | undefined> {
+    const [transaction] = await db.select().from(bankTransactions).where(eq(bankTransactions.id, id));
+    return transaction;
+  }
+
+  async createBankTransaction(transaction: InsertBankTransaction): Promise<BankTransaction> {
+    const [newTransaction] = await db.insert(bankTransactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async updateBankTransaction(id: number, transaction: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined> {
+    const [updated] = await db
+      .update(bankTransactions)
+      .set({ ...transaction, updatedAt: new Date() })
+      .where(eq(bankTransactions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBankTransaction(id: number): Promise<boolean> {
+    const result = await db.delete(bankTransactions).where(eq(bankTransactions.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Expenses
+  async getExpenses(): Promise<(Expense & { vendor?: Vendor; account?: Account; rebillableClient?: Client; rebillableProject?: Project })[]> {
+    const result = await db
+      .select()
+      .from(expenses)
+      .leftJoin(vendors, eq(expenses.vendorId, vendors.id))
+      .leftJoin(accounts, eq(expenses.accountId, accounts.id))
+      .leftJoin(clients, eq(expenses.rebillableClientId, clients.id))
+      .leftJoin(projects, eq(expenses.rebillableProjectId, projects.id))
+      .orderBy(desc(expenses.expenseDate));
+    
+    return result.map(r => ({
+      ...r.expenses,
+      vendor: r.vendors || undefined,
+      account: r.accounts || undefined,
+      rebillableClient: r.clients || undefined,
+      rebillableProject: r.projects || undefined,
+    }));
+  }
+
+  async getExpense(id: number): Promise<Expense | undefined> {
+    const [expense] = await db.select().from(expenses).where(eq(expenses.id, id));
+    return expense;
+  }
+
+  async getRebillableExpenses(clientId?: number, projectId?: number): Promise<(Expense & { vendor?: Vendor })[]> {
+    let conditions = [eq(expenses.isRebillable, true)];
+    
+    if (clientId) {
+      conditions.push(eq(expenses.rebillableClientId, clientId));
+    }
+    if (projectId) {
+      conditions.push(eq(expenses.rebillableProjectId, projectId));
+    }
+    
+    const result = await db
+      .select()
+      .from(expenses)
+      .leftJoin(vendors, eq(expenses.vendorId, vendors.id))
+      .where(and(...conditions))
+      .orderBy(desc(expenses.expenseDate));
+    
+    return result.map(r => ({
+      ...r.expenses,
+      vendor: r.vendors || undefined,
+    }));
+  }
+
+  async getUnrebilledExpenses(): Promise<(Expense & { vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]> {
+    const result = await db
+      .select()
+      .from(expenses)
+      .leftJoin(vendors, eq(expenses.vendorId, vendors.id))
+      .leftJoin(clients, eq(expenses.rebillableClientId, clients.id))
+      .leftJoin(projects, eq(expenses.rebillableProjectId, projects.id))
+      .where(and(
+        eq(expenses.isRebillable, true),
+        isNull(expenses.rebilledInvoiceId)
+      ))
+      .orderBy(desc(expenses.expenseDate));
+    
+    return result.map(r => ({
+      ...r.expenses,
+      vendor: r.vendors || undefined,
+      rebillableClient: r.clients || undefined,
+      rebillableProject: r.projects || undefined,
+    }));
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const [newExpense] = await db.insert(expenses).values(expense).returning();
+    return newExpense;
+  }
+
+  async updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense | undefined> {
+    const [updated] = await db
+      .update(expenses)
+      .set({ ...expense, updatedAt: new Date() })
+      .where(eq(expenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpense(id: number): Promise<boolean> {
+    const result = await db.delete(expenses).where(eq(expenses.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async markExpensesAsRebilled(expenseIds: number[], invoiceId: number): Promise<boolean> {
+    if (expenseIds.length === 0) return true;
+    
+    const result = await db
+      .update(expenses)
+      .set({ rebilledInvoiceId: invoiceId, rebilledAt: new Date(), updatedAt: new Date() })
+      .where(inArray(expenses.id, expenseIds));
+    
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Bills
+  async getBills(): Promise<(Bill & { vendor: Vendor; items: BillItem[] })[]> {
+    const billList = await db
+      .select()
+      .from(bills)
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .orderBy(desc(bills.createdAt));
+    
+    const result = await Promise.all(billList.map(async (r) => {
+      const items = await db.select().from(billItems).where(eq(billItems.billId, r.bills.id));
+      return {
+        ...r.bills,
+        vendor: r.vendors!,
+        items,
+      };
+    }));
+    
+    return result;
+  }
+
+  async getBill(id: number): Promise<(Bill & { vendor: Vendor; items: BillItem[]; payments: BillPayment[] }) | undefined> {
+    const [result] = await db
+      .select()
+      .from(bills)
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .where(eq(bills.id, id));
+    
+    if (!result) return undefined;
+    
+    const items = await db.select().from(billItems).where(eq(billItems.billId, id));
+    const payments = await db.select().from(billPayments).where(eq(billPayments.billId, id)).orderBy(desc(billPayments.paymentDate));
+    
+    return {
+      ...result.bills,
+      vendor: result.vendors!,
+      items,
+      payments,
+    };
+  }
+
+  async createBill(bill: InsertBill, items: InsertBillItem[]): Promise<Bill & { items: BillItem[] }> {
+    const [newBill] = await db.insert(bills).values(bill).returning();
+    
+    const createdItems: BillItem[] = [];
+    for (const item of items) {
+      const [newItem] = await db.insert(billItems).values({ ...item, billId: newBill.id }).returning();
+      createdItems.push(newItem);
+    }
+    
+    return { ...newBill, items: createdItems };
+  }
+
+  async updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined> {
+    const [updated] = await db
+      .update(bills)
+      .set({ ...bill, updatedAt: new Date() })
+      .where(eq(bills.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBill(id: number): Promise<boolean> {
+    const result = await db.delete(bills).where(eq(bills.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNextBillNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const [lastBill] = await db
+      .select({ billNumber: bills.billNumber })
+      .from(bills)
+      .where(sql`${bills.billNumber} LIKE ${`BILL-${currentYear}-%`}`)
+      .orderBy(desc(bills.billNumber))
+      .limit(1);
+    
+    if (!lastBill) {
+      return `BILL-${currentYear}-0001`;
+    }
+    
+    const lastNumber = parseInt(lastBill.billNumber.split('-')[2] || '0');
+    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
+    return `BILL-${currentYear}-${nextNumber}`;
+  }
+
+  // Bookkeeping - Bill Payments
+  async createBillPayment(payment: InsertBillPayment): Promise<BillPayment> {
+    const [newPayment] = await db.insert(billPayments).values(payment).returning();
+    return newPayment;
+  }
+
+  async deleteBillPayment(id: number): Promise<boolean> {
+    const result = await db.delete(billPayments).where(eq(billPayments.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Bookkeeping - Bank Reconciliations
+  async getBankReconciliations(bankAccountId: number): Promise<BankReconciliation[]> {
+    return await db
+      .select()
+      .from(bankReconciliations)
+      .where(eq(bankReconciliations.bankAccountId, bankAccountId))
+      .orderBy(desc(bankReconciliations.statementDate));
+  }
+
+  async getBankReconciliation(id: number): Promise<BankReconciliation | undefined> {
+    const [reconciliation] = await db.select().from(bankReconciliations).where(eq(bankReconciliations.id, id));
+    return reconciliation;
+  }
+
+  async createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation> {
+    const [newReconciliation] = await db.insert(bankReconciliations).values(reconciliation).returning();
+    return newReconciliation;
+  }
+
+  async updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined> {
+    const [updated] = await db
+      .update(bankReconciliations)
+      .set({ ...reconciliation, updatedAt: new Date() })
+      .where(eq(bankReconciliations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined> {
+    const [updated] = await db
+      .update(bankReconciliations)
+      .set({ status: 'completed', completedAt: new Date(), completedByUserId: userId, updatedAt: new Date() })
+      .where(eq(bankReconciliations.id, id))
+      .returning();
+    return updated;
   }
 }
 
