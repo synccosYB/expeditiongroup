@@ -351,7 +351,17 @@ export default function ChartOfAccounts() {
       });
     } else {
       setEditingAccount(null);
-      form.reset();
+      const defaultType = "expense";
+      const nextCode = generateNextAccountCode(defaultType);
+      form.reset({
+        code: nextCode,
+        name: "",
+        accountType: defaultType,
+        accountSubtype: null,
+        description: "",
+        parentAccountId: null,
+        isActive: true,
+      });
     }
     setIsDialogOpen(true);
   };
@@ -467,7 +477,12 @@ export default function ChartOfAccounts() {
       }
     }
     
-    return (usedCodes[usedCodes.length - 1] + 1).toString();
+    toast({
+      title: "Account Range Full",
+      description: `All account codes for ${accountType} accounts (${startCode}-${endCode}) are in use. Please enter a code manually.`,
+      variant: "destructive",
+    });
+    return "";
   };
 
   if (isLoading) {
@@ -534,6 +549,10 @@ export default function ChartOfAccounts() {
                           onValueChange={(value) => {
                             field.onChange(value);
                             form.setValue("parentAccountId", null);
+                            if (!editingAccount) {
+                              const nextCode = generateNextAccountCode(value);
+                              form.setValue("code", nextCode);
+                            }
                           }} 
                           value={field.value}
                         >
@@ -586,7 +605,9 @@ export default function ChartOfAccounts() {
                             const nextCode = generateNextSubAccountCode(parentId);
                             form.setValue("code", nextCode);
                           } else if (!parentId && !editingAccount) {
-                            form.setValue("code", "");
+                            const currentType = form.getValues("accountType");
+                            const nextCode = generateNextAccountCode(currentType);
+                            form.setValue("code", nextCode);
                           }
                         }} 
                         value={field.value?.toString() || "none"}
