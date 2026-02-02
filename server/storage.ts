@@ -330,6 +330,7 @@ export interface IStorage {
   // Bookkeeping - Accounts
   getAccounts(): Promise<Account[]>;
   getAccount(id: number): Promise<Account | undefined>;
+  getAccountByCode(code: string): Promise<Account | undefined>;
   createAccount(account: InsertAccount): Promise<Account>;
   updateAccount(id: number, account: Partial<InsertAccount>): Promise<Account | undefined>;
   deleteAccount(id: number): Promise<boolean>;
@@ -2002,6 +2003,11 @@ export class DatabaseStorage implements IStorage {
 
   async getAccount(id: number): Promise<Account | undefined> {
     const [account] = await db.select().from(accounts).where(eq(accounts.id, id));
+    return account;
+  }
+
+  async getAccountByCode(code: string): Promise<Account | undefined> {
+    const [account] = await db.select().from(accounts).where(eq(accounts.code, code));
     return account;
   }
 

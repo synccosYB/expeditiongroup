@@ -209,7 +209,7 @@ export default function ChartOfAccounts() {
       setIsDialogOpen(false);
       form.reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -219,6 +219,30 @@ export default function ChartOfAccounts() {
         setTimeout(() => {
           window.location.href = "/auth";
         }, 500);
+        return;
+      }
+      // Parse error message (format: "400: {json}")
+      let errorData: any = null;
+      const errorMessage = error?.message || String(error);
+      const jsonMatch = errorMessage.match(/^\d+:\s*(.*)$/s);
+      if (jsonMatch) {
+        try {
+          errorData = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          // Not JSON, ignore
+        }
+      }
+      // Handle duplicate code error
+      if (errorData?.error === "DUPLICATE_CODE" || errorData?.message === "Duplicate account code") {
+        toast({
+          title: "Duplicate Account Code",
+          description: errorData?.details || "This account code is already in use. Please choose a different code.",
+          variant: "destructive",
+        });
+        form.setError("code", { 
+          type: "manual", 
+          message: "This code is already in use" 
+        });
         return;
       }
       toast({
@@ -240,7 +264,7 @@ export default function ChartOfAccounts() {
       setEditingAccount(null);
       form.reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -250,6 +274,30 @@ export default function ChartOfAccounts() {
         setTimeout(() => {
           window.location.href = "/auth";
         }, 500);
+        return;
+      }
+      // Parse error message (format: "400: {json}")
+      let errorData: any = null;
+      const errorMessage = error?.message || String(error);
+      const jsonMatch = errorMessage.match(/^\d+:\s*(.*)$/s);
+      if (jsonMatch) {
+        try {
+          errorData = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          // Not JSON, ignore
+        }
+      }
+      // Handle duplicate code error
+      if (errorData?.error === "DUPLICATE_CODE" || errorData?.message === "Duplicate account code") {
+        toast({
+          title: "Duplicate Account Code",
+          description: errorData?.details || "This account code is already in use. Please choose a different code.",
+          variant: "destructive",
+        });
+        form.setError("code", { 
+          type: "manual", 
+          message: "This code is already in use" 
+        });
         return;
       }
       toast({

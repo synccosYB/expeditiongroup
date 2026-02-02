@@ -3743,6 +3743,17 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertAccountSchema.parse(req.body);
+      
+      // Check for duplicate account code
+      const existingAccount = await storage.getAccountByCode(parsed.code);
+      if (existingAccount) {
+        return res.status(400).json({ 
+          message: "Duplicate account code", 
+          error: "DUPLICATE_CODE",
+          details: `Account code "${parsed.code}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
+        });
+      }
+      
       const account = await storage.createAccount(parsed);
       res.status(201).json(account);
     } catch (error) {
@@ -3761,7 +3772,21 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateAccountSchema.parse(req.body);
-      const account = await storage.updateAccount(parseInt(req.params.id), parsed);
+      const accountId = parseInt(req.params.id);
+      
+      // Check for duplicate account code if code is being updated
+      if (parsed.code) {
+        const existingAccount = await storage.getAccountByCode(parsed.code);
+        if (existingAccount && existingAccount.id !== accountId) {
+          return res.status(400).json({ 
+            message: "Duplicate account code", 
+            error: "DUPLICATE_CODE",
+            details: `Account code "${parsed.code}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
+          });
+        }
+      }
+      
+      const account = await storage.updateAccount(accountId, parsed);
       if (!account) {
         return res.status(404).json({ message: "Account not found" });
       }

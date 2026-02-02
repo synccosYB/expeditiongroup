@@ -610,7 +610,7 @@ export const proposalItems = pgTable("proposal_items", {
 // Chart of Accounts
 export const accounts = pgTable("accounts", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  code: varchar("code", { length: 20 }).notNull(),
+  code: varchar("code", { length: 20 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   accountType: accountTypeEnum("account_type").notNull(),
