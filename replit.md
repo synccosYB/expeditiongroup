@@ -47,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **Daily Activity Logs**: Generates daily activity summaries from application data (time entries, tasks completed, documents, audit logs).
 - **Expense Receipts**: Allows attaching receipt images to expenses. Receipts are stored in object storage and served through a secure backend proxy that validates user authorization.
 - **Expense Payment Types**: Expenses can be categorized by payment type (Expense, Pay Bill, Check, Transfer, Other). When payment type is "Pay Bill", the expense is linked to a specific vendor bill, automatically updating the bill's amountPaid, amountDue, and status (pending/partial/paid). Bill balances are correctly maintained when expenses are created, edited, or deleted.
+- **Payment Tracking (Undeposited Funds)**: QuickBooks-style payment workflow. When payments are received from customers (PMT-YYYY-NNNN format), they go to "Undeposited Funds" as a holding account. Users can select multiple payments and deposit them together into a bank account. Payments support various methods (cash, check, credit card, debit card, bank transfer). When a payment is created for an invoice, the system automatically updates invoice status to "paid" if total payments meet the invoice total. Deposited payments cannot be deleted. Deleting a deposit reverses the bank balance and returns payments to undeposited funds.
 
 ### UI/UX & Design
 - **Design System**: Productivity tool patterns (Linear, Notion) emphasizing information density.

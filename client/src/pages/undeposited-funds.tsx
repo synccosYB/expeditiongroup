@@ -1,0 +1,583 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Wallet, Building, Trash2, ArrowRight } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { ListSkeleton } from "@/components/loading-skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Client, Invoice, BankAccount, Payment } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
+import { formatLocalDate } from "@/lib/dateUtils";
+
+const PAYMENT_METHODS = [
+  { value: "cash", label: "Cash" },
+  { value: "check", label: "Check" },
+  { value: "credit_card", label: "Credit Card" },
+  { value: "debit_card", label: "Debit Card" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "other", label: "Other" },
+] as const;
+
+const paymentFormSchema = z.object({
+  paymentDate: z.string().min(1, "Date is required"),
+  clientId: z.string().min(1, "Client is required"),
+  invoiceId: z.string().optional(),
+  amount: z.string().min(1, "Amount is required"),
+  paymentMethod: z.string().default("check"),
+  reference: z.string().optional(),
+  memo: z.string().optional(),
+});
+
+type PaymentFormData = z.infer<typeof paymentFormSchema>;
+
+type PaymentWithRelations = Payment & {
+  client: Client;
+  invoice?: Invoice;
+};
+
+function formatCurrency(amount: string | number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(typeof amount === "string" ? parseFloat(amount) : amount);
+}
+
+export default function UndepositedFunds() {
+  const { toast } = useToast();
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isDepositDialogOpen, setIsDepositDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
+  const [depositBankAccountId, setDepositBankAccountId] = useState<string>("");
+
+  const { data: payments, isLoading: paymentsLoading } = useQuery<PaymentWithRelations[]>({
+    queryKey: ["/api/payments/undeposited"],
+  });
+
+  const { data: totalData } = useQuery<{ total: number }>({
+    queryKey: ["/api/payments/undeposited-total"],
+  });
+
+  const { data: clients } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const { data: invoices } = useQuery<(Invoice & { client: Client })[]>({
+    queryKey: ["/api/invoices"],
+  });
+
+  const { data: bankAccounts } = useQuery<BankAccount[]>({
+    queryKey: ["/api/bank-accounts"],
+  });
+
+  const { data: nextNumber } = useQuery<{ paymentNumber: string }>({
+    queryKey: ["/api/payments/next-number"],
+  });
+
+  const form = useForm<PaymentFormData>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: {
+      paymentDate: format(new Date(), "yyyy-MM-dd"),
+      clientId: "",
+      invoiceId: "",
+      amount: "",
+      paymentMethod: "check",
+      reference: "",
+      memo: "",
+    },
+  });
+
+  const createPaymentMutation = useMutation({
+    mutationFn: async (data: PaymentFormData) => {
+      const response = await apiRequest("POST", "/api/payments", {
+        paymentNumber: nextNumber?.paymentNumber || `PMT-${Date.now()}`,
+        paymentDate: new Date(data.paymentDate).toISOString(),
+        clientId: parseInt(data.clientId),
+        invoiceId: data.invoiceId ? parseInt(data.invoiceId) : null,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        reference: data.reference || null,
+        memo: data.memo || null,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/next-number"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Payment recorded successfully" });
+      setIsPaymentDialogOpen(false);
+      form.reset();
+    },
+    onError: () => {
+      toast({ title: "Failed to record payment", variant: "destructive" });
+    },
+  });
+
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/payments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
+      toast({ title: "Payment deleted successfully" });
+      setDeleteId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to delete payment", variant: "destructive" });
+    },
+  });
+
+  const createDepositMutation = useMutation({
+    mutationFn: async () => {
+      const selectedPaymentData = payments?.filter(p => selectedPayments.includes(p.id)) || [];
+      const totalAmount = selectedPaymentData.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      
+      const response = await apiRequest("POST", "/api/deposits", {
+        depositDate: new Date().toISOString(),
+        bankAccountId: parseInt(depositBankAccountId),
+        totalAmount: totalAmount.toFixed(2),
+        memo: `Deposit of ${selectedPayments.length} payment(s)`,
+        paymentIds: selectedPayments,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deposits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      toast({ title: "Deposit created successfully" });
+      setIsDepositDialogOpen(false);
+      setSelectedPayments([]);
+      setDepositBankAccountId("");
+    },
+    onError: () => {
+      toast({ title: "Failed to create deposit", variant: "destructive" });
+    },
+  });
+
+  const handlePaymentToggle = (paymentId: number) => {
+    setSelectedPayments(prev => 
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPayments.length === payments?.length) {
+      setSelectedPayments([]);
+    } else {
+      setSelectedPayments(payments?.map(p => p.id) || []);
+    }
+  };
+
+  const selectedTotal = payments
+    ?.filter(p => selectedPayments.includes(p.id))
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
+
+  const unpaidInvoices = invoices?.filter(inv => inv.status === 'sent' || inv.status === 'draft');
+  const selectedClientId = form.watch("clientId");
+  const clientInvoices = unpaidInvoices?.filter(inv => inv.clientId.toString() === selectedClientId);
+
+  if (paymentsLoading) {
+    return <ListSkeleton />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">Undeposited Funds</h1>
+          <p className="text-muted-foreground">Payments received but not yet deposited to a bank account</p>
+        </div>
+        <div className="flex gap-2">
+          {selectedPayments.length > 0 && (
+            <Button onClick={() => setIsDepositDialogOpen(true)} data-testid="button-make-deposit">
+              <Building className="h-4 w-4 mr-2" />
+              Deposit Selected ({selectedPayments.length})
+            </Button>
+          )}
+          <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-receive-payment">
+                <Plus className="h-4 w-4 mr-2" />
+                Receive Payment
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Receive Payment</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => createPaymentMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="paymentDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-payment-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-client">
+                              <SelectValue placeholder="Select client" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clients?.map((client) => (
+                              <SelectItem key={client.id} value={client.id.toString()}>
+                                {client.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {selectedClientId && clientInvoices && clientInvoices.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="invoiceId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Apply to Invoice (Optional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-invoice">
+                                <SelectValue placeholder="Select invoice" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {clientInvoices.map((invoice) => (
+                                <SelectItem key={invoice.id} value={invoice.id.toString()}>
+                                  {invoice.invoiceNumber} - {formatCurrency(invoice.total)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            {...field} 
+                            data-testid="input-amount"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Method</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-payment-method">
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PAYMENT_METHODS.map((method) => (
+                              <SelectItem key={method.value} value={method.value}>
+                                {method.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="reference"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reference / Check #</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Check number or reference" {...field} data-testid="input-reference" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="memo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Memo</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Optional notes" {...field} data-testid="input-memo" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createPaymentMutation.isPending} data-testid="button-save-payment">
+                      {createPaymentMutation.isPending ? "Saving..." : "Save Payment"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Undeposited</CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="text-undeposited-total">
+            {formatCurrency(totalData?.total || 0)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {payments?.length || 0} payment(s) pending deposit
+          </p>
+        </CardContent>
+      </Card>
+
+      {!payments || payments.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="No undeposited payments"
+          description="Payments you receive will appear here until they are deposited to a bank account."
+        />
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardTitle>Payments Pending Deposit</CardTitle>
+            {payments.length > 0 && (
+              <Button variant="outline" size="sm" onClick={handleSelectAll} data-testid="button-select-all">
+                {selectedPayments.length === payments.length ? "Deselect All" : "Select All"}
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {payments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg border ${
+                    selectedPayments.includes(payment.id) ? "bg-accent border-accent" : ""
+                  }`}
+                  data-testid={`payment-row-${payment.id}`}
+                >
+                  <Checkbox
+                    checked={selectedPayments.includes(payment.id)}
+                    onCheckedChange={() => handlePaymentToggle(payment.id)}
+                    data-testid={`checkbox-payment-${payment.id}`}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{payment.paymentNumber}</span>
+                      <Badge variant="outline">{payment.paymentMethod}</Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {payment.client.name}
+                      {payment.invoice && (
+                        <span> - Applied to {payment.invoice.invoiceNumber}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {payment.paymentDate && formatLocalDate(new Date(payment.paymentDate))}
+                      {payment.reference && <span> - Ref: {payment.reference}</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold" data-testid={`text-amount-${payment.id}`}>
+                      {formatCurrency(payment.amount)}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleteId(payment.id)}
+                    data-testid={`button-delete-${payment.id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {selectedPayments.length > 0 && (
+              <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-muted-foreground">Selected: </span>
+                  <span className="font-semibold">{selectedPayments.length} payment(s)</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Total: </span>
+                    <span className="font-semibold">{formatCurrency(selectedTotal)}</span>
+                  </div>
+                  <Button onClick={() => setIsDepositDialogOpen(true)} data-testid="button-deposit-selected">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Make Deposit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={isDepositDialogOpen} onOpenChange={setIsDepositDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Make Deposit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Depositing {selectedPayments.length} payment(s) totaling:
+              </p>
+              <p className="text-2xl font-bold">{formatCurrency(selectedTotal)}</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Deposit To Bank Account</label>
+              <Select onValueChange={setDepositBankAccountId} value={depositBankAccountId}>
+                <SelectTrigger data-testid="select-bank-account">
+                  <SelectValue placeholder="Select bank account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts?.filter(a => a.isActive).map((account) => (
+                    <SelectItem key={account.id} value={account.id.toString()}>
+                      {account.name} ({account.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsDepositDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createDepositMutation.mutate()}
+                disabled={!depositBankAccountId || createDepositMutation.isPending}
+                data-testid="button-confirm-deposit"
+              >
+                {createDepositMutation.isPending ? "Depositing..." : "Confirm Deposit"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this payment record. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteId && deletePaymentMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground"
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

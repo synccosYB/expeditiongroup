@@ -34,6 +34,8 @@ import {
   billItems,
   billPayments,
   bankReconciliations,
+  payments,
+  deposits,
   type User,
   type UpsertUser,
   type Client,
@@ -103,6 +105,10 @@ import {
   type InsertBillPayment,
   type BankReconciliation,
   type InsertBankReconciliation,
+  type Payment,
+  type InsertPayment,
+  type Deposit,
+  type InsertDeposit,
 } from "@shared/schema";
 import { db } from "./db";
 export { db };
@@ -387,6 +393,24 @@ export interface IStorage {
   createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
   updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined>;
   completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined>;
+
+  // Customer Payments (Undeposited Funds)
+  getPayments(): Promise<(Payment & { client: Client; invoice?: Invoice })[]>;
+  getPayment(id: number): Promise<(Payment & { client: Client; invoice?: Invoice }) | undefined>;
+  getUndepositedPayments(): Promise<(Payment & { client: Client; invoice?: Invoice })[]>;
+  getPaymentsByClientId(clientId: number): Promise<(Payment & { invoice?: Invoice })[]>;
+  getPaymentsByInvoiceId(invoiceId: number): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
+  deletePayment(id: number): Promise<boolean>;
+  getNextPaymentNumber(): Promise<string>;
+  getUndepositedFundsTotal(): Promise<number>;
+
+  // Deposits (Batch payments to bank account)
+  getDeposits(): Promise<(Deposit & { bankAccount: BankAccount; payments: Payment[] })[]>;
+  getDeposit(id: number): Promise<(Deposit & { bankAccount: BankAccount; payments: (Payment & { client: Client; invoice?: Invoice })[] }) | undefined>;
+  createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }>;
+  deleteDeposit(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2389,6 +2413,219 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bankReconciliations.id, id))
       .returning();
     return updated;
+  }
+
+  // Customer Payments (Undeposited Funds)
+  async getPayments(): Promise<(Payment & { client: Client; invoice?: Invoice })[]> {
+    const result = await db
+      .select()
+      .from(payments)
+      .leftJoin(clients, eq(payments.clientId, clients.id))
+      .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .orderBy(desc(payments.paymentDate));
+    
+    return result.map(r => ({
+      ...r.payments,
+      client: r.clients!,
+      invoice: r.invoices || undefined,
+    }));
+  }
+
+  async getPayment(id: number): Promise<(Payment & { client: Client; invoice?: Invoice }) | undefined> {
+    const [result] = await db
+      .select()
+      .from(payments)
+      .leftJoin(clients, eq(payments.clientId, clients.id))
+      .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .where(eq(payments.id, id));
+    
+    if (!result) return undefined;
+    
+    return {
+      ...result.payments,
+      client: result.clients!,
+      invoice: result.invoices || undefined,
+    };
+  }
+
+  async getUndepositedPayments(): Promise<(Payment & { client: Client; invoice?: Invoice })[]> {
+    const result = await db
+      .select()
+      .from(payments)
+      .leftJoin(clients, eq(payments.clientId, clients.id))
+      .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .where(eq(payments.isDeposited, false))
+      .orderBy(desc(payments.paymentDate));
+    
+    return result.map(r => ({
+      ...r.payments,
+      client: r.clients!,
+      invoice: r.invoices || undefined,
+    }));
+  }
+
+  async getPaymentsByClientId(clientId: number): Promise<(Payment & { invoice?: Invoice })[]> {
+    const result = await db
+      .select()
+      .from(payments)
+      .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .where(eq(payments.clientId, clientId))
+      .orderBy(desc(payments.paymentDate));
+    
+    return result.map(r => ({
+      ...r.payments,
+      invoice: r.invoices || undefined,
+    }));
+  }
+
+  async getPaymentsByInvoiceId(invoiceId: number): Promise<Payment[]> {
+    return await db
+      .select()
+      .from(payments)
+      .where(eq(payments.invoiceId, invoiceId))
+      .orderBy(desc(payments.paymentDate));
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [newPayment] = await db.insert(payments).values(payment).returning();
+    return newPayment;
+  }
+
+  async updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [updated] = await db
+      .update(payments)
+      .set({ ...payment, updatedAt: new Date() })
+      .where(eq(payments.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePayment(id: number): Promise<boolean> {
+    const result = await db.delete(payments).where(eq(payments.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNextPaymentNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const [lastPayment] = await db
+      .select({ paymentNumber: payments.paymentNumber })
+      .from(payments)
+      .where(sql`${payments.paymentNumber} LIKE ${`PMT-${currentYear}-%`}`)
+      .orderBy(desc(payments.paymentNumber))
+      .limit(1);
+    
+    if (!lastPayment) {
+      return `PMT-${currentYear}-0001`;
+    }
+    
+    const lastNumber = parseInt(lastPayment.paymentNumber.split('-')[2] || '0');
+    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
+    return `PMT-${currentYear}-${nextNumber}`;
+  }
+
+  async getUndepositedFundsTotal(): Promise<number> {
+    const result = await db
+      .select({ total: sql<string>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)` })
+      .from(payments)
+      .where(eq(payments.isDeposited, false));
+    
+    return parseFloat(result[0]?.total || '0');
+  }
+
+  // Deposits
+  async getDeposits(): Promise<(Deposit & { bankAccount: BankAccount; payments: Payment[] })[]> {
+    const depositsResult = await db
+      .select()
+      .from(deposits)
+      .leftJoin(bankAccounts, eq(deposits.bankAccountId, bankAccounts.id))
+      .orderBy(desc(deposits.depositDate));
+    
+    const depositsWithPayments = await Promise.all(
+      depositsResult.map(async (d) => {
+        const depositPayments = await db
+          .select()
+          .from(payments)
+          .where(eq(payments.depositId, d.deposits.id));
+        
+        return {
+          ...d.deposits,
+          bankAccount: d.bank_accounts!,
+          payments: depositPayments,
+        };
+      })
+    );
+    
+    return depositsWithPayments;
+  }
+
+  async getDeposit(id: number): Promise<(Deposit & { bankAccount: BankAccount; payments: (Payment & { client: Client; invoice?: Invoice })[] }) | undefined> {
+    const [depositResult] = await db
+      .select()
+      .from(deposits)
+      .leftJoin(bankAccounts, eq(deposits.bankAccountId, bankAccounts.id))
+      .where(eq(deposits.id, id));
+    
+    if (!depositResult) return undefined;
+
+    const depositPayments = await db
+      .select()
+      .from(payments)
+      .leftJoin(clients, eq(payments.clientId, clients.id))
+      .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .where(eq(payments.depositId, id));
+    
+    return {
+      ...depositResult.deposits,
+      bankAccount: depositResult.bank_accounts!,
+      payments: depositPayments.map(p => ({
+        ...p.payments,
+        client: p.clients!,
+        invoice: p.invoices || undefined,
+      })),
+    };
+  }
+
+  async createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }> {
+    const [newDeposit] = await db.insert(deposits).values(deposit).returning();
+    
+    // Update payments to mark them as deposited
+    await db
+      .update(payments)
+      .set({ 
+        isDeposited: true, 
+        depositId: newDeposit.id, 
+        depositedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(inArray(payments.id, paymentIds));
+    
+    // Fetch the updated payments
+    const depositPayments = await db
+      .select()
+      .from(payments)
+      .where(inArray(payments.id, paymentIds));
+    
+    return {
+      ...newDeposit,
+      payments: depositPayments,
+    };
+  }
+
+  async deleteDeposit(id: number): Promise<boolean> {
+    // First, unmark the payments as deposited
+    await db
+      .update(payments)
+      .set({ 
+        isDeposited: false, 
+        depositId: null, 
+        depositedAt: null,
+        updatedAt: new Date() 
+      })
+      .where(eq(payments.depositId, id));
+    
+    // Then delete the deposit
+    const result = await db.delete(deposits).where(eq(deposits.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

@@ -31,6 +31,8 @@ import {
   Scale,
   BookOpen,
   RefreshCw,
+  Wallet,
+  ArrowDownToLine,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,6 +58,8 @@ const bookkeepingMenuItems = [
   { title: "Chart of Accounts", url: "/chart-of-accounts", icon: BookOpen },
   { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
   { title: "Reconciliation", url: "/reconciliation", icon: Scale },
+  { title: "Undeposited Funds", url: "/undeposited-funds", icon: Wallet },
+  { title: "Deposits", url: "/deposits", icon: ArrowDownToLine },
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Vendors", url: "/vendors", icon: Building2 },
   { title: "Bills", url: "/bills", icon: FileText },

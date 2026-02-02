@@ -42,6 +42,8 @@ import {
   insertBillItemSchema,
   insertBillPaymentSchema,
   insertBankReconciliationSchema,
+  insertPaymentSchema,
+  insertDepositSchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -63,6 +65,7 @@ const updateBankTransactionSchema = insertBankTransactionSchema.partial();
 const updateExpenseSchema = insertExpenseSchema.partial();
 const updateBillSchema = insertBillSchema.partial();
 const updateBankReconciliationSchema = insertBankReconciliationSchema.partial();
+const updatePaymentSchema = insertPaymentSchema.partial();
 
 export async function registerRoutes(
   httpServer: Server,
@@ -4927,6 +4930,318 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error completing reconciliation:", error);
       res.status(500).json({ message: "Failed to complete reconciliation" });
+    }
+  });
+
+  // ==================== PAYMENTS (Undeposited Funds) ====================
+  
+  app.get("/api/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const payments = await storage.getPayments();
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  app.get("/api/payments/undeposited", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const payments = await storage.getUndepositedPayments();
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching undeposited payments:", error);
+      res.status(500).json({ message: "Failed to fetch undeposited payments" });
+    }
+  });
+
+  app.get("/api/payments/undeposited-total", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const total = await storage.getUndepositedFundsTotal();
+      res.json({ total });
+    } catch (error) {
+      console.error("Error fetching undeposited funds total:", error);
+      res.status(500).json({ message: "Failed to fetch undeposited funds total" });
+    }
+  });
+
+  app.get("/api/payments/next-number", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const paymentNumber = await storage.getNextPaymentNumber();
+      res.json({ paymentNumber });
+    } catch (error) {
+      console.error("Error generating payment number:", error);
+      res.status(500).json({ message: "Failed to generate payment number" });
+    }
+  });
+
+  app.get("/api/payments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const payment = await storage.getPayment(parseInt(req.params.id));
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      res.json(payment);
+    } catch (error) {
+      console.error("Error fetching payment:", error);
+      res.status(500).json({ message: "Failed to fetch payment" });
+    }
+  });
+
+  app.get("/api/invoices/:id/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const payments = await storage.getPaymentsByInvoiceId(parseInt(req.params.id));
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching invoice payments:", error);
+      res.status(500).json({ message: "Failed to fetch invoice payments" });
+    }
+  });
+
+  app.post("/api/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertPaymentSchema.parse({ ...req.body, createdByUserId: req.session.userId });
+      const payment = await storage.createPayment(parsed);
+      
+      // If payment is for an invoice, update invoice status
+      if (parsed.invoiceId) {
+        const invoicePayments = await storage.getPaymentsByInvoiceId(parsed.invoiceId);
+        const invoice = await storage.getInvoice(parsed.invoiceId);
+        if (invoice) {
+          const totalPaid = invoicePayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+          const invoiceTotal = parseFloat(invoice.total);
+          if (totalPaid >= invoiceTotal) {
+            await storage.updateInvoice(parsed.invoiceId, { status: 'paid' });
+          }
+        }
+      }
+      
+      res.status(201).json(payment);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating payment:", error);
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.patch("/api/payments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = updatePaymentSchema.parse(req.body);
+      const payment = await storage.updatePayment(parseInt(req.params.id), parsed);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      res.json(payment);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating payment:", error);
+      res.status(500).json({ message: "Failed to update payment" });
+    }
+  });
+
+  app.delete("/api/payments/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const payment = await storage.getPayment(parseInt(req.params.id));
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      if (payment.isDeposited) {
+        return res.status(400).json({ message: "Cannot delete a deposited payment" });
+      }
+      
+      const invoiceId = payment.invoiceId;
+      
+      const deleted = await storage.deletePayment(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      // Recalculate invoice status if this payment was linked to an invoice
+      if (invoiceId) {
+        const invoice = await storage.getInvoice(invoiceId);
+        if (invoice) {
+          const invoicePayments = await storage.getPaymentsByInvoiceId(invoiceId);
+          const totalPaid = invoicePayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+          const invoiceTotal = parseFloat(invoice.total);
+          
+          if (totalPaid < invoiceTotal && invoice.status === 'paid') {
+            // Invoice is no longer fully paid, revert to sent status
+            await storage.updateInvoice(invoiceId, { status: 'sent' });
+          }
+        }
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting payment:", error);
+      res.status(500).json({ message: "Failed to delete payment" });
+    }
+  });
+
+  // ==================== DEPOSITS ====================
+  
+  app.get("/api/deposits", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deposits = await storage.getDeposits();
+      res.json(deposits);
+    } catch (error) {
+      console.error("Error fetching deposits:", error);
+      res.status(500).json({ message: "Failed to fetch deposits" });
+    }
+  });
+
+  app.get("/api/deposits/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const deposit = await storage.getDeposit(parseInt(req.params.id));
+      if (!deposit) {
+        return res.status(404).json({ message: "Deposit not found" });
+      }
+      res.json(deposit);
+    } catch (error) {
+      console.error("Error fetching deposit:", error);
+      res.status(500).json({ message: "Failed to fetch deposit" });
+    }
+  });
+
+  app.post("/api/deposits", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { paymentIds, ...depositData } = req.body;
+      
+      if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
+        return res.status(400).json({ message: "At least one payment must be selected for deposit" });
+      }
+      
+      const parsed = insertDepositSchema.parse({ ...depositData, createdByUserId: req.session.userId });
+      const deposit = await storage.createDeposit(parsed, paymentIds);
+      
+      // Create a bank transaction for this deposit
+      const bankTransaction = await storage.createBankTransaction({
+        bankAccountId: parsed.bankAccountId,
+        transactionDate: parsed.depositDate,
+        transactionType: 'deposit',
+        payee: 'Customer Payments',
+        description: parsed.memo || `Deposit of ${paymentIds.length} payment(s)`,
+        amount: parsed.totalAmount,
+      });
+      
+      // Update the bank account balance
+      const bankAccount = await storage.getBankAccount(parsed.bankAccountId);
+      if (bankAccount) {
+        const currentBalance = parseFloat(bankAccount.currentBalance || '0');
+        const depositAmount = parseFloat(parsed.totalAmount);
+        await storage.updateBankAccount(parsed.bankAccountId, {
+          currentBalance: (currentBalance + depositAmount).toFixed(2),
+        });
+      }
+      
+      res.status(201).json(deposit);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating deposit:", error);
+      res.status(500).json({ message: "Failed to create deposit" });
+    }
+  });
+
+  app.delete("/api/deposits/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Get the deposit first to reverse the bank balance
+      const deposit = await storage.getDeposit(parseInt(req.params.id));
+      if (!deposit) {
+        return res.status(404).json({ message: "Deposit not found" });
+      }
+      
+      // Reverse the bank account balance
+      const bankAccount = await storage.getBankAccount(deposit.bankAccountId);
+      if (bankAccount) {
+        const currentBalance = parseFloat(bankAccount.currentBalance || '0');
+        const depositAmount = parseFloat(deposit.totalAmount);
+        await storage.updateBankAccount(deposit.bankAccountId, {
+          currentBalance: (currentBalance - depositAmount).toFixed(2),
+        });
+      }
+      
+      // Delete the associated bank transaction (find by matching criteria)
+      const transactions = await storage.getBankTransactions(deposit.bankAccountId);
+      const depositTransaction = transactions.find(t => 
+        t.transactionType === 'deposit' && 
+        t.amount === deposit.totalAmount &&
+        t.transactionDate && deposit.depositDate &&
+        new Date(t.transactionDate).toDateString() === new Date(deposit.depositDate).toDateString()
+      );
+      if (depositTransaction) {
+        await storage.deleteBankTransaction(depositTransaction.id);
+      }
+      
+      const deleted = await storage.deleteDeposit(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ message: "Deposit not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting deposit:", error);
+      res.status(500).json({ message: "Failed to delete deposit" });
     }
   });
 

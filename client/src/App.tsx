@@ -63,6 +63,8 @@ import Bills from "@/pages/bills";
 import RebillCenter from "@/pages/rebill-center";
 import BankReconciliation from "@/pages/bank-reconciliation";
 import Reconciliation from "@/pages/reconciliation";
+import UndepositedFunds from "@/pages/undeposited-funds";
+import Deposits from "@/pages/deposits";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -107,6 +109,8 @@ function AdminRouter() {
       <Route path="/bank-register/:id" component={BankRegister} />
       <Route path="/reconciliation" component={Reconciliation} />
       <Route path="/bank-reconciliation/:id" component={BankReconciliation} />
+      <Route path="/undeposited-funds" component={UndepositedFunds} />
+      <Route path="/deposits" component={Deposits} />
       <Route path="/expenses" component={Expenses} />
       <Route path="/bills" component={Bills} />
       <Route path="/rebill-center" component={RebillCenter} />

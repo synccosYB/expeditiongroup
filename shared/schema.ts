@@ -754,6 +754,40 @@ export const billPayments = pgTable("bill_payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Payment method enum for customer payments
+export const paymentMethodEnum = pgEnum("payment_method", ["cash", "check", "credit_card", "debit_card", "bank_transfer", "other"]);
+
+// Deposits (grouping payments for bank deposit)
+export const deposits = pgTable("deposits", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  depositDate: timestamp("deposit_date").notNull(),
+  bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id),
+  bankTransactionId: integer("bank_transaction_id").references(() => bankTransactions.id),
+  totalAmount: varchar("total_amount", { length: 20 }).notNull(),
+  memo: text("memo"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Payments (individual payments from clients against invoices - goes to Undeposited Funds first)
+export const payments = pgTable("payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  paymentNumber: varchar("payment_number", { length: 50 }).notNull(),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  invoiceId: integer("invoice_id").references(() => invoices.id),
+  paymentDate: timestamp("payment_date").notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").default("check"),
+  reference: varchar("reference", { length: 100 }),
+  memo: text("memo"),
+  isDeposited: boolean("is_deposited").default(false),
+  depositId: integer("deposit_id").references(() => deposits.id),
+  depositedAt: timestamp("deposited_at"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Bank Reconciliations
 export const bankReconciliations = pgTable("bank_reconciliations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -1208,6 +1242,41 @@ export const bankReconciliationsRelations = relations(bankReconciliations, ({ on
   }),
 }));
 
+export const depositsRelations = relations(deposits, ({ one, many }) => ({
+  bankAccount: one(bankAccounts, {
+    fields: [deposits.bankAccountId],
+    references: [bankAccounts.id],
+  }),
+  bankTransaction: one(bankTransactions, {
+    fields: [deposits.bankTransactionId],
+    references: [bankTransactions.id],
+  }),
+  createdByUser: one(users, {
+    fields: [deposits.createdByUserId],
+    references: [users.id],
+  }),
+  payments: many(payments),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  client: one(clients, {
+    fields: [payments.clientId],
+    references: [clients.id],
+  }),
+  invoice: one(invoices, {
+    fields: [payments.invoiceId],
+    references: [invoices.id],
+  }),
+  deposit: one(deposits, {
+    fields: [payments.depositId],
+    references: [deposits.id],
+  }),
+  createdByUser: one(users, {
+    fields: [payments.createdByUserId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, createdAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
@@ -1305,6 +1374,12 @@ export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ i
 export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true }).extend({
   statementDate: requiredDateCoercion,
 });
+export const insertDepositSchema = createInsertSchema(deposits).omit({ id: true, createdAt: true }).extend({
+  depositDate: requiredDateCoercion,
+});
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, depositedAt: true }).extend({
+  paymentDate: requiredDateCoercion,
+});
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -1383,3 +1458,7 @@ export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;
 export type BillPayment = typeof billPayments.$inferSelect;
 export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;
 export type BankReconciliation = typeof bankReconciliations.$inferSelect;
+export type InsertDeposit = z.infer<typeof insertDepositSchema>;
+export type Deposit = typeof deposits.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
