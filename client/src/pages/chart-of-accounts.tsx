@@ -427,6 +427,49 @@ export default function ChartOfAccounts() {
     return `${parentCode}-${maxNumber + 1}`;
   };
 
+  const getAccountTypeStartCode = (accountType: string): number => {
+    switch (accountType) {
+      case "asset": return 1000;
+      case "liability": return 2000;
+      case "equity": return 3000;
+      case "revenue": return 4000;
+      case "expense": return 5000;
+      default: return 1000;
+    }
+  };
+
+  const generateNextAccountCode = (accountType: string): string => {
+    const startCode = getAccountTypeStartCode(accountType);
+    const endCode = startCode + 999;
+    
+    const topLevelAccountsOfType = accounts?.filter((a) => 
+      a.accountType === accountType && 
+      !a.parentAccountId &&
+      !a.code.includes("-")
+    ) || [];
+    
+    if (topLevelAccountsOfType.length === 0) {
+      return startCode.toString();
+    }
+    
+    const usedCodes = topLevelAccountsOfType
+      .map((a) => parseInt(a.code, 10))
+      .filter((code) => !isNaN(code) && code >= startCode && code <= endCode)
+      .sort((a, b) => a - b);
+    
+    if (usedCodes.length === 0) {
+      return startCode.toString();
+    }
+    
+    for (let code = startCode; code <= endCode; code++) {
+      if (!usedCodes.includes(code)) {
+        return code.toString();
+      }
+    }
+    
+    return (usedCodes[usedCodes.length - 1] + 1).toString();
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
