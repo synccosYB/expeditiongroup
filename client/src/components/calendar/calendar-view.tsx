@@ -11,12 +11,13 @@ import {
   useSensors,
   closestCenter,
 } from "@dnd-kit/core";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse, setMonth, setYear, getMonth, getYear } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, ClipboardList, Clock, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -158,6 +159,22 @@ export function CalendarView() {
     setCurrentDate(new Date());
   };
 
+  const handleMonthChange = (month: string) => {
+    setCurrentDate(setMonth(currentDate, parseInt(month)));
+  };
+
+  const handleYearChange = (year: string) => {
+    setCurrentDate(setYear(currentDate, parseInt(year)));
+  };
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
   const handleDragStart = (event: DragStartEvent) => {
     const eventId = event.active.id as string;
     const calendarEvent = events.find((e) => e.id === eventId);
@@ -240,11 +257,40 @@ export function CalendarView() {
             </div>
           </div>
         </div>
-        <p className="text-xl font-semibold mt-2">
-          {viewMode === "month"
-            ? format(currentDate, "MMMM yyyy")
-            : `Week of ${format(startOfWeek(currentDate), "MMM d")} - ${format(endOfWeek(currentDate), "MMM d, yyyy")}`}
-        </p>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {viewMode === "month" ? (
+            <>
+              <Select value={String(getMonth(currentDate))} onValueChange={handleMonthChange}>
+                <SelectTrigger className="w-[140px]" data-testid="select-month">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((month, index) => (
+                    <SelectItem key={month} value={String(index)}>
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={String(getYear(currentDate))} onValueChange={handleYearChange}>
+                <SelectTrigger className="w-[100px]" data-testid="select-year">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <p className="text-xl font-semibold">
+              Week of {format(startOfWeek(currentDate), "MMM d")} - {format(endOfWeek(currentDate), "MMM d, yyyy")}
+            </p>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <DndContext
