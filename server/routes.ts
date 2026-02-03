@@ -2032,18 +2032,26 @@ export async function registerRoutes(
   });
 
   // Calendar Events - Aggregates tasks and reminders for calendar view
-  app.get("/api/calendar/events", isAuthenticated, async (req: any, res) => {
+  app.get("/api/calendar/events/:month?", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      // Get all tasks with due dates
+      // Get all tasks with due dates and include project data
       const allTasks = await storage.getTasks();
-      const tasksWithProjects = allTasks.filter(t => t.dueDate);
+      const tasksWithDueDates = allTasks.filter(t => t.dueDate);
+      
+      // Fetch project data for each task
+      const tasksWithProjects = await Promise.all(
+        tasksWithDueDates.map(async (task) => {
+          const project = await storage.getProject(task.projectId);
+          return { ...task, project };
+        })
+      );
 
-      // Get all reminders
+      // Get all reminders (already includes task and project data)
       const allReminders = await storage.getAllReminders();
 
       res.json({
