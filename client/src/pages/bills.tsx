@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,8 @@ import {
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,7 @@ const billFormSchema = z.object({
   billDate: z.string().min(1, "Bill date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   notes: z.string().optional(),
+  documentUrl: z.string().optional(),
   items: z.array(billItemSchema).min(1, "At least one item is required"),
 });
 
@@ -78,6 +80,184 @@ type BillWithRelations = Bill & {
   items: BillItem[];
   payments?: BillPayment[];
 };
+
+function BillDocumentUploader({
+  documentUrl,
+  billId,
+  onUploadComplete,
+  onRemove,
+}: {
+  documentUrl: string | null | undefined;
+  billId?: number;
+  onUploadComplete: (url: string) => void;
+  onRemove: () => void;
+}) {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/", "application/pdf"];
+    const isAllowed = allowedTypes.some(type => file.type.startsWith(type));
+    if (!isAllowed) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image or PDF file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const response = await apiRequest("POST", "/api/bills/upload-url", {});
+      const { url, method } = await response.json();
+
+      const xhr = new XMLHttpRequest();
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
+        }
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Upload failed"));
+
+        xhr.open(method, url);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+
+      const uploadedUrl = url.split("?")[0];
+      onUploadComplete(uploadedUrl);
+      toast({ title: "Document uploaded successfully" });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  if (documentUrl) {
+    const viewUrl = billId ? `/api/bills/document/${billId}` : documentUrl;
+    
+    return (
+      <div className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium flex items-center gap-2">
+            <Image className="h-4 w-4" />
+            Document Attached
+          </span>
+          <div className="flex items-center gap-2">
+            {billId && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(viewUrl, "_blank")}
+                data-testid="button-view-bill-document"
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                View
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={onRemove}
+              data-testid="button-remove-bill-document"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        {billId && (
+          <div className="aspect-video bg-muted rounded-md overflow-hidden">
+            <img
+              src={viewUrl}
+              alt="Bill Document"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '<div class="flex items-center justify-center h-full text-muted-foreground">PDF or non-image document</div>';
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-2 border-dashed rounded-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          Bill Document
+        </span>
+      </div>
+      {uploading ? (
+        <div className="space-y-2">
+          <Progress value={uploadProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground text-center">
+            Uploading... {uploadProgress}%
+          </p>
+        </div>
+      ) : (
+        <div
+          className="flex flex-col items-center justify-center py-4 cursor-pointer hover-elevate rounded-md transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">Click to upload bill document</p>
+          <p className="text-xs text-muted-foreground mt-1">Image or PDF up to 10MB</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={handleFileSelect}
+            data-testid="input-bill-document-file"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Bills() {
   const { toast } = useToast();
@@ -119,9 +299,12 @@ export default function Bills() {
       billDate: new Date().toISOString().split("T")[0],
       dueDate: "",
       notes: "",
+      documentUrl: "",
       items: [{ description: "", quantity: "1", unitPrice: "", accountId: "" }],
     },
   });
+
+  const documentUrl = form.watch("documentUrl");
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -146,6 +329,7 @@ export default function Bills() {
         billDate: new Date(data.billDate),
         dueDate: new Date(data.dueDate),
         notes: data.notes,
+        documentUrl: data.documentUrl || null,
         subtotal: totalAmount.toFixed(2),
         total: totalAmount.toFixed(2),
         amountDue: totalAmount.toFixed(2),
@@ -186,6 +370,7 @@ export default function Bills() {
         billDate: data.billDate ? new Date(data.billDate) : undefined,
         dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
         notes: data.notes,
+        documentUrl: data.documentUrl || null,
       };
       if (data.vendorId) {
         payload.vendorId = parseInt(data.vendorId);
@@ -386,6 +571,7 @@ export default function Bills() {
         billDate: bill.billDate ? new Date(bill.billDate).toISOString().split("T")[0] : "",
         dueDate: bill.dueDate ? new Date(bill.dueDate).toISOString().split("T")[0] : "",
         notes: bill.notes || "",
+        documentUrl: bill.documentUrl || "",
         items: bill.items?.map(item => ({
           description: item.description || "",
           quantity: item.quantity || "1",
@@ -682,6 +868,13 @@ export default function Bills() {
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+
+                <BillDocumentUploader
+                  documentUrl={documentUrl}
+                  billId={editingBill?.id}
+                  onUploadComplete={(url) => form.setValue("documentUrl", url)}
+                  onRemove={() => form.setValue("documentUrl", "")}
                 />
 
                 <div className="flex justify-end gap-2 pt-4">
