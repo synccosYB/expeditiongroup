@@ -2478,9 +2478,9 @@ export default function ProjectDetail() {
 
         {/* Documents Tab */}
         <TabsContent value="documents" className="mt-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <h2 className="text-lg font-semibold">Documents & Folders</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -2900,33 +2900,36 @@ export default function ProjectDetail() {
               <h3 className="text-sm font-medium text-muted-foreground">All Documents</h3>
               {documents.map((doc) => (
                 <Card key={doc.id} data-testid={`document-item-${doc.id}`}>
-                  <CardContent className="flex items-center gap-4 py-4">
-                    <File className="h-6 w-6 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{doc.fileName}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" size="sm">{doc.category}</Badge>
-                        {doc.folderId && folders && (
-                          <span>in {folders.find(f => f.id === doc.folderId)?.name}</span>
-                        )}
-                        {!doc.isVisibleToClient && (
-                          <Badge variant="secondary" size="sm">Hidden from client</Badge>
-                        )}
+                  <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <File className="h-6 w-6 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{doc.fileName}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline" size="sm">{doc.category}</Badge>
+                          {doc.folderId && folders && (
+                            <span>in {folders.find(f => f.id === doc.folderId)?.name}</span>
+                          )}
+                          {!doc.isVisibleToClient && (
+                            <Badge variant="secondary" size="sm">Hidden from client</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" asChild data-testid={`button-view-document-${doc.id}`}>
-                      <a href={`${doc.storagePath}?inline=true`} target="_blank" rel="noopener noreferrer">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </a>
-                    </Button>
-                    <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
-                      <a href={doc.storagePath} download={doc.fileName}>
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </a>
-                    </Button>
-                    <DropdownMenu>
+                    <div className="flex items-center gap-2 sm:gap-1">
+                      <Button size="sm" variant="ghost" asChild data-testid={`button-view-document-${doc.id}`}>
+                        <a href={`${doc.storagePath}?inline=true`} target="_blank" rel="noopener noreferrer">
+                          <Eye className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </a>
+                      </Button>
+                      <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
+                        <a href={doc.storagePath} download={doc.fileName}>
+                          <Download className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Download</span>
+                        </a>
+                      </Button>
+                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="icon" variant="ghost" data-testid={`button-document-menu-${doc.id}`}>
                           <MoreHorizontal className="h-4 w-4" />
@@ -2971,7 +2974,8 @@ export default function ProjectDetail() {
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                      </DropdownMenu>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
