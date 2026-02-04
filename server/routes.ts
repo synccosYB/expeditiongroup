@@ -4429,6 +4429,60 @@ export async function registerRoutes(
   });
 
   // ===== Bookkeeping - Bills =====
+  
+  // Bill document upload URL
+  app.post("/api/bills/upload-url", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL("bill-documents");
+      res.json({ method: "PUT", url: uploadUrl });
+    } catch (error) {
+      console.error("Error generating bill upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
+  // Bill document retrieval
+  app.get("/api/bills/document/:billId", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const billId = parseInt(req.params.billId);
+      if (isNaN(billId)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+
+      const bill = await storage.getBill(billId);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      if (!bill.documentUrl) {
+        return res.status(404).json({ message: "No document attached to this bill" });
+      }
+
+      const objectPath = bill.documentUrl;
+      if (!objectPath.startsWith("/objects/")) {
+        return res.status(400).json({ message: "Invalid document URL format" });
+      }
+
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      await objectStorageService.downloadObject(objectFile, res, { inline: true });
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ message: "Document file not found" });
+      }
+      console.error("Error fetching bill document:", error);
+      res.status(500).json({ message: "Failed to fetch document" });
+    }
+  });
+
   app.get("/api/bills", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

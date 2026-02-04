@@ -719,6 +719,7 @@ export const bills = pgTable("bills", {
   amountPaid: varchar("amount_paid", { length: 20 }).default("0"),
   amountDue: varchar("amount_due", { length: 20 }).notNull(),
   notes: text("notes"),
+  documentUrl: text("document_url"),
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
