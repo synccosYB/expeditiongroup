@@ -646,7 +646,7 @@ function TaskHierarchyItem({
   expandedTasks,
   toggleExpand,
   reminderCounts,
-  taskNotes,
+  allNotes,
   expandedNotes,
   toggleNotesExpand,
 }: { 
@@ -662,7 +662,7 @@ function TaskHierarchyItem({
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
   reminderCounts?: Map<number, number>;
-  taskNotes?: (Note & { user: User })[];
+  allNotes?: (Note & { user: User })[];
   expandedNotes: Set<number>;
   toggleNotesExpand: (taskId: number) => void;
 }) {
@@ -670,6 +670,7 @@ function TaskHierarchyItem({
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
   const isExpanded = expandedTasks.has(task.id);
   const notesExpanded = expandedNotes.has(task.id);
+  const taskNotes = allNotes?.filter(n => n.taskId === task.id);
 
   return (
     <div className="space-y-2">
@@ -877,7 +878,7 @@ function TaskHierarchyItem({
               expandedTasks={expandedTasks}
               toggleExpand={toggleExpand}
               reminderCounts={reminderCounts}
-              taskNotes={taskNotes?.filter(n => n.taskId === subtask.id)}
+              allNotes={allNotes}
               expandedNotes={expandedNotes}
               toggleNotesExpand={toggleNotesExpand}
             />
@@ -2389,7 +2390,7 @@ export default function ProjectDetail() {
                   expandedTasks={expandedTasks}
                   toggleExpand={toggleExpand}
                   reminderCounts={taskReminderCounts}
-                  taskNotes={project.notes?.filter(n => n.taskId === task.id)}
+                  allNotes={project.notes}
                   expandedNotes={expandedNotes}
                   toggleNotesExpand={toggleNotesExpand}
                 />
@@ -2464,7 +2465,7 @@ export default function ProjectDetail() {
                       expandedTasks={expandedTasks}
                       toggleExpand={toggleExpand}
                       reminderCounts={taskReminderCounts}
-                      taskNotes={project.notes?.filter(n => n.taskId === task.id)}
+                      allNotes={project.notes}
                       expandedNotes={expandedNotes}
                       toggleNotesExpand={toggleNotesExpand}
                     />
