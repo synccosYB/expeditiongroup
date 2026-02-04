@@ -19,15 +19,23 @@ export type CalendarEvent = {
 
 interface CalendarItemProps {
   event: CalendarEvent;
+  onClick?: (event: CalendarEvent) => void;
 }
 
-export function CalendarItem({ event }: CalendarItemProps) {
+export function CalendarItem({ event, onClick }: CalendarItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: event.id,
   });
 
   const style = {
     transform: CSS.Translate.toString(transform),
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isDragging && onClick) {
+      e.stopPropagation();
+      onClick(event);
+    }
   };
 
   return (
@@ -38,13 +46,14 @@ export function CalendarItem({ event }: CalendarItemProps) {
           style={style}
           {...listeners}
           {...attributes}
+          onClick={handleClick}
           className={cn(
-            "text-xs p-1 rounded cursor-grab active:cursor-grabbing flex items-center gap-1 truncate transition-opacity",
+            "text-xs p-1 rounded cursor-pointer hover:ring-1 hover:ring-primary/50 flex items-center gap-1 truncate transition-all",
             event.type === "task" && "bg-chart-4/20 text-chart-4 border border-chart-4/30",
             event.type === "reminder" && "bg-chart-3/20 text-chart-3 border border-chart-3/30",
             event.type === "deadline" && "bg-destructive/20 text-destructive border border-destructive/30",
             event.status === "done" && "opacity-50 line-through",
-            isDragging && "opacity-50 shadow-lg"
+            isDragging && "opacity-50 shadow-lg cursor-grabbing"
           )}
           data-testid={`calendar-item-${event.id}`}
         >
@@ -67,7 +76,7 @@ export function CalendarItem({ event }: CalendarItemProps) {
           {event.status && (
             <p className="text-xs capitalize">Status: {event.status.replace(/_/g, " ")}</p>
           )}
-          <p className="text-xs text-muted-foreground italic">Drag to reschedule</p>
+          <p className="text-xs text-muted-foreground italic">Click to view, drag to reschedule</p>
         </div>
       </TooltipContent>
     </Tooltip>

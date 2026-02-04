@@ -9,9 +9,10 @@ interface CalendarDayProps {
   isCurrentMonth: boolean;
   isToday: boolean;
   viewMode: "month" | "week";
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
-export function CalendarDay({ day, events, isCurrentMonth, isToday, viewMode }: CalendarDayProps) {
+export function CalendarDay({ day, events, isCurrentMonth, isToday, viewMode, onEventClick }: CalendarDayProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-${format(day, "yyyy-MM-dd")}`,
   });
@@ -37,7 +38,7 @@ export function CalendarDay({ day, events, isCurrentMonth, isToday, viewMode }: 
       </div>
       <div className="space-y-1 overflow-y-auto max-h-[calc(100%-28px)]">
         {events.slice(0, viewMode === "week" ? 20 : 3).map((event) => (
-          <CalendarItem key={event.id} event={event} />
+          <CalendarItem key={event.id} event={event} onClick={onEventClick} />
         ))}
         {events.length > (viewMode === "week" ? 20 : 3) && (
           <div className="text-xs text-muted-foreground pl-1">

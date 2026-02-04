@@ -23,6 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarDay } from "./calendar-day";
 import { CalendarItem, CalendarItemCard } from "./calendar-item";
+import { CalendarTaskDialog } from "./calendar-task-dialog";
 import type { Task, TaskReminder, Project } from "@shared/schema";
 
 export type CalendarEvent = {
@@ -43,6 +44,8 @@ export function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -174,6 +177,16 @@ export function CalendarView() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedEvent(null);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     const eventId = event.active.id as string;
@@ -319,6 +332,7 @@ export function CalendarView() {
                   isCurrentMonth={isSameMonth(day, currentDate)}
                   isToday={isToday(day)}
                   viewMode={viewMode}
+                  onEventClick={handleEventClick}
                 />
               ))}
             </div>
@@ -330,6 +344,12 @@ export function CalendarView() {
           </DragOverlay>
         </DndContext>
       </CardContent>
+
+      <CalendarTaskDialog
+        event={selectedEvent}
+        isOpen={isDialogOpen}
+        onClose={handleCloseDialog}
+      />
     </Card>
   );
 }
