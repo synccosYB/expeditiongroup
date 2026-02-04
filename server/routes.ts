@@ -2799,14 +2799,49 @@ export async function registerRoutes(
       });
       
       const parsed = updateSchema.parse(req.body);
+      const invoiceId = parseInt(req.params.id);
+      
+      // Get current invoice before update
+      const currentInvoice = await storage.getInvoice(invoiceId);
+      if (!currentInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
       const updateData: any = { ...parsed };
       if (parsed.dueDate) updateData.dueDate = new Date(parsed.dueDate);
       if (parsed.paidAt) updateData.paidAt = new Date(parsed.paidAt);
       
-      const invoice = await storage.updateInvoice(parseInt(req.params.id), updateData);
+      // First update the invoice
+      const invoice = await storage.updateInvoice(invoiceId, updateData);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
+      
+      // After successful update, create payment record if status is now "paid" 
+      // and there's no payment covering the remaining balance
+      if (parsed.status === "paid" || (currentInvoice.status === "paid" && parsed.status === undefined)) {
+        const existingPayments = await storage.getPaymentsByInvoiceId(invoiceId);
+        const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        const invoiceTotal = parseFloat(currentInvoice.total);
+        const remainingBalance = invoiceTotal - totalPaid;
+        
+        // Only create payment if there's a remaining balance (handles legacy data too)
+        if (remainingBalance > 0.01) {
+          const paymentNumber = await storage.getNextPaymentNumber();
+          const paymentDate = parsed.paidAt ? new Date(parsed.paidAt) : new Date();
+          await storage.createPayment({
+            paymentNumber,
+            clientId: currentInvoice.clientId,
+            invoiceId: invoiceId,
+            paymentDate,
+            amount: remainingBalance.toFixed(2),
+            paymentMethod: "other",
+            memo: `Payment for invoice ${currentInvoice.invoiceNumber}`,
+            createdByUserId: req.session.userId,
+          });
+        }
+      }
+      
       res.json(invoice);
     } catch (error) {
       if (error instanceof ZodError) {
