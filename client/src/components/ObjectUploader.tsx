@@ -174,7 +174,8 @@ export function ObjectUploader({
             console.log("getUploadParameters called for:", file.name, "id:", file.id);
             const params = await onGetUploadParameters({ id: file.id, name: file.name || "", size: file.size || 0, type: file.type || undefined });
             console.log("getUploadParameters returning:", params.method, params.url.substring(0, 50) + "...");
-            return params;
+            // Ensure fields property is present (required by Uppy AwsS3)
+            return { ...params, fields: {} };
           } catch (error: any) {
             console.error("getUploadParameters error:", error);
             if (error?.code === "STORAGE_LIMIT_EXCEEDED") {

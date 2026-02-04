@@ -2780,6 +2780,7 @@ export default function ProjectDetail() {
                   return { 
                     method: "PUT" as const, 
                     url: data.uploadUrl,
+                    fields: {},
                     headers: { "Content-Type": fileType },
                   };
                 }}
