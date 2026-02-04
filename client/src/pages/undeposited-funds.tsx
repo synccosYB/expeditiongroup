@@ -128,6 +128,22 @@ export default function UndepositedFunds() {
     },
   });
 
+  const handlePaymentSubmit = (data: PaymentFormData) => {
+    createPaymentMutation.mutate(data);
+  };
+
+  const handlePaymentSubmitError = (errors: any) => {
+    console.error("Payment form validation errors:", errors);
+    const errorMessages = Object.entries(errors)
+      .map(([field, error]: [string, any]) => `${field}: ${error?.message || 'Invalid'}`)
+      .join(', ');
+    toast({ 
+      title: "Please fix the form errors", 
+      description: errorMessages || "Check all required fields",
+      variant: "destructive" 
+    });
+  };
+
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
       const response = await apiRequest("POST", "/api/payments", {
@@ -152,8 +168,13 @@ export default function UndepositedFunds() {
       setIsPaymentDialogOpen(false);
       form.reset();
     },
-    onError: () => {
-      toast({ title: "Failed to record payment", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Payment creation error:", error);
+      toast({ 
+        title: "Failed to record payment", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -257,7 +278,7 @@ export default function UndepositedFunds() {
                 <DialogTitle>Receive Payment</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => createPaymentMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={form.handleSubmit(handlePaymentSubmit, handlePaymentSubmitError)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="paymentDate"
