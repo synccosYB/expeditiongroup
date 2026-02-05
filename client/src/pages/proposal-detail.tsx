@@ -34,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { ArrowLeft, Save, Plus, Trash2, Calculator, Send, CheckCircle, XCircle } from "lucide-react";
-import type { Proposal, Client, ProposalItem, Service } from "@shared/schema";
+import type { Proposal, Client, ProposalItem, Service, SalesContact } from "@shared/schema";
 
 type ProposalWithDetails = Proposal & { client?: Client; items: ProposalItem[] };
 
@@ -66,10 +66,13 @@ interface ProposalItemForm {
 
 export default function ProposalDetail() {
   const [, params] = useRoute("/proposals/:id");
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const isNew = params?.id === "new";
   const proposalId = isNew ? null : parseInt(params?.id || "0");
+  
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const contactId = urlParams.get('contactId') ? parseInt(urlParams.get('contactId')!) : null;
 
   const [formData, setFormData] = useState({
     proposalNumber: "",
@@ -101,6 +104,11 @@ export default function ProposalDetail() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: salesContact } = useQuery<SalesContact>({
+    queryKey: ["/api/sales-contacts", contactId],
+    enabled: isNew && !!contactId,
+  });
+
   const { data: nextNumber } = useQuery<{ proposalNumber: string }>({
     queryKey: ["/api/proposals/next-number"],
     enabled: isNew,
@@ -111,6 +119,19 @@ export default function ProposalDetail() {
       setFormData(prev => ({ ...prev, proposalNumber: nextNumber.proposalNumber }));
     }
   }, [isNew, nextNumber]);
+
+  useEffect(() => {
+    if (isNew && salesContact) {
+      setFormData(prev => ({
+        ...prev,
+        clientName: salesContact.name,
+        clientEmail: salesContact.email || "",
+        clientPhone: salesContact.phone || "",
+        clientCompany: salesContact.company || "",
+        title: `Proposal for ${salesContact.name}`,
+      }));
+    }
+  }, [isNew, salesContact]);
 
   useEffect(() => {
     if (proposal) {
@@ -144,8 +165,21 @@ export default function ProposalDetail() {
       const response = await apiRequest("POST", "/api/proposals", data);
       return response.json();
     },
-    onSuccess: (newProposal) => {
+    onSuccess: async (newProposal) => {
       queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
+      
+      if (contactId) {
+        try {
+          await apiRequest("PATCH", `/api/sales-contacts/${contactId}`, { 
+            proposalId: newProposal.id,
+            stage: "proposal"
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/sales-contacts"] });
+        } catch (err) {
+          console.error("Failed to link proposal to contact:", err);
+        }
+      }
+      
       toast({ title: "Proposal created successfully" });
       navigate(`/proposals/${newProposal.id}`);
     },

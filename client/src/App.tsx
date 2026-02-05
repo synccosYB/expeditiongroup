@@ -51,6 +51,7 @@ import Intake from "@/pages/intake";
 import IntakeForm from "@/pages/intake-form";
 import IntakeView from "@/pages/intake-view";
 import Reminders from "@/pages/reminders";
+import SalesContacts from "@/pages/sales-contacts";
 import SalesPipeline from "@/pages/sales-pipeline";
 import ProposalDetail from "@/pages/proposal-detail";
 import Invoices from "@/pages/invoices";
@@ -100,6 +101,7 @@ function AdminRouter() {
       <Route path="/associates/:id" component={AssociateDetail} />
       <Route path="/activity-logs" component={ActivityLogs} />
       <Route path="/reminders" component={Reminders} />
+      <Route path="/sales-contacts" component={SalesContacts} />
       <Route path="/sales-pipeline" component={SalesPipeline} />
       <Route path="/proposals/new" component={ProposalDetail} />
       <Route path="/proposals/:id" component={ProposalDetail} />

@@ -14,6 +14,7 @@ import {
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   FolderKanban,
   ClipboardList,
   Clock,
@@ -42,6 +43,7 @@ import logoIcon from "@/assets/logo-checkbox-icon.svg";
 const adminMenuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Intake", url: "/intake", icon: FilePlus2 },
+  { title: "Sales Contacts", url: "/sales-contacts", icon: UserPlus },
   { title: "Sales Pipeline", url: "/sales-pipeline", icon: TrendingUp },
   { title: "Clients", url: "/clients", icon: Users },
   { title: "Projects", url: "/projects", icon: FolderKanban },

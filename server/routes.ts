@@ -30,6 +30,7 @@ import {
   insertDocumentRequestSchema,
   insertAuditLogSchema,
   insertIntakeApplicationSchema,
+  insertSalesContactSchema,
   insertServiceSchema,
   insertProposalSchema,
   insertProposalItemSchema,
@@ -55,6 +56,7 @@ const updateFolderSchema = insertFolderSchema.partial();
 const updateDocumentSchema = insertDocumentSchema.partial();
 const updateChecklistTemplateSchema = insertChecklistTemplateSchema.partial();
 const updateChecklistInstanceSchema = insertChecklistInstanceSchema.partial();
+const updateSalesContactSchema = insertSalesContactSchema.partial();
 const updateServiceSchema = insertServiceSchema.partial();
 const updateProposalSchema = insertProposalSchema.partial();
 const updateProposalItemSchema = insertProposalItemSchema.partial();
@@ -3514,6 +3516,97 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error linking intake to project:", error);
       res.status(500).json({ message: "Failed to link intake to project" });
+    }
+  });
+
+  // ===== Sales Contacts (Pipeline) =====
+  app.get("/api/sales-contacts", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const contacts = await storage.getSalesContacts();
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching sales contacts:", error);
+      res.status(500).json({ message: "Failed to fetch sales contacts" });
+    }
+  });
+
+  app.get("/api/sales-contacts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const contact = await storage.getSalesContact(parseInt(req.params.id));
+      if (!contact) {
+        return res.status(404).json({ message: "Sales contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      console.error("Error fetching sales contact:", error);
+      res.status(500).json({ message: "Failed to fetch sales contact" });
+    }
+  });
+
+  app.post("/api/sales-contacts", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertSalesContactSchema.parse(req.body);
+      const contact = await storage.createSalesContact({
+        ...parsed,
+        createdByUserId: user.id,
+      });
+      res.status(201).json(contact);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating sales contact:", error);
+      res.status(500).json({ message: "Failed to create sales contact" });
+    }
+  });
+
+  app.patch("/api/sales-contacts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = updateSalesContactSchema.parse(req.body);
+      const contact = await storage.updateSalesContact(parseInt(req.params.id), parsed);
+      if (!contact) {
+        return res.status(404).json({ message: "Sales contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error updating sales contact:", error);
+      res.status(500).json({ message: "Failed to update sales contact" });
+    }
+  });
+
+  app.delete("/api/sales-contacts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteSalesContact(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Sales contact not found" });
+      }
+      res.json({ message: "Sales contact deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting sales contact:", error);
+      res.status(500).json({ message: "Failed to delete sales contact" });
     }
   });
 

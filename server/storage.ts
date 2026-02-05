@@ -22,6 +22,7 @@ import {
   documentRequests,
   auditLogs,
   intakeApplications,
+  salesContacts,
   services,
   proposals,
   proposalItems,
@@ -81,6 +82,8 @@ import {
   type InsertAuditLog,
   type IntakeApplication,
   type InsertIntakeApplication,
+  type SalesContact,
+  type InsertSalesContact,
   type Service,
   type InsertService,
   type Proposal,
@@ -1955,6 +1958,39 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIntakeApplication(id: number): Promise<boolean> {
     const result = await db.delete(intakeApplications).where(eq(intakeApplications.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Sales Contacts (pipeline leads)
+  async getSalesContacts(): Promise<SalesContact[]> {
+    return await db.select().from(salesContacts).orderBy(desc(salesContacts.createdAt));
+  }
+
+  async getSalesContactsByStage(stage: string): Promise<SalesContact[]> {
+    return await db.select().from(salesContacts).where(eq(salesContacts.stage, stage as any)).orderBy(desc(salesContacts.createdAt));
+  }
+
+  async getSalesContact(id: number): Promise<SalesContact | undefined> {
+    const [contact] = await db.select().from(salesContacts).where(eq(salesContacts.id, id));
+    return contact;
+  }
+
+  async createSalesContact(contact: InsertSalesContact): Promise<SalesContact> {
+    const [newContact] = await db.insert(salesContacts).values(contact).returning();
+    return newContact;
+  }
+
+  async updateSalesContact(id: number, contact: Partial<InsertSalesContact>): Promise<SalesContact | undefined> {
+    const [updated] = await db
+      .update(salesContacts)
+      .set({ ...contact, updatedAt: new Date() })
+      .where(eq(salesContacts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSalesContact(id: number): Promise<boolean> {
+    const result = await db.delete(salesContacts).where(eq(salesContacts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 

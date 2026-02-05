@@ -33,6 +33,8 @@ export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "pai
 // Sales Pipeline enums
 export const serviceCategoryEnum = pgEnum("service_category", ["accounting", "write_up", "bookkeeping", "cfo"]);
 export const proposalStatusEnum = pgEnum("proposal_status", ["draft", "sent", "accepted", "rejected", "expired"]);
+export const pipelineStageEnum = pgEnum("pipeline_stage", ["lead", "qualified", "meeting", "proposal", "won", "lost"]);
+export const leadSourceEnum = pgEnum("lead_source", ["referral", "website", "cold_call", "email", "social_media", "event", "other"]);
 
 // Bookkeeping enums
 export const accountTypeEnum = pgEnum("account_type", ["asset", "liability", "equity", "revenue", "expense"]);
@@ -547,6 +549,28 @@ export const intakeApplications = pgTable("intake_applications", {
   linkedProjectId: integer("linked_project_id").references(() => projects.id),
   convertedAt: timestamp("converted_at"),
   
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sales Contacts table (leads/contacts for sales pipeline)
+export const salesContacts = pgTable("sales_contacts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  title: varchar("title", { length: 255 }),
+  source: leadSourceEnum("source").default("other"),
+  stage: pipelineStageEnum("stage").default("lead").notNull(),
+  estimatedValue: varchar("estimated_value", { length: 20 }),
+  notes: text("notes"),
+  lastContactedAt: timestamp("last_contacted_at"),
+  nextFollowUpAt: timestamp("next_follow_up_at"),
+  proposalId: integer("proposal_id").references(() => proposals.id, { onDelete: "set null" }),
+  convertedToClientId: integer("converted_to_client_id").references(() => clients.id, { onDelete: "set null" }),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1348,6 +1372,10 @@ export const insertIntakeApplicationSchema = createInsertSchema(intakeApplicatio
 });
 
 // Sales Pipeline insert schemas
+export const insertSalesContactSchema = createInsertSchema(salesContacts).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  lastContactedAt: dateCoercion,
+  nextFollowUpAt: dateCoercion,
+});
 export const insertServiceSchema = createInsertSchema(services).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProposalSchema = createInsertSchema(proposals).omit({ id: true, createdAt: true, updatedAt: true, sentAt: true, acceptedAt: true, rejectedAt: true }).extend({
   validUntil: dateCoercion,
@@ -1433,6 +1461,8 @@ export type InsertIntakeApplication = z.infer<typeof insertIntakeApplicationSche
 export type IntakeApplication = typeof intakeApplications.$inferSelect;
 
 // Sales Pipeline types
+export type InsertSalesContact = z.infer<typeof insertSalesContactSchema>;
+export type SalesContact = typeof salesContacts.$inferSelect;
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Service = typeof services.$inferSelect;
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
