@@ -3972,9 +3972,17 @@ export async function registerRoutes(
       // Use sanitized code for creation
       const account = await storage.createAccount({ ...parsed, code: sanitizedCode });
       res.status(201).json(account);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      // Handle database unique constraint violation (race condition fallback)
+      if (error?.code === '23505' || error?.message?.includes('unique constraint')) {
+        return res.status(400).json({ 
+          message: "Duplicate account code", 
+          error: "DUPLICATE_CODE",
+          details: "This account code is already in use. Please choose a different code."
+        });
       }
       console.error("Error creating account:", error);
       res.status(500).json({ message: "Failed to create account" });
@@ -4012,9 +4020,17 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Account not found" });
       }
       res.json(account);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      // Handle database unique constraint violation (race condition fallback)
+      if (error?.code === '23505' || error?.message?.includes('unique constraint')) {
+        return res.status(400).json({ 
+          message: "Duplicate account code", 
+          error: "DUPLICATE_CODE",
+          details: "This account code is already in use. Please choose a different code."
+        });
       }
       console.error("Error updating account:", error);
       res.status(500).json({ message: "Failed to update account" });
