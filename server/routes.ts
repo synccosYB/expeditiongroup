@@ -3956,17 +3956,21 @@ export async function registerRoutes(
       }
       const parsed = insertAccountSchema.parse(req.body);
       
+      // Sanitize account code - trim whitespace
+      const sanitizedCode = parsed.code.trim();
+      
       // Check for duplicate account code
-      const existingAccount = await storage.getAccountByCode(parsed.code);
+      const existingAccount = await storage.getAccountByCode(sanitizedCode);
       if (existingAccount) {
         return res.status(400).json({ 
           message: "Duplicate account code", 
           error: "DUPLICATE_CODE",
-          details: `Account code "${parsed.code}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
+          details: `Account code "${sanitizedCode}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
         });
       }
       
-      const account = await storage.createAccount(parsed);
+      // Use sanitized code for creation
+      const account = await storage.createAccount({ ...parsed, code: sanitizedCode });
       res.status(201).json(account);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -3986,19 +3990,24 @@ export async function registerRoutes(
       const parsed = updateAccountSchema.parse(req.body);
       const accountId = parseInt(req.params.id);
       
+      // Sanitize account code if provided - trim whitespace
+      const sanitizedCode = parsed.code?.trim();
+      
       // Check for duplicate account code if code is being updated
-      if (parsed.code) {
-        const existingAccount = await storage.getAccountByCode(parsed.code);
+      if (sanitizedCode) {
+        const existingAccount = await storage.getAccountByCode(sanitizedCode);
         if (existingAccount && existingAccount.id !== accountId) {
           return res.status(400).json({ 
             message: "Duplicate account code", 
             error: "DUPLICATE_CODE",
-            details: `Account code "${parsed.code}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
+            details: `Account code "${sanitizedCode}" is already in use by account "${existingAccount.name}". Each account must have a unique code.`
           });
         }
       }
       
-      const account = await storage.updateAccount(accountId, parsed);
+      // Use sanitized code if provided
+      const updateData = sanitizedCode ? { ...parsed, code: sanitizedCode } : parsed;
+      const account = await storage.updateAccount(accountId, updateData);
       if (!account) {
         return res.status(404).json({ message: "Account not found" });
       }
