@@ -132,6 +132,9 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: number): Promise<boolean>;
+  getClientRelatedDataCounts(id: number): Promise<{ projects: number; documents: number; notes: number; tasks: number; timeLogs: number; timeEntries: number; invoices: number } | undefined>;
+  archiveClient(id: number): Promise<{ success: boolean; client?: Client; error?: string }>;
+  permanentlyDeleteClient(id: number): Promise<{ success: boolean; error?: string }>;
   
   // Projects
   getProjects(): Promise<(Project & { client: Client })[]>;
@@ -509,6 +512,69 @@ export class DatabaseStorage implements IStorage {
   async deleteClient(id: number): Promise<boolean> {
     const result = await db.delete(clients).where(eq(clients.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getClientRelatedDataCounts(id: number): Promise<{ projects: number; documents: number; notes: number; tasks: number; timeLogs: number; timeEntries: number; invoices: number } | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    if (!client) return undefined;
+
+    const [projectsCount] = await db.select({ count: count() }).from(projects).where(eq(projects.clientId, id));
+    const [docsCount] = await db.select({ count: count() }).from(documents).where(
+      sql`${documents.projectId} IN (SELECT id FROM projects WHERE client_id = ${id})`
+    );
+    const [notesCount] = await db.select({ count: count() }).from(notes).where(eq(notes.clientId, id));
+    const [tasksCount] = await db.select({ count: count() }).from(tasks).where(
+      sql`${tasks.projectId} IN (SELECT id FROM projects WHERE client_id = ${id})`
+    );
+    const [timeLogsCount] = await db.select({ count: count() }).from(timeLogs).where(
+      sql`${timeLogs.projectId} IN (SELECT id FROM projects WHERE client_id = ${id})`
+    );
+    const [timeEntriesCount] = await db.select({ count: count() }).from(timeEntries).where(
+      sql`${timeEntries.projectId} IN (SELECT id FROM projects WHERE client_id = ${id})`
+    );
+    const [invoicesCount] = await db.select({ count: count() }).from(invoices).where(eq(invoices.clientId, id));
+
+    return {
+      projects: projectsCount.count,
+      documents: docsCount.count,
+      notes: notesCount.count,
+      tasks: tasksCount.count,
+      timeLogs: timeLogsCount.count,
+      timeEntries: timeEntriesCount.count,
+      invoices: invoicesCount.count,
+    };
+  }
+
+  async archiveClient(id: number): Promise<{ success: boolean; client?: Client; error?: string }> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    if (!client) {
+      return { success: false, error: "Client not found" };
+    }
+
+    const counts = await this.getClientRelatedDataCounts(id);
+    if (counts && (counts.projects > 0 || counts.documents > 0 || counts.notes > 0 || counts.tasks > 0 || counts.timeLogs > 0 || counts.timeEntries > 0 || counts.invoices > 0)) {
+      return { success: false, error: "Cannot archive client with attached data. Delete all projects, documents, notes, tasks, time logs, and invoices first." };
+    }
+
+    const [updated] = await db
+      .update(clients)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(clients.id, id))
+      .returning();
+    return { success: true, client: updated };
+  }
+
+  async permanentlyDeleteClient(id: number): Promise<{ success: boolean; error?: string }> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    if (!client) {
+      return { success: false, error: "Client not found" };
+    }
+    if (client.status !== "archived") {
+      return { success: false, error: "Client must be archived before permanent deletion" };
+    }
+
+    await db.delete(clients).where(eq(clients.id, id));
+    return { success: true };
   }
 
   // Projects

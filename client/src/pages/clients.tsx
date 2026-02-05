@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, Users, Mail, Phone, MapPin, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Search, Users, Mail, Phone, MapPin, MoreHorizontal, Pencil, Trash2, ExternalLink, Archive, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
@@ -75,12 +76,25 @@ type ClientFormData = z.infer<typeof clientFormSchema>;
 
 const counties = ["Orange", "Rockland", "Sullivan"];
 
+type ClientRelatedCounts = {
+  projects: number;
+  documents: number;
+  notes: number;
+  tasks: number;
+  timeLogs: number;
+  timeEntries: number;
+  invoices: number;
+};
+
 export default function Clients() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [clientRelatedCounts, setClientRelatedCounts] = useState<ClientRelatedCounts | null>(null);
+  const [archivingClient, setArchivingClient] = useState<Client | null>(null);
+  const [permanentDeleteClient, setPermanentDeleteClient] = useState<Client | null>(null);
 
   const { data: clients, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -176,8 +190,51 @@ export default function Clients() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Client deleted successfully" });
       setDeletingClient(null);
+      setClientRelatedCounts(null);
     },
-    onError: (error) => {
+    onError: async (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      try {
+        const response = error?.response;
+        if (response) {
+          const data = await response.json();
+          if (data.counts) {
+            setClientRelatedCounts(data.counts);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse error response:", e);
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete client",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("POST", `/api/clients/${id}/archive`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Client archived successfully" });
+      setArchivingClient(null);
+    },
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -191,11 +248,59 @@ export default function Clients() {
       }
       toast({
         title: "Error",
-        description: "Failed to delete client",
+        description: "Failed to archive client. Make sure all related data is deleted first.",
         variant: "destructive",
       });
     },
   });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/clients/${id}/permanent`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Client permanently deleted" });
+      setPermanentDeleteClient(null);
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to permanently delete client",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteClick = async (client: Client) => {
+    if (client.status === "archived") {
+      setPermanentDeleteClient(client);
+    } else {
+      setDeletingClient(client);
+      setClientRelatedCounts(null);
+      try {
+        const response = await fetch(`/api/clients/${client.id}/related-counts`);
+        if (response.ok) {
+          const counts = await response.json();
+          setClientRelatedCounts(counts);
+        }
+      } catch (e) {
+        console.error("Failed to fetch related counts:", e);
+      }
+    }
+  };
 
   const handleOpenDialog = (client?: Client) => {
     if (client) {
@@ -560,9 +665,14 @@ export default function Clients() {
             <Card key={client.id} className="hover-elevate" data-testid={`card-client-${client.id}`}>
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-lg font-semibold truncate">
-                    {client.name}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg font-semibold truncate">
+                      {client.name}
+                    </CardTitle>
+                    {client.status === "archived" && (
+                      <Badge variant="secondary" className="text-xs">Archived</Badge>
+                    )}
+                  </div>
                   {client.county && (
                     <p className="text-sm text-muted-foreground">
                       {client.county} County
@@ -582,16 +692,24 @@ export default function Clients() {
                         View Profile
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleOpenDialog(client)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
+                    {client.status !== "archived" && (
+                      <DropdownMenuItem onClick={() => handleOpenDialog(client)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {client.status !== "archived" && (
+                      <DropdownMenuItem onClick={() => setArchivingClient(client)}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => setDeletingClient(client)}
+                      onClick={() => handleDeleteClick(client)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      {client.status === "archived" ? "Permanently Delete" : "Delete"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -633,23 +751,106 @@ export default function Clients() {
         </Card>
       )}
 
-      <AlertDialog open={!!deletingClient} onOpenChange={() => setDeletingClient(null)}>
+      <AlertDialog open={!!deletingClient} onOpenChange={() => { setDeletingClient(null); setClientRelatedCounts(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Client</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deletingClient?.name}"? This will also delete
-              all associated projects, tasks, notes, and time logs. This action cannot be undone.
+            <AlertDialogTitle className="flex items-center gap-2">
+              {clientRelatedCounts && (clientRelatedCounts.projects > 0 || clientRelatedCounts.documents > 0 || clientRelatedCounts.notes > 0 || clientRelatedCounts.tasks > 0 || clientRelatedCounts.timeLogs > 0 || clientRelatedCounts.timeEntries > 0 || clientRelatedCounts.invoices > 0) ? (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Cannot Delete Client
+                </>
+              ) : (
+                "Delete Client"
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {clientRelatedCounts && (clientRelatedCounts.projects > 0 || clientRelatedCounts.documents > 0 || clientRelatedCounts.notes > 0 || clientRelatedCounts.tasks > 0 || clientRelatedCounts.timeLogs > 0 || clientRelatedCounts.timeEntries > 0 || clientRelatedCounts.invoices > 0) ? (
+                  <>
+                    <p>
+                      "{deletingClient?.name}" has related data that must be deleted first:
+                    </p>
+                    <ul className="text-sm space-y-1 ml-4 list-disc">
+                      {clientRelatedCounts.projects > 0 && <li>{clientRelatedCounts.projects} project(s)</li>}
+                      {clientRelatedCounts.documents > 0 && <li>{clientRelatedCounts.documents} document(s)</li>}
+                      {clientRelatedCounts.notes > 0 && <li>{clientRelatedCounts.notes} note(s)</li>}
+                      {clientRelatedCounts.tasks > 0 && <li>{clientRelatedCounts.tasks} task(s)</li>}
+                      {(clientRelatedCounts.timeLogs > 0 || clientRelatedCounts.timeEntries > 0) && (
+                        <li>{clientRelatedCounts.timeLogs + clientRelatedCounts.timeEntries} time log(s)</li>
+                      )}
+                      {clientRelatedCounts.invoices > 0 && <li>{clientRelatedCounts.invoices} invoice(s)</li>}
+                    </ul>
+                    <p className="text-sm">
+                      Please delete all projects and associated data first, then archive the client. After archiving, you can permanently delete the client.
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    Are you sure you want to delete "{deletingClient?.name}"? This action cannot be undone.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">
+              {clientRelatedCounts && (clientRelatedCounts.projects > 0 || clientRelatedCounts.documents > 0 || clientRelatedCounts.notes > 0 || clientRelatedCounts.tasks > 0 || clientRelatedCounts.timeLogs > 0 || clientRelatedCounts.timeEntries > 0 || clientRelatedCounts.invoices > 0) ? "Close" : "Cancel"}
+            </AlertDialogCancel>
+            {(!clientRelatedCounts || (clientRelatedCounts.projects === 0 && clientRelatedCounts.documents === 0 && clientRelatedCounts.notes === 0 && clientRelatedCounts.tasks === 0 && clientRelatedCounts.timeLogs === 0 && clientRelatedCounts.timeEntries === 0 && clientRelatedCounts.invoices === 0)) && (
+              <AlertDialogAction
+                onClick={() => deletingClient && deleteMutation.mutate(deletingClient.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!archivingClient} onOpenChange={() => setArchivingClient(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Client</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{archivingClient?.name}"? Archived clients can be
+              permanently deleted later. You can only archive clients that have no related data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletingClient && deleteMutation.mutate(deletingClient.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              data-testid="button-confirm-delete"
+              onClick={() => archivingClient && archiveMutation.mutate(archivingClient.id)}
+              data-testid="button-confirm-archive"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {archiveMutation.isPending ? "Archiving..." : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!permanentDeleteClient} onOpenChange={() => setPermanentDeleteClient(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete Client
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{permanentDeleteClient?.name}" and all associated data.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-permanent-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => permanentDeleteClient && permanentDeleteMutation.mutate(permanentDeleteClient.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-permanent-delete"
+            >
+              {permanentDeleteMutation.isPending ? "Deleting..." : "Permanently Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

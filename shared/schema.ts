@@ -16,7 +16,7 @@ import { z } from "zod";
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["super_admin", "admin", "client"]);
 export const clientTypeEnum = pgEnum("client_type", ["homeowner", "contractor", "other"]);
-export const clientStatusEnum = pgEnum("client_status", ["active", "inactive"]);
+export const clientStatusEnum = pgEnum("client_status", ["active", "inactive", "archived"]);
 export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "waiting", "done", "cancelled"]);
 export const taskTypeEnum = pgEnum("task_type", ["phone_call", "email", "filing", "research", "site_visit", "document_prep", "other"]);
 export const taskLocationEnum = pgEnum("task_location", ["office", "road"]);

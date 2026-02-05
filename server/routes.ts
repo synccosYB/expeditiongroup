@@ -176,6 +176,20 @@ export async function registerRoutes(
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      
+      const counts = await storage.getClientRelatedDataCounts(parseInt(req.params.id));
+      if (!counts) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      
+      const hasData = counts.projects > 0 || counts.documents > 0 || counts.notes > 0 || counts.tasks > 0 || counts.timeLogs > 0 || counts.timeEntries > 0 || counts.invoices > 0;
+      if (hasData) {
+        return res.status(400).json({ 
+          message: "Cannot delete client with attached data. Please delete all projects, documents, notes, tasks, time logs, and invoices first, then archive the client.",
+          counts 
+        });
+      }
+      
       const deleted = await storage.deleteClient(parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Client not found" });
@@ -184,6 +198,64 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting client:", error);
       res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
+  // Get client related data counts
+  app.get("/api/clients/:id/related-counts", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const counts = await storage.getClientRelatedDataCounts(parseInt(req.params.id));
+      if (!counts) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching client related data counts:", error);
+      res.status(500).json({ message: "Failed to fetch client related data counts" });
+    }
+  });
+
+  // Archive client
+  app.post("/api/clients/:id/archive", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.archiveClient(parseInt(req.params.id));
+      if (!result.success) {
+        const statusCode = result.error === "Client not found" ? 404 : 400;
+        return res.status(statusCode).json({ message: result.error });
+      }
+      res.json(result.client);
+    } catch (error) {
+      console.error("Error archiving client:", error);
+      res.status(500).json({ message: "Failed to archive client" });
+    }
+  });
+
+  // Permanently delete archived client
+  app.delete("/api/clients/:id/permanent", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.permanentlyDeleteClient(parseInt(req.params.id));
+      if (!result.success) {
+        const statusCode = result.error === "Client not found" ? 404 : 400;
+        return res.status(statusCode).json({ message: result.error });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error permanently deleting client:", error);
+      res.status(500).json({ message: "Failed to permanently delete client" });
     }
   });
 
