@@ -146,11 +146,12 @@ export default function UndepositedFunds() {
 
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
+      const invoiceIdValue = data.invoiceId && data.invoiceId !== "none" ? parseInt(data.invoiceId) : null;
       const response = await apiRequest("POST", "/api/payments", {
         paymentNumber: nextNumber?.paymentNumber || `PMT-${Date.now()}`,
         paymentDate: new Date(data.paymentDate).toISOString(),
         clientId: parseInt(data.clientId),
-        invoiceId: data.invoiceId ? parseInt(data.invoiceId) : null,
+        invoiceId: invoiceIdValue,
         amount: data.amount,
         paymentMethod: data.paymentMethod,
         reference: data.reference || null,
@@ -299,7 +300,14 @@ export default function UndepositedFunds() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Client</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue("invoiceId", "");
+                            form.setValue("amount", "");
+                          }} 
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-client">
                               <SelectValue placeholder="Select client" />
@@ -318,25 +326,45 @@ export default function UndepositedFunds() {
                     )}
                   />
 
-                  {selectedClientId && clientInvoices && clientInvoices.length > 0 && (
+                  {selectedClientId && (
                     <FormField
                       control={form.control}
                       name="invoiceId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Apply to Invoice (Optional)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <FormLabel>Apply to Invoice</FormLabel>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              if (value && value !== "none") {
+                                const selectedInvoice = clientInvoices?.find(inv => inv.id.toString() === value);
+                                if (selectedInvoice) {
+                                  form.setValue("amount", selectedInvoice.total);
+                                }
+                              } else {
+                                form.setValue("amount", "");
+                              }
+                            }} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-invoice">
                                 <SelectValue placeholder="Select invoice" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {clientInvoices.map((invoice) => (
-                                <SelectItem key={invoice.id} value={invoice.id.toString()}>
-                                  {invoice.invoiceNumber} - {formatCurrency(invoice.total)}
+                              <SelectItem value="none">No invoice (general payment)</SelectItem>
+                              {clientInvoices && clientInvoices.length > 0 ? (
+                                clientInvoices.map((invoice) => (
+                                  <SelectItem key={invoice.id} value={invoice.id.toString()}>
+                                    {invoice.invoiceNumber} - {formatCurrency(invoice.total)}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="no-invoices" disabled>
+                                  No unpaid invoices for this client
                                 </SelectItem>
-                              ))}
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
