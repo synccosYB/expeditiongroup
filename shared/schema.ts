@@ -1396,7 +1396,7 @@ export const insertBillSchema = createInsertSchema(bills).omit({ id: true, creat
   billDate: requiredDateCoercion,
   dueDate: dateCoercion,
 });
-export const insertBillItemSchema = createInsertSchema(billItems).omit({ id: true, createdAt: true });
+export const insertBillItemSchema = createInsertSchema(billItems).omit({ id: true, billId: true, createdAt: true });
 export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ id: true, createdAt: true }).extend({
   paymentDate: requiredDateCoercion,
 });
