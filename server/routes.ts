@@ -2251,6 +2251,7 @@ export async function registerRoutes(
       console.log("[Download] Looking up document by path:", objectPath);
       console.log("[Download] Found document:", document ? { id: document.id, fileName: document.fileName, storagePath: document.storagePath } : "NOT FOUND");
       const downloadFilename = document?.fileName || undefined;
+      const originalFileName = document?.fileName || undefined;
       console.log("[Download] Using filename:", downloadFilename, "inline:", inline);
       
       // Check if user is authenticated
@@ -2260,7 +2261,7 @@ export async function registerRoutes(
       if (userId) {
         const user = await storage.getUser(userId);
         if (user?.role === "admin") {
-          await objectStorageService.downloadObject(objectFile, res, { inline, filename: downloadFilename });
+          await objectStorageService.downloadObject(objectFile, res, { inline, filename: downloadFilename, originalFileName });
           return;
         }
       }
@@ -2276,7 +2277,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Access denied" });
       }
 
-      await objectStorageService.downloadObject(objectFile, res, { inline, filename: downloadFilename });
+      await objectStorageService.downloadObject(objectFile, res, { inline, filename: downloadFilename, originalFileName });
     } catch (error) {
       if (error instanceof ObjectNotFoundError) {
         return res.status(404).json({ message: "Object not found" });

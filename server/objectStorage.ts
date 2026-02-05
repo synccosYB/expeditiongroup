@@ -84,18 +84,24 @@ export class ObjectStorageService {
     return null;
   }
 
-  async downloadObject(file: File, res: Response, options: { cacheTtlSec?: number; inline?: boolean; filename?: string } = {}) {
-    const { cacheTtlSec = 3600, inline = false, filename } = options;
+  async downloadObject(file: File, res: Response, options: { cacheTtlSec?: number; inline?: boolean; filename?: string; originalFileName?: string } = {}) {
+    const { cacheTtlSec = 3600, inline = false, filename, originalFileName } = options;
     try {
       const [metadata] = await file.getMetadata();
       const aclPolicy = await getObjectAclPolicy(file);
       const isPublic = aclPolicy?.visibility === "public";
       
       // Use provided filename, or fall back to object name
-      const downloadName = filename || file.name.split('/').pop() || 'download';
+      let downloadName = filename || file.name.split('/').pop() || 'download';
+      
+      // Get the content type from object storage metadata
+      const contentType = metadata.contentType || "application/octet-stream";
+      
+      // Add file extension based on content type if filename doesn't have one
+      downloadName = ensureFileExtension(downloadName, contentType, originalFileName);
       
       const headers: Record<string, string | number | undefined> = {
-        "Content-Type": metadata.contentType || "application/octet-stream",
+        "Content-Type": contentType,
         "Content-Length": metadata.size,
         "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${cacheTtlSec}`,
       };
@@ -104,7 +110,10 @@ export class ObjectStorageService {
       if (inline) {
         headers["Content-Disposition"] = "inline";
       } else {
-        headers["Content-Disposition"] = `attachment; filename="${encodeURIComponent(downloadName)}"`;
+        // Use RFC 5987 encoding for better handling of special characters
+        const asciiName = downloadName.replace(/[^\x20-\x7E]/g, '_');
+        const utf8Name = encodeURIComponent(downloadName).replace(/'/g, "%27");
+        headers["Content-Disposition"] = `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`;
       }
       
       res.set(headers);
@@ -224,6 +233,78 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+}
+
+const mimeToExtension: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/svg+xml': '.svg',
+  'image/bmp': '.bmp',
+  'image/tiff': '.tiff',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.ms-excel': '.xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.ms-powerpoint': '.ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'text/plain': '.txt',
+  'text/csv': '.csv',
+  'text/html': '.html',
+  'application/json': '.json',
+  'application/xml': '.xml',
+  'application/zip': '.zip',
+  'application/x-rar-compressed': '.rar',
+  'application/x-7z-compressed': '.7z',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/x-msvideo': '.avi',
+  'audio/mpeg': '.mp3',
+  'audio/wav': '.wav',
+};
+
+const knownExtensions = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.tiff', '.tif', '.heic', '.heif', '.ico',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp',
+  '.txt', '.csv', '.html', '.htm', '.json', '.xml', '.md', '.rtf',
+  '.zip', '.rar', '.7z', '.tar', '.gz',
+  '.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm',
+  '.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma',
+]);
+
+function hasKnownExtension(filename: string): boolean {
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex <= 0 || lastDotIndex === filename.length - 1) {
+    return false;
+  }
+  const ext = filename.slice(lastDotIndex).toLowerCase();
+  return knownExtensions.has(ext);
+}
+
+function ensureFileExtension(filename: string, contentType: string, originalFileName?: string): string {
+  const trimmedName = filename.trim();
+  
+  if (hasKnownExtension(trimmedName)) {
+    return trimmedName;
+  }
+  
+  const extension = mimeToExtension[contentType.toLowerCase()];
+  if (extension) {
+    return trimmedName + extension;
+  }
+  
+  if (originalFileName && hasKnownExtension(originalFileName)) {
+    const lastDotIndex = originalFileName.lastIndexOf('.');
+    const originalExt = originalFileName.slice(lastDotIndex).toLowerCase();
+    return trimmedName + originalExt;
+  }
+  
+  return trimmedName;
 }
 
 function parseObjectPath(path: string): {
