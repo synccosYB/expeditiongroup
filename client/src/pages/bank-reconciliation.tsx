@@ -31,6 +31,17 @@ import { ArrowLeft, Check, X, AlertTriangle, CheckCircle, Loader2, DollarSign } 
 import { format } from "date-fns";
 import type { BankAccount, BankTransaction, BankReconciliation } from "@shared/schema";
 
+function safeFormatDate(dateValue: string | Date | null | undefined, formatStr: string): string {
+  if (!dateValue) return "N/A";
+  try {
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    if (isNaN(date.getTime())) return "N/A";
+    return format(date, formatStr);
+  } catch {
+    return "N/A";
+  }
+}
+
 type TransactionWithRelations = BankTransaction & {
   vendor?: { company: string } | null;
   account?: { name: string } | null;
@@ -173,6 +184,14 @@ export default function BankReconciliationPage() {
   };
 
   const handleStartReconciliation = () => {
+    if (!statementDate) {
+      toast({
+        title: "Error",
+        description: "Please enter the statement date",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!statementEndingBalance) {
       toast({
         title: "Error",
@@ -181,8 +200,17 @@ export default function BankReconciliationPage() {
       });
       return;
     }
+    const parsedDate = new Date(statementDate);
+    if (isNaN(parsedDate.getTime())) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid statement date",
+        variant: "destructive",
+      });
+      return;
+    }
     createReconciliationMutation.mutate({
-      statementDate: new Date(statementDate),
+      statementDate: parsedDate,
       statementEndingBalance,
     });
   };
@@ -350,7 +378,7 @@ export default function BankReconciliationPage() {
                     >
                       <div>
                         <p className="font-medium">
-                          {rec.statementDate ? format(new Date(rec.statementDate), "MMM d, yyyy") : "N/A"}
+                          {safeFormatDate(rec.statementDate, "MMM d, yyyy")}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Balance: ${parseFloat(rec.statementEndingBalance).toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -477,9 +505,7 @@ export default function BankReconciliationPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          {transaction.transactionDate
-                            ? format(new Date(transaction.transactionDate), "MMM d, yyyy")
-                            : "N/A"}
+                          {safeFormatDate(transaction.transactionDate, "MMM d, yyyy")}
                         </TableCell>
                         <TableCell>
                           <Badge variant={transaction.transactionType === "deposit" ? "default" : "secondary"}>
@@ -531,9 +557,7 @@ export default function BankReconciliationPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          {transaction.transactionDate
-                            ? format(new Date(transaction.transactionDate), "MMM d, yyyy")
-                            : "N/A"}
+                          {safeFormatDate(transaction.transactionDate, "MMM d, yyyy")}
                         </TableCell>
                         <TableCell>
                           <Badge variant={transaction.transactionType === "deposit" ? "default" : "secondary"}>
@@ -573,6 +597,7 @@ export default function BankReconciliationPage() {
         </>
       )}
 
+      {showConfirmDialog && (
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
@@ -584,7 +609,7 @@ export default function BankReconciliationPage() {
           <div className="space-y-4 py-4">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Statement Date:</span>
-              <span className="font-medium">{format(new Date(statementDate), "MMM d, yyyy")}</span>
+              <span className="font-medium">{safeFormatDate(statementDate, "MMM d, yyyy")}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Statement Balance:</span>
@@ -604,6 +629,7 @@ export default function BankReconciliationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }
