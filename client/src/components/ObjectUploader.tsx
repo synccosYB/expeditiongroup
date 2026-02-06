@@ -108,6 +108,9 @@ export function ObjectUploader({
   
   const selectedCategoryRef = useRef(selectedCategory);
   const isVisibleToClientRef = useRef(isVisibleToClient);
+  const onGetUploadParametersRef = useRef(onGetUploadParameters);
+  const onCompleteRef = useRef(onComplete);
+  const resetStateRef = useRef<(() => void) | null>(null);
   
   useEffect(() => {
     selectedCategoryRef.current = selectedCategory;
@@ -116,6 +119,14 @@ export function ObjectUploader({
   useEffect(() => {
     isVisibleToClientRef.current = isVisibleToClient;
   }, [isVisibleToClient]);
+
+  useEffect(() => {
+    onGetUploadParametersRef.current = onGetUploadParameters;
+  }, [onGetUploadParameters]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   const dashboardRef = useCallback((node: HTMLDivElement | null) => {
     setDashboardElement(node);
@@ -135,6 +146,8 @@ export function ObjectUploader({
       uppyRef.current.cancelAll();
     }
   }, [defaultCategory, defaultFolderId, defaultVisibility]);
+
+  resetStateRef.current = resetState;
 
   const handleClose = useCallback(() => {
     if (isUploading) return;
@@ -172,9 +185,8 @@ export function ObjectUploader({
         async getUploadParameters(file) {
           try {
             console.log("getUploadParameters called for:", file.name, "id:", file.id);
-            const params = await onGetUploadParameters({ id: file.id, name: file.name || "", size: file.size || 0, type: file.type || undefined });
+            const params = await onGetUploadParametersRef.current({ id: file.id, name: file.name || "", size: file.size || 0, type: file.type || undefined });
             console.log("getUploadParameters returning:", params.method, params.url.substring(0, 50) + "...");
-            // Ensure fields property is present (required by Uppy AwsS3)
             return { ...params, fields: {} };
           } catch (error: any) {
             console.error("getUploadParameters error:", error);
@@ -212,8 +224,8 @@ export function ObjectUploader({
         visibility: isVisibleToClientRef.current,
       };
       setShowModal(false);
-      resetState();
-      await onComplete?.(result, stagedFilesClone, settingsSnapshot);
+      resetStateRef.current?.();
+      await onCompleteRef.current?.(result, stagedFilesClone, settingsSnapshot);
     });
 
     uppy.on("error", (error) => {
@@ -240,7 +252,7 @@ export function ObjectUploader({
       uppy.destroy();
       uppyRef.current = null;
     };
-  }, [showModal, dashboardElement, maxNumberOfFiles, maxFileSize, onGetUploadParameters, showStagingStep, resetState]);
+  }, [showModal, dashboardElement, maxNumberOfFiles, maxFileSize, showStagingStep]);
 
   const handleProceedToConfig = () => {
     if (!uppyRef.current) return;
