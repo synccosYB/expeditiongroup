@@ -27,6 +27,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +50,9 @@ import {
   MapPin,
   FileText,
   User as UserIcon,
+  Save,
+  X,
+  StickyNote,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -58,7 +64,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, isDateOverdue } from "@/lib/dateUtils";
 import { useLocation, useSearch } from "wouter";
 import { format } from "date-fns";
-import type { Task, Project, User } from "@shared/schema";
+import type { Task, Project, User, TimeEntry } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -100,6 +106,17 @@ const timeEntryFormSchema = z.object({
 
 type TimeEntryFormData = z.infer<typeof timeEntryFormSchema>;
 
+const taskEditSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.string().optional(),
+  internalNotes: z.string().optional(),
+});
+
+type TaskEditFormData = z.infer<typeof taskEditSchema>;
+
 function flattenTasks(tasks: TaskWithSubtasks[]): TaskWithSubtasks[] {
   const result: TaskWithSubtasks[] = [];
   function traverse(task: TaskWithSubtasks) {
@@ -123,7 +140,6 @@ function TaskDetailDialog({
   currentIndex,
   totalCount,
   onToggle,
-  onLogTime,
 }: {
   task: TaskWithSubtasks | null;
   isOpen: boolean;
@@ -135,8 +151,152 @@ function TaskDetailDialog({
   currentIndex: number;
   totalCount: number;
   onToggle: (task: Task) => void;
-  onLogTime: (task: Task) => void;
 }) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("details");
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { data: timeEntries } = useQuery<TimeEntry[]>({
+    queryKey: ["/api/time-entries", { taskId: task?.id }],
+    enabled: !!task?.id,
+  });
+
+  const taskTimeEntries = timeEntries?.filter(te => te.taskId === task?.id) || [];
+
+  const taskForm = useForm<TaskEditFormData>({
+    resolver: zodResolver(taskEditSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      status: "todo",
+      priority: "normal",
+      dueDate: "",
+      internalNotes: "",
+    },
+  });
+
+  const detailTimeLogForm = useForm<TimeEntryFormData>({
+    resolver: zodResolver(timeEntryFormSchema),
+    defaultValues: {
+      date: format(new Date(), "yyyy-MM-dd"),
+      startTime: "",
+      endTime: "",
+      totalMinutes: "",
+      notes: "",
+      isBillable: true,
+    },
+  });
+
+  useEffect(() => {
+    if (task && isOpen) {
+      taskForm.reset({
+        title: task.title || "",
+        description: task.description || "",
+        status: task.status || "todo",
+        priority: task.priority || "normal",
+        dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+        internalNotes: task.internalNotes || "",
+      });
+      setIsEditing(false);
+      setActiveTab("details");
+    }
+  }, [task?.id, isOpen]);
+
+  const watchedDetailStartTime = detailTimeLogForm.watch("startTime");
+  const watchedDetailEndTime = detailTimeLogForm.watch("endTime");
+
+  useEffect(() => {
+    if (watchedDetailStartTime && watchedDetailEndTime) {
+      const [startHour, startMin] = watchedDetailStartTime.split(":").map(Number);
+      const [endHour, endMin] = watchedDetailEndTime.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      let diff = endMinutes - startMinutes;
+      if (diff < 0) diff += 24 * 60;
+      if (diff > 0) {
+        detailTimeLogForm.setValue("totalMinutes", diff.toString());
+      }
+    }
+  }, [watchedDetailStartTime, watchedDetailEndTime, detailTimeLogForm]);
+
+  const updateTaskDetailMutation = useMutation({
+    mutationFn: async (data: Partial<Task>) => {
+      const res = await apiRequest("PATCH", `/api/tasks/${task?.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Task updated successfully" });
+      setIsEditing(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    },
+  });
+
+  const createDetailTimeEntryMutation = useMutation({
+    mutationFn: async (data: TimeEntryFormData & { taskId: number; projectId: number }) => {
+      const payload = {
+        taskId: data.taskId,
+        projectId: data.projectId,
+        userId: user?.id,
+        date: parseLocalDate(data.date),
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
+        totalMinutes: parseInt(data.totalMinutes),
+        notes: data.notes || null,
+        isBillable: data.isBillable,
+      };
+      return await apiRequest("POST", "/api/time-entries", payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      toast({ title: "Time entry logged successfully" });
+      detailTimeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), isBillable: true });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to log time entry", variant: "destructive" });
+    },
+  });
+
+  const onSubmitTaskEdit = (data: TaskEditFormData) => {
+    if (!task) return;
+    updateTaskDetailMutation.mutate({
+      title: data.title,
+      description: data.description || null,
+      status: data.status as "todo" | "in_progress" | "waiting" | "done",
+      priority: data.priority as "low" | "normal" | "high" | "urgent",
+      dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
+      internalNotes: data.internalNotes || null,
+    });
+  };
+
+  const onSubmitDetailTimeEntry = (data: TimeEntryFormData) => {
+    if (!task) return;
+    createDetailTimeEntryMutation.mutate({
+      ...data,
+      taskId: task.id,
+      projectId: task.projectId,
+    });
+  };
+
+  const toggleTaskStatus = () => {
+    if (!task) return;
+    const newStatus = task.status === "done" ? "todo" : "done";
+    updateTaskDetailMutation.mutate({ status: newStatus });
+  };
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins}m`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+  };
+
   if (!task) return null;
 
   return (
@@ -144,7 +304,10 @@ function TaskDetailDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
-            <DialogTitle className="text-xl flex-1 pr-4">{task.title}</DialogTitle>
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-chart-4" />
+              <DialogTitle className="text-xl" data-testid="text-detail-dialog-title">Task Details</DialogTitle>
+            </div>
           </div>
           <div className="flex items-center justify-between pt-2">
             <span className="text-sm text-muted-foreground" data-testid="text-task-position">
@@ -173,116 +336,410 @@ function TaskDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
-            <Badge
-              variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'}
-            >
-              {task.priority || 'normal'}
-            </Badge>
-            <StatusBadge status={task.status} type="task" />
-            <Badge variant="outline">
-              <MapPin className="h-3 w-3 mr-1" />
-              {task.locationType || 'office'}
-            </Badge>
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details" className="gap-2" data-testid="tab-detail-details">
+              <FileText className="h-4 w-4" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="gap-2" data-testid="tab-detail-notes">
+              <StickyNote className="h-4 w-4" />
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="timelog" className="gap-2" data-testid="tab-detail-timelog">
+              <Clock className="h-4 w-4" />
+              Time Log
+            </TabsTrigger>
+          </TabsList>
 
-          {task.description && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Description
-              </h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
-            </div>
-          )}
+          <TabsContent value="details" className="space-y-6 pt-4">
+            {isEditing ? (
+              <Form {...taskForm}>
+                <form onSubmit={taskForm.handleSubmit(onSubmitTaskEdit)} className="space-y-4">
+                  <FormField
+                    control={taskForm.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-detail-task-title" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <ExternalLink className="h-4 w-4" />
-                Project
-              </h4>
-              <Link
-                href={`/projects/${task.project?.id}`}
-                className="text-sm text-primary hover:underline"
-                data-testid={`link-task-detail-project-${task.projectId}`}
-              >
-                P-{task.project?.id}: {task.project?.name}
-              </Link>
-            </div>
+                  <FormField
+                    control={taskForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} data-testid="input-detail-task-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            {task.assignee && (
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <UserIcon className="h-4 w-4" />
-                  Assignee
-                </h4>
-                <p className="text-sm text-muted-foreground">
-                  {task.assignee.firstName} {task.assignee.lastName || ''}
-                </p>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={taskForm.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-detail-task-status">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="todo">To Do</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="waiting">Waiting</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={taskForm.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-detail-task-priority">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={taskForm.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} data-testid="input-detail-task-due-date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2 pt-4">
+                    <Button type="submit" disabled={updateTaskDetailMutation.isPending} data-testid="button-detail-save-task">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)} data-testid="button-detail-cancel-edit">
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-lg font-semibold" data-testid="text-detail-task-title">{task.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge variant="outline">{task.type?.replace(/_/g, ' ') || 'task'}</Badge>
+                    <Badge
+                      variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'}
+                    >
+                      {task.priority || 'normal'}
+                    </Badge>
+                    <StatusBadge status={task.status} type="task" />
+                    <Badge variant="outline">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {task.locationType || 'office'}
+                    </Badge>
+                  </div>
+                </div>
+
+                {task.description && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Description
+                    </h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Project
+                    </h4>
+                    <Link
+                      href={`/projects/${task.project?.id}`}
+                      className="text-sm text-primary hover:underline"
+                      data-testid={`link-task-detail-project-${task.projectId}`}
+                    >
+                      P-{task.project?.id}: {task.project?.name}
+                    </Link>
+                  </div>
+
+                  {task.assignee && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <UserIcon className="h-4 w-4" />
+                        Assignee
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {task.assignee.firstName} {task.assignee.lastName || ''}
+                      </p>
+                    </div>
+                  )}
+
+                  {task.dueDate && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Due Date
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{formatLocalDate(task.dueDate)}</p>
+                    </div>
+                  )}
+
+                  {task.subtasks && task.subtasks.length > 0 && (
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium">Subtasks</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {task.subtasks.filter(s => s.status === 'done').length} of {task.subtasks.length} completed
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
+                  <Button
+                    variant={task.status === "done" ? "outline" : "default"}
+                    onClick={toggleTaskStatus}
+                    data-testid="button-toggle-task-status"
+                  >
+                    <Checkbox
+                      checked={task.status === "done"}
+                      className="mr-2"
+                      onCheckedChange={() => {}}
+                    />
+                    {task.status === "done" ? "Mark Incomplete" : "Mark Complete"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(true)}
+                    data-testid="button-detail-edit-task"
+                  >
+                    Edit Task
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href={`/projects/${task.projectId}`} data-testid="link-view-project-detail">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Project
+                    </Link>
+                  </Button>
+                </div>
+              </>
             )}
+          </TabsContent>
 
-            {task.dueDate && (
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Due Date
-                </h4>
-                <p className="text-sm text-muted-foreground">{formatLocalDate(task.dueDate)}</p>
-              </div>
-            )}
+          <TabsContent value="notes" className="space-y-4 pt-4">
+            <Form {...taskForm}>
+              <form onSubmit={taskForm.handleSubmit(onSubmitTaskEdit)} className="space-y-4">
+                <FormField
+                  control={taskForm.control}
+                  name="internalNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Internal Notes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Add internal notes about this task..."
+                          className="min-h-[200px]"
+                          data-testid="input-detail-internal-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={updateTaskDetailMutation.isPending} data-testid="button-detail-save-notes">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Notes
+                </Button>
+              </form>
+            </Form>
+          </TabsContent>
 
-            {task.subtasks && task.subtasks.length > 0 && (
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium">Subtasks</h4>
-                <p className="text-sm text-muted-foreground">
-                  {task.subtasks.filter(s => s.status === 'done').length} of {task.subtasks.length} completed
-                </p>
-              </div>
-            )}
-          </div>
+          <TabsContent value="timelog" className="space-y-6 pt-4">
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Log Time</h4>
+              <Form {...detailTimeLogForm}>
+                <form onSubmit={detailTimeLogForm.handleSubmit(onSubmitDetailTimeEntry)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={detailTimeLogForm.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} data-testid="input-detail-time-date" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={detailTimeLogForm.control}
+                      name="totalMinutes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Duration (minutes)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="1" {...field} data-testid="input-detail-time-duration" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-          {task.internalNotes && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Internal Notes</h4>
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
-                {task.internalNotes}
-              </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={detailTimeLogForm.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Start Time (optional)</FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} data-testid="input-detail-time-start" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={detailTimeLogForm.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>End Time (optional)</FormLabel>
+                          <FormControl>
+                            <Input type="time" {...field} data-testid="input-detail-time-end" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={detailTimeLogForm.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} placeholder="What did you work on?" data-testid="input-detail-time-notes" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={detailTimeLogForm.control}
+                    name="isBillable"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-detail-billable"
+                          />
+                        </FormControl>
+                        <FormLabel className="!mt-0">Billable</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" disabled={createDetailTimeEntryMutation.isPending} data-testid="button-detail-log-time">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Log Time
+                  </Button>
+                </form>
+              </Form>
             </div>
-          )}
 
-          <div className="flex flex-wrap items-center gap-2 pt-4 border-t">
-            <Button
-              variant={task.status === "done" ? "outline" : "default"}
-              onClick={() => onToggle(task)}
-              data-testid="button-toggle-task-status"
-            >
-              <Checkbox
-                checked={task.status === "done"}
-                className="mr-2"
-                onCheckedChange={() => {}}
-              />
-              {task.status === "done" ? "Mark Incomplete" : "Mark Complete"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => onLogTime(task)}
-              data-testid="button-log-time-detail"
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              Log Time
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/projects/${task.projectId}`} data-testid="link-view-project-detail">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Project
-              </Link>
-            </Button>
-          </div>
-        </div>
+            <Separator />
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">Time Entries for this Task</h4>
+              {taskTimeEntries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No time entries yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {taskTimeEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between p-3 rounded-md bg-muted/50"
+                      data-testid={`detail-time-entry-${entry.id}`}
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {entry.date ? formatLocalDate(entry.date) : "-"}
+                          {entry.startTime && entry.endTime && (
+                            <span className="text-muted-foreground ml-2">
+                              {entry.startTime} - {entry.endTime}
+                            </span>
+                          )}
+                        </p>
+                        {entry.notes && (
+                          <p className="text-sm text-muted-foreground">{entry.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={entry.isBillable ? "default" : "secondary"}>
+                          {formatDuration(entry.totalMinutes)}
+                        </Badge>
+                        {entry.isBillable && (
+                          <Badge variant="outline">Billable</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
@@ -398,7 +855,14 @@ function TaskHierarchyItem({
                   </span>
                 )}
                 {task.dueDate && (
-                  <span className="flex items-center gap-1">
+                  <span 
+                    className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenDetail(task);
+                    }}
+                    data-testid={`button-due-date-${task.id}`}
+                  >
                     <Calendar className="h-3 w-3" />
                     {formatLocalDate(task.dueDate)}
                   </span>
@@ -882,7 +1346,6 @@ export default function Tasks() {
         currentIndex={selectedTaskIndex}
         totalCount={flatTaskList.length}
         onToggle={toggleTaskStatus}
-        onLogTime={handleLogTime}
       />
     </div>
   );
