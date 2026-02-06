@@ -138,8 +138,8 @@ const taskFormSchema = z.object({
   locationType: z.enum(["office", "road"]).default("office"),
   parentTaskId: z.number().optional().nullable(),
   assigneeId: z.string().optional().nullable(),
-  relatedAssociateId: z.number().optional().nullable(),
-  dueDate: z.string().optional(),
+  relatedAssociateId: z.number({ required_error: "Associate is required" }),
+  dueDate: z.string().min(1, "Due date is required"),
 });
 
 const noteFormSchema = z.object({
@@ -1180,7 +1180,7 @@ export default function ProjectDetail() {
       locationType: "office",
       parentTaskId: null,
       assigneeId: null,
-      relatedAssociateId: null,
+      relatedAssociateId: undefined as unknown as number,
       dueDate: "",
     },
   });
@@ -1309,7 +1309,7 @@ export default function ProjectDetail() {
         dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
         parentTaskId: data.parentTaskId || null,
         assigneeId: data.assigneeId || null,
-        relatedAssociateId: data.relatedAssociateId || null,
+        relatedAssociateId: data.relatedAssociateId,
       };
       return await apiRequest("POST", "/api/tasks", payload);
     },
@@ -1781,7 +1781,7 @@ export default function ProjectDetail() {
         locationType: "office",
         parentTaskId: parentTaskId || null,
         assigneeId: null,
-        relatedAssociateId: null,
+        relatedAssociateId: undefined as unknown as number,
         dueDate: "",
       });
     }
@@ -2298,18 +2298,18 @@ export default function ProjectDetail() {
                       name="relatedAssociateId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Related Associate</FormLabel>
+                          <FormLabel>Associate <span className="text-destructive">*</span></FormLabel>
                           <Select
-                            onValueChange={(val) => field.onChange(val === "__none__" ? null : parseInt(val))}
+                            onValueChange={(val) => field.onChange(val === "__none__" ? undefined : parseInt(val))}
                             value={field.value?.toString() || "__none__"}
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-task-related-associate">
-                                <SelectValue placeholder="None" />
+                                <SelectValue placeholder="Select an associate" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="__none__">None</SelectItem>
+                              <SelectItem value="__none__" disabled>Select an associate</SelectItem>
                               {associates?.map((associate) => (
                                 <SelectItem key={associate.id} value={associate.id.toString()}>
                                   {associate.name} ({associate.type})
@@ -2326,7 +2326,7 @@ export default function ProjectDetail() {
                       name="dueDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Due Date</FormLabel>
+                          <FormLabel>Due Date <span className="text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-task-due-date" />
                           </FormControl>

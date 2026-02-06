@@ -1319,7 +1319,13 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
   actualEndDate: dateCoercion,
 });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true }).extend({
-  dueDate: dateCoercion,
+  dueDate: z.preprocess((val) => {
+    if (val === null || val === undefined || val === '') return undefined;
+    if (val instanceof Date) return val;
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }, z.date({ required_error: "Due date is required" })),
+  relatedAssociateId: z.number({ required_error: "Associate is required" }).int(),
   completedAt: dateCoercion,
 });
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true });
