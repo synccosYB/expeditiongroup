@@ -69,6 +69,8 @@ const typeOptions = [
 export default function TimeLogs() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [editingLog, setEditingLog] = useState<UnifiedTimeLog | null>(null);
   const [generatingInvoiceFor, setGeneratingInvoiceFor] = useState<string | null>(null);
   const { toast } = useToast();
@@ -229,7 +231,19 @@ export default function TimeLogs() {
       log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.projectName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === "all" || log.type === typeFilter;
-    return matchesSearch && matchesType;
+
+    let matchesDateRange = true;
+    if (dateFrom || dateTo) {
+      const formatted = formatLocalDate(log.date);
+      if (formatted) {
+        const parts = formatted.split("-");
+        const logYmd = `${parts[2]}-${parts[0]}-${parts[1]}`;
+        if (dateFrom && logYmd < dateFrom) matchesDateRange = false;
+        if (dateTo && logYmd > dateTo) matchesDateRange = false;
+      }
+    }
+
+    return matchesSearch && matchesType && matchesDateRange;
   });
 
   const totalHours = filteredLogs.reduce((sum, log) => sum + log.totalHours, 0);
@@ -266,8 +280,8 @@ export default function TimeLogs() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search time logs..."
@@ -275,6 +289,28 @@ export default function TimeLogs() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
             data-testid="input-search-time-logs"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="date-from" className="text-sm text-muted-foreground whitespace-nowrap">From</Label>
+          <Input
+            id="date-from"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-auto"
+            data-testid="input-date-from"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="date-to" className="text-sm text-muted-foreground whitespace-nowrap">To</Label>
+          <Input
+            id="date-to"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-auto"
+            data-testid="input-date-to"
           />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -289,6 +325,20 @@ export default function TimeLogs() {
             ))}
           </SelectContent>
         </Select>
+        {(dateFrom || dateTo || typeFilter !== "all" || searchQuery) && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setSearchQuery("");
+              setTypeFilter("all");
+              setDateFrom("");
+              setDateTo("");
+            }}
+            data-testid="button-clear-filters"
+          >
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       {filteredLogs.length > 0 ? (
@@ -379,7 +429,7 @@ export default function TimeLogs() {
             <EmptyState
               icon={Clock}
               title="No time logs found"
-              description={searchQuery || typeFilter !== "all"
+              description={searchQuery || typeFilter !== "all" || dateFrom || dateTo
                 ? "Try adjusting your filters"
                 : "Time logs will appear here when you log time on projects"}
             />
