@@ -508,7 +508,9 @@ function EditTimeLogDialog({
 
   const handleOpen = () => {
     if (log) {
-      const dateStr = log.date ? format(new Date(log.date), "yyyy-MM-dd") : "";
+      const formatted = log.date ? formatLocalDate(log.date) : "";
+      const dateParts = formatted ? formatted.split("-") : [];
+      const dateStr = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}` : "";
       setDate(dateStr);
       setStartTime(log.startTime || "");
       setEndTime(log.endTime || "");
