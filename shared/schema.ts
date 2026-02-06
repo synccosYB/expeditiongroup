@@ -1320,12 +1320,12 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
 });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   dueDate: z.preprocess((val) => {
-    if (val === null || val === undefined || val === '') return undefined;
+    if (val === null || val === undefined || val === '') return null;
     if (val instanceof Date) return val;
     if (typeof val === 'string') return new Date(val);
     return val;
-  }, z.date({ required_error: "Due date is required" })),
-  relatedAssociateId: z.number({ required_error: "Associate is required" }).int(),
+  }, z.date().nullable().optional()),
+  relatedAssociateId: z.number().int().nullable().optional(),
   completedAt: dateCoercion,
 });
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true });
