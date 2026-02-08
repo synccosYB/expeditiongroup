@@ -29,7 +29,8 @@ import {
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye } from "lucide-react";
+import { Link } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
@@ -929,8 +930,8 @@ export default function Bills() {
                   className="flex items-center justify-between p-4 hover-elevate"
                   data-testid={`bill-row-${bill.id}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <Link href={`/bills/${bill.id}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                       <FileText className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
@@ -943,7 +944,7 @@ export default function Bills() {
                         <span>Due: {bill.dueDate ? format(new Date(bill.dueDate), "MMM d, yyyy") : "-"}</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-medium text-lg">
@@ -962,6 +963,12 @@ export default function Bills() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/bills/${bill.id}`}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
                         {bill.status !== "paid" && (
                           <DropdownMenuItem onClick={() => {
                             setPayingBill(bill);

@@ -61,6 +61,8 @@ import BankAccounts from "@/pages/bank-accounts";
 import BankRegister from "@/pages/bank-register";
 import Expenses from "@/pages/expenses";
 import Bills from "@/pages/bills";
+import BillDetail from "@/pages/bill-detail";
+import BankAccountDetail from "@/pages/bank-account-detail";
 import RebillCenter from "@/pages/rebill-center";
 import BankReconciliation from "@/pages/bank-reconciliation";
 import Reconciliation from "@/pages/reconciliation";
@@ -108,6 +110,7 @@ function AdminRouter() {
       <Route path="/chart-of-accounts" component={ChartOfAccounts} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/bank-accounts" component={BankAccounts} />
+      <Route path="/bank-accounts/:id" component={BankAccountDetail} />
       <Route path="/bank-register/:id" component={BankRegister} />
       <Route path="/reconciliation" component={Reconciliation} />
       <Route path="/bank-reconciliation/:id" component={BankReconciliation} />
@@ -115,6 +118,7 @@ function AdminRouter() {
       <Route path="/deposits" component={Deposits} />
       <Route path="/expenses" component={Expenses} />
       <Route path="/bills" component={Bills} />
+      <Route path="/bills/:id" component={BillDetail} />
       <Route path="/rebill-center" component={RebillCenter} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
