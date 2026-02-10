@@ -2366,7 +2366,6 @@ export default function ProjectDetail() {
                       duration: "",
                       taskDescription: task.title,
                     });
-                    setActiveTab("time-logs");
                     setIsTimeLogDialogOpen(true);
                   }}
                   onAddNote={(task) => {
@@ -2378,7 +2377,6 @@ export default function ProjectDetail() {
                       associateId: null,
                       clientId: null,
                     });
-                    setActiveTab("notes");
                     setTimeout(() => {
                       noteForm.setValue("taskId", task.id);
                       setIsNoteDialogOpen(true);
@@ -2441,7 +2439,6 @@ export default function ProjectDetail() {
                           duration: "",
                           taskDescription: task.title,
                         });
-                        setActiveTab("time-logs");
                         setIsTimeLogDialogOpen(true);
                       }}
                       onAddNote={(task) => {
@@ -2453,7 +2450,6 @@ export default function ProjectDetail() {
                           associateId: null,
                           clientId: null,
                         });
-                        setActiveTab("notes");
                         setTimeout(() => {
                           noteForm.setValue("taskId", task.id);
                           setIsNoteDialogOpen(true);
