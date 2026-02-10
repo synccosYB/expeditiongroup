@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
   - **Contact-to-Proposal Conversion**: Seamlessly convert contacts to proposals with one click, auto-filling contact information.
   - **Proposals**: Manages proposals (PROP-YYYY-NNNN format) through statuses (draft, sent, accepted, rejected, expired) with categorized services.
 - **Invoicing System**: Generates invoices (INV-YYYY-NNNN format) from time logs/entries, supports custom items, and allows client viewing. Invoices have statuses (draft, sent, paid, cancelled) and financial summaries.
+- **General Journal Entries**: Double-entry bookkeeping with journal entries (JE-YYYY-NNNN format). Each entry has balanced debit/credit line items referencing chart of accounts. Supports draft/posted/void status workflow. Only draft entries can be deleted.
 - **Chart of Accounts**: Hierarchical account structure with parent/sub-account relationships (e.g., "Payroll" as parent with "Payroll – Wages", "Payroll – Taxes" as sub-accounts). Supports asset, liability, equity, revenue, and expense account types with automatic numeric code sorting.
 - **Client Portal**: Provides read-only access to documents, invoices, client-visible notes, and project status with task timelines.
 - **Task Navigation**: Sequential navigation of tasks and subtasks with detailed dialogs and filtering.

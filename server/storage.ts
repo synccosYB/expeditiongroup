@@ -37,6 +37,8 @@ import {
   bankReconciliations,
   payments,
   deposits,
+  journalEntries,
+  journalEntryLines,
   type User,
   type UpsertUser,
   type Client,
@@ -112,6 +114,10 @@ import {
   type InsertPayment,
   type Deposit,
   type InsertDeposit,
+  type JournalEntry,
+  type InsertJournalEntry,
+  type JournalEntryLine,
+  type InsertJournalEntryLine,
 } from "@shared/schema";
 import { db } from "./db";
 export { db };
@@ -417,6 +423,14 @@ export interface IStorage {
   getDeposit(id: number): Promise<(Deposit & { bankAccount: BankAccount; payments: (Payment & { client: Client; invoice?: Invoice })[] }) | undefined>;
   createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }>;
   deleteDeposit(id: number): Promise<boolean>;
+
+  // General Journal Entries
+  getJournalEntries(): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] })[]>;
+  getJournalEntry(id: number): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] }) | undefined>;
+  createJournalEntry(entry: InsertJournalEntry, lines: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }>;
+  updateJournalEntry(id: number, entry: Partial<InsertJournalEntry>): Promise<JournalEntry | undefined>;
+  deleteJournalEntry(id: number): Promise<boolean>;
+  getNextJournalEntryNumber(): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2728,6 +2742,80 @@ export class DatabaseStorage implements IStorage {
     // Then delete the deposit
     const result = await db.delete(deposits).where(eq(deposits.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // General Journal Entries
+  async getJournalEntries(): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] })[]> {
+    const allEntries = await db.select().from(journalEntries).orderBy(desc(journalEntries.entryDate));
+    const result = [];
+    for (const entry of allEntries) {
+      const lines = await db
+        .select()
+        .from(journalEntryLines)
+        .where(eq(journalEntryLines.journalEntryId, entry.id))
+        .innerJoin(accounts, eq(journalEntryLines.accountId, accounts.id));
+      result.push({
+        ...entry,
+        lines: lines.map(l => ({ ...l.journal_entry_lines, account: l.accounts })),
+      });
+    }
+    return result;
+  }
+
+  async getJournalEntry(id: number): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] }) | undefined> {
+    const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
+    if (!entry) return undefined;
+    const lines = await db
+      .select()
+      .from(journalEntryLines)
+      .where(eq(journalEntryLines.journalEntryId, id))
+      .innerJoin(accounts, eq(journalEntryLines.accountId, accounts.id));
+    return {
+      ...entry,
+      lines: lines.map(l => ({ ...l.journal_entry_lines, account: l.accounts })),
+    };
+  }
+
+  async createJournalEntry(entry: InsertJournalEntry, lines: InsertJournalEntryLine[]): Promise<JournalEntry & { lines: JournalEntryLine[] }> {
+    const [newEntry] = await db.insert(journalEntries).values(entry).returning();
+    const createdLines: JournalEntryLine[] = [];
+    for (const line of lines) {
+      const [newLine] = await db.insert(journalEntryLines).values({ ...line, journalEntryId: newEntry.id }).returning();
+      createdLines.push(newLine);
+    }
+    return { ...newEntry, lines: createdLines };
+  }
+
+  async updateJournalEntry(id: number, entry: Partial<InsertJournalEntry>): Promise<JournalEntry | undefined> {
+    const [updated] = await db
+      .update(journalEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(eq(journalEntries.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    const result = await db.delete(journalEntries).where(eq(journalEntries.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNextJournalEntryNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const [lastEntry] = await db
+      .select({ entryNumber: journalEntries.entryNumber })
+      .from(journalEntries)
+      .where(sql`${journalEntries.entryNumber} LIKE ${`JE-${currentYear}-%`}`)
+      .orderBy(desc(journalEntries.entryNumber))
+      .limit(1);
+    
+    if (!lastEntry) {
+      return `JE-${currentYear}-0001`;
+    }
+    
+    const lastNumber = parseInt(lastEntry.entryNumber.split('-')[2] || '0');
+    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
+    return `JE-${currentYear}-${nextNumber}`;
   }
 }
 

@@ -34,6 +34,7 @@ import {
   RefreshCw,
   Wallet,
   ArrowDownToLine,
+  BookText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,6 +67,7 @@ const bookkeepingMenuItems = [
   { title: "Vendors", url: "/vendors", icon: Building2 },
   { title: "Bills", url: "/bills", icon: FileText },
   { title: "Rebill Center", url: "/rebill-center", icon: RefreshCw },
+  { title: "Journal Entries", url: "/journal-entries", icon: BookText },
 ];
 
 const clientMenuItems = [

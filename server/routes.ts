@@ -45,6 +45,7 @@ import {
   insertBankReconciliationSchema,
   insertPaymentSchema,
   insertDepositSchema,
+  insertJournalEntrySchema,
 } from "@shared/schema";
 
 const updateClientSchema = insertClientSchema.partial();
@@ -5530,6 +5531,112 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting deposit:", error);
       res.status(500).json({ message: "Failed to delete deposit" });
+    }
+  });
+
+  // General Journal Entries
+  app.get("/api/journal-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const entries = await storage.getJournalEntries();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching journal entries:", error);
+      res.status(500).json({ message: "Failed to fetch journal entries" });
+    }
+  });
+
+  app.get("/api/journal-entries/next-number", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const number = await storage.getNextJournalEntryNumber();
+      res.json({ number });
+    } catch (error) {
+      console.error("Error fetching next journal entry number:", error);
+      res.status(500).json({ message: "Failed to fetch next journal entry number" });
+    }
+  });
+
+  app.get("/api/journal-entries/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const entry = await storage.getJournalEntry(parseInt(req.params.id));
+      if (!entry) return res.status(404).json({ message: "Journal entry not found" });
+      res.json(entry);
+    } catch (error) {
+      console.error("Error fetching journal entry:", error);
+      res.status(500).json({ message: "Failed to fetch journal entry" });
+    }
+  });
+
+  app.post("/api/journal-entries", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { lines, ...entryData } = req.body;
+      if (!lines || !Array.isArray(lines) || lines.length < 2) {
+        return res.status(400).json({ message: "At least 2 lines are required" });
+      }
+      const parsedEntry = insertJournalEntrySchema.parse(entryData);
+      for (const line of lines) {
+        if (!line.accountId) {
+          return res.status(400).json({ message: "Each line must have an account" });
+        }
+      }
+      const totalDebits = lines.reduce((sum: number, l: any) => sum + parseFloat(l.debit || "0"), 0);
+      const totalCredits = lines.reduce((sum: number, l: any) => sum + parseFloat(l.credit || "0"), 0);
+      if (Math.abs(totalDebits - totalCredits) > 0.01) {
+        return res.status(400).json({ message: "Total debits must equal total credits" });
+      }
+      const entry = await storage.createJournalEntry(
+        { ...parsedEntry, totalAmount: totalDebits.toFixed(2) },
+        lines
+      );
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("Error creating journal entry:", error);
+      res.status(500).json({ message: "Failed to create journal entry" });
+    }
+  });
+
+  app.patch("/api/journal-entries/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const entry = await storage.updateJournalEntry(parseInt(req.params.id), req.body);
+      if (!entry) return res.status(404).json({ message: "Journal entry not found" });
+      res.json(entry);
+    } catch (error) {
+      console.error("Error updating journal entry:", error);
+      res.status(500).json({ message: "Failed to update journal entry" });
+    }
+  });
+
+  app.delete("/api/journal-entries/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteJournalEntry(parseInt(req.params.id));
+      if (!success) return res.status(404).json({ message: "Journal entry not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting journal entry:", error);
+      res.status(500).json({ message: "Failed to delete journal entry" });
     }
   });
 

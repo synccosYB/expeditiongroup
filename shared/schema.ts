@@ -51,6 +51,7 @@ export const expenseStatusEnum = pgEnum("expense_status", ["pending", "paid", "v
 export const expensePaymentTypeEnum = pgEnum("expense_payment_type", ["expense", "pay_bill", "check", "transfer", "other"]);
 export const billStatusEnum = pgEnum("bill_status", ["draft", "pending", "partial", "paid", "void"]);
 export const reconciliationStatusEnum = pgEnum("reconciliation_status", ["in_progress", "completed"]);
+export const journalEntryStatusEnum = pgEnum("journal_entry_status", ["draft", "posted", "void"]);
 
 // Client Portal enums
 export const documentStatusEnum = pgEnum("document_status", ["uploaded", "under_review", "accepted", "rejected"]);
@@ -829,6 +830,30 @@ export const bankReconciliations = pgTable("bank_reconciliations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// General Journal Entries
+export const journalEntries = pgTable("journal_entries", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  entryNumber: varchar("entry_number", { length: 50 }).notNull(),
+  entryDate: timestamp("entry_date").notNull(),
+  memo: text("memo"),
+  status: journalEntryStatusEnum("status").default("draft"),
+  totalAmount: varchar("total_amount", { length: 20 }).notNull().default("0"),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Journal Entry Lines (debit/credit lines)
+export const journalEntryLines = pgTable("journal_entry_lines", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  journalEntryId: integer("journal_entry_id").notNull().references(() => journalEntries.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").notNull().references(() => accounts.id),
+  description: text("description"),
+  debit: varchar("debit", { length: 20 }).default("0"),
+  credit: varchar("credit", { length: 20 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   client: one(clients, {
@@ -1267,6 +1292,25 @@ export const bankReconciliationsRelations = relations(bankReconciliations, ({ on
   }),
 }));
 
+export const journalEntriesRelations = relations(journalEntries, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [journalEntries.createdByUserId],
+    references: [users.id],
+  }),
+  lines: many(journalEntryLines),
+}));
+
+export const journalEntryLinesRelations = relations(journalEntryLines, ({ one }) => ({
+  journalEntry: one(journalEntries, {
+    fields: [journalEntryLines.journalEntryId],
+    references: [journalEntries.id],
+  }),
+  account: one(accounts, {
+    fields: [journalEntryLines.accountId],
+    references: [accounts.id],
+  }),
+}));
+
 export const depositsRelations = relations(deposits, ({ one, many }) => ({
   bankAccount: one(bankAccounts, {
     fields: [deposits.bankAccountId],
@@ -1415,6 +1459,10 @@ export const insertDepositSchema = createInsertSchema(deposits).omit({ id: true,
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, depositedAt: true }).extend({
   paymentDate: requiredDateCoercion,
 });
+export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  entryDate: requiredDateCoercion,
+});
+export const insertJournalEntryLineSchema = createInsertSchema(journalEntryLines).omit({ id: true, journalEntryId: true, createdAt: true });
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;
@@ -1499,3 +1547,7 @@ export type InsertDeposit = z.infer<typeof insertDepositSchema>;
 export type Deposit = typeof deposits.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
+export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type InsertJournalEntryLine = z.infer<typeof insertJournalEntryLineSchema>;
+export type JournalEntryLine = typeof journalEntryLines.$inferSelect;
