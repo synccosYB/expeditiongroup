@@ -1099,6 +1099,132 @@ export async function registerRoutes(
     }
   });
 
+  // Associate Folders
+  app.get("/api/associates/:associateId/folders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const folders = await storage.getFoldersByAssociateId(parseInt(req.params.associateId));
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching associate folders:", error);
+      res.status(500).json({ message: "Failed to fetch folders" });
+    }
+  });
+
+  app.post("/api/associates/:associateId/folders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const parsed = insertFolderSchema.parse({ ...req.body, associateId: parseInt(req.params.associateId) });
+      const folder = await storage.createFolder(parsed);
+      res.status(201).json(folder);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating associate folder:", error);
+      res.status(500).json({ message: "Failed to create folder" });
+    }
+  });
+
+  // Associate Documents
+  app.get("/api/associates/:associateId/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const documents = await storage.getDocumentsByAssociateId(parseInt(req.params.associateId));
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching associate documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.post("/api/associates/:associateId/documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const userId = req.session.userId!;
+      const parsed = insertDocumentSchema.parse({ ...req.body, associateId: parseInt(req.params.associateId), uploadedByUserId: userId });
+      const document = await storage.createDocument(parsed);
+
+      if (document.storagePath) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
+          await setObjectAclPolicy(objectFile, {
+            owner: userId,
+            visibility: "private",
+          });
+        } catch (aclError) {
+          console.error("Error setting ACL policy on associate document:", aclError);
+        }
+      }
+
+      res.status(201).json(document);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating associate document:", error);
+      res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  // Associate Document Upload URL
+  app.post("/api/associates/:associateId/documents/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const associateId = parseInt(req.params.associateId);
+      const associate = await storage.getAssociate(associateId);
+      if (!associate) {
+        return res.status(404).json({ message: "Associate not found" });
+      }
+
+      const { fileName, fileSize } = req.body;
+
+      const currentUsage = await storage.getUserStorageUsage(req.session.userId!);
+      const fileSizeNum = typeof fileSize === 'number' ? fileSize : parseInt(fileSize as string, 10) || 0;
+      if (currentUsage + fileSizeNum > STORAGE_LIMIT_BYTES) {
+        return res.status(413).json({
+          message: "Storage limit exceeded",
+          code: "STORAGE_LIMIT_EXCEEDED",
+          usedBytes: currentUsage,
+          limitBytes: STORAGE_LIMIT_BYTES,
+        });
+      }
+
+      const sanitize = (str: string) => str?.replace(/[^a-zA-Z0-9-_]/g, "_").toLowerCase() || "unknown";
+      const associateSlug = `${associate.id}-${sanitize(associate.name)}`;
+      const folderPath = `associates/${associateSlug}/documents`;
+
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL(folderPath);
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadUrl);
+
+      res.json({
+        uploadUrl,
+        objectPath,
+        folderPath,
+        method: "PUT" as const,
+      });
+    } catch (error) {
+      console.error("Error generating associate upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
   // Project Associates
   app.get("/api/projects/:projectId/associates", isAuthenticated, async (req: any, res) => {
     try {

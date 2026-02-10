@@ -203,12 +203,14 @@ export interface IStorage {
   
   // Folders
   getFoldersByProjectId(projectId: number): Promise<Folder[]>;
+  getFoldersByAssociateId(associateId: number): Promise<Folder[]>;
   createFolder(folder: InsertFolder): Promise<Folder>;
   updateFolder(id: number, folder: Partial<InsertFolder>): Promise<Folder | undefined>;
   deleteFolder(id: number): Promise<boolean>;
   
   // Documents
   getDocumentsByProjectId(projectId: number): Promise<Document[]>;
+  getDocumentsByAssociateId(associateId: number): Promise<Document[]>;
   getDocumentsByFolderId(folderId: number): Promise<Document[]>;
   getDocument(id: number): Promise<Document | undefined>;
   getDocumentByStoragePath(storagePath: string): Promise<Document | undefined>;
@@ -1038,6 +1040,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(folders).where(eq(folders.projectId, projectId)).orderBy(folders.name);
   }
 
+  async getFoldersByAssociateId(associateId: number): Promise<Folder[]> {
+    return await db.select().from(folders).where(eq(folders.associateId, associateId)).orderBy(folders.name);
+  }
+
   async createFolder(folder: InsertFolder): Promise<Folder> {
     const [newFolder] = await db.insert(folders).values(folder).returning();
     return newFolder;
@@ -1060,6 +1066,10 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async getDocumentsByProjectId(projectId: number): Promise<Document[]> {
     return await db.select().from(documents).where(eq(documents.projectId, projectId)).orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByAssociateId(associateId: number): Promise<Document[]> {
+    return await db.select().from(documents).where(eq(documents.associateId, associateId)).orderBy(desc(documents.createdAt));
   }
 
   async getDocumentsByFolderId(folderId: number): Promise<Document[]> {

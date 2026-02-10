@@ -262,7 +262,8 @@ export const projectAssociates = pgTable("project_associates", {
 // Folders table
 export const folders = pgTable("folders", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  associateId: integer("associate_id").references(() => associates.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -272,7 +273,8 @@ export const folders = pgTable("folders", {
 // Documents table
 export const documents = pgTable("documents", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  associateId: integer("associate_id").references(() => associates.id, { onDelete: "cascade" }),
   folderId: integer("folder_id").references(() => folders.id, { onDelete: "set null" }),
   uploadedByUserId: varchar("uploaded_by_user_id").references(() => users.id),
   uploadedByClientId: integer("uploaded_by_client_id").references(() => clients.id),
@@ -981,6 +983,8 @@ export const dailyActivityLogsRelations = relations(dailyActivityLogs, ({ one })
 export const associatesRelations = relations(associates, ({ many }) => ({
   tasks: many(tasks),
   projectAssociates: many(projectAssociates),
+  folders: many(folders),
+  documents: many(documents),
 }));
 
 export const projectAssociatesRelations = relations(projectAssociates, ({ one }) => ({
@@ -999,6 +1003,10 @@ export const foldersRelations = relations(folders, ({ one, many }) => ({
     fields: [folders.projectId],
     references: [projects.id],
   }),
+  associate: one(associates, {
+    fields: [folders.associateId],
+    references: [associates.id],
+  }),
   documents: many(documents),
 }));
 
@@ -1006,6 +1014,10 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   project: one(projects, {
     fields: [documents.projectId],
     references: [projects.id],
+  }),
+  associate: one(associates, {
+    fields: [documents.associateId],
+    references: [associates.id],
   }),
   folder: one(folders, {
     fields: [documents.folderId],
