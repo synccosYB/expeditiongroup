@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -272,6 +272,16 @@ export default function Bills() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState("check");
   const [paymentReference, setPaymentReference] = useState("");
+
+  useEffect(() => {
+    if (payingBill) {
+      const total = parseFloat(payingBill.total || "0");
+      const paid = parseFloat(payingBill.amountPaid || "0");
+      const balance = total - paid;
+      setPaymentAmount(balance > 0 ? balance.toFixed(2) : "");
+    }
+  }, [payingBill, payingBill?.amountPaid, payingBill?.total]);
+
   const [viewingPaymentsBill, setViewingPaymentsBill] = useState<BillWithRelations | null>(null);
   const [editingPayment, setEditingPayment] = useState<BillPayment | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<BillPayment | null>(null);
@@ -1038,8 +1048,27 @@ export default function Bills() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <p className="text-sm text-muted-foreground">Bill to {payingBill?.vendor?.name}</p>
-              <p className="text-lg font-medium">Balance: {formatCurrency(calculateBalance(payingBill!).toString())}</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                {payingBill?.billNumber ? `${payingBill.billNumber} — ` : ""}Bill to {payingBill?.vendor?.name}
+              </p>
+              <div className="rounded-md border p-3 space-y-1" data-testid="payment-bill-summary">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Bill Total</span>
+                  <span data-testid="text-bill-total">{formatCurrency(payingBill?.total || "0")}</span>
+                </div>
+                {parseFloat(payingBill?.amountPaid || "0") > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Already Paid</span>
+                    <span className="text-green-600 dark:text-green-400" data-testid="text-amount-paid">
+                      -{formatCurrency(payingBill?.amountPaid || "0")}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm font-semibold border-t pt-1">
+                  <span>Remaining Balance</span>
+                  <span data-testid="text-remaining-balance">{formatCurrency(calculateBalance(payingBill!).toString())}</span>
+                </div>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium">Pay From Account *</label>
@@ -1071,11 +1100,21 @@ export default function Bills() {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
+                  max={calculateBalance(payingBill!).toFixed(2)}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder="0.00"
                   data-testid="input-payment-amount"
                 />
+                <p className="text-xs text-muted-foreground mt-1" data-testid="text-payment-hint">
+                  Enter a partial or full amount (max {formatCurrency(calculateBalance(payingBill!).toString())})
+                </p>
+                {paymentAmount && !isNaN(parseFloat(paymentAmount)) && parseFloat(paymentAmount) > calculateBalance(payingBill!) && (
+                  <p className="text-xs text-destructive mt-1" data-testid="text-payment-error">
+                    Amount exceeds remaining balance
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1119,7 +1158,7 @@ export default function Bills() {
                   paymentMethod,
                   reference: paymentReference || undefined,
                 })}
-                disabled={paymentMutation.isPending || !paymentAmount || !paymentBankAccountId}
+                disabled={paymentMutation.isPending || !paymentAmount || !paymentBankAccountId || isNaN(parseFloat(paymentAmount)) || parseFloat(paymentAmount) <= 0 || parseFloat(paymentAmount) > calculateBalance(payingBill!)}
                 data-testid="button-confirm-payment"
               >
                 Record Payment
