@@ -2752,11 +2752,12 @@ export default function ProjectDetail() {
                   const fileId = file?.id || "";
                   const fileName = file?.name || "";
                   const fileType = file?.type || "application/octet-stream";
+                  const currentCategory = bulkUploadCategory;
                   const res = await fetch(`/api/projects/${id}/documents/upload`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
-                    body: JSON.stringify({ category: bulkUploadCategory, fileSize: file?.size || 0 }),
+                    body: JSON.stringify({ category: currentCategory, fileSize: file?.size || 0 }),
                   });
                   if (!res.ok) {
                     const errorData = await res.json().catch(() => ({}));
@@ -2765,7 +2766,7 @@ export default function ProjectDetail() {
                       error.code = "STORAGE_LIMIT_EXCEEDED";
                       throw error;
                     }
-                    throw new Error("Failed to get upload URL");
+                    throw new Error(`Failed to get upload URL: ${res.status} ${res.statusText}`);
                   }
                   const data = await res.json();
                   bulkUploadPathsRef.current.set(fileId, {
@@ -2776,7 +2777,6 @@ export default function ProjectDetail() {
                   return { 
                     method: "PUT" as const, 
                     url: data.uploadUrl,
-                    fields: {},
                     headers: { "Content-Type": fileType },
                   };
                 }}
