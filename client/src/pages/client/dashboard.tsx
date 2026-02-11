@@ -75,11 +75,13 @@ export default function ClientDashboard() {
 
   const recentProjects = projects?.slice(0, 5) || [];
   const pendingTasks = tasks?.filter(t => t.status !== "done").slice(0, 5) || [];
-  const overdueTasks = tasks?.filter(t => 
-    t.status !== "done" && 
-    t.dueDate && 
-    new Date(t.dueDate) < new Date()
-  ) || [];
+  const overdueTasks = tasks?.filter(t => {
+    if (t.status === "done" || t.status === "cancelled" || !t.dueDate) return false;
+    const dueDate = new Date(t.dueDate);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return dueDate < todayStart;
+  }) || [];
 
   const statusCountMap = new Map<string, number>();
   projectsByStatus?.forEach(item => {

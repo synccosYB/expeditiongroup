@@ -156,6 +156,7 @@ function TaskDetailDialog({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("details");
   const [isEditing, setIsEditing] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
 
   const { data: timeEntries } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries", { taskId: task?.id }],
@@ -197,6 +198,15 @@ function TaskDetailDialog({
         priority: task.priority || "normal",
         dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
         internalNotes: task.internalNotes || "",
+      });
+      setNotesValue(task.internalNotes || "");
+      detailTimeLogForm.reset({
+        date: format(new Date(), "yyyy-MM-dd"),
+        startTime: "",
+        endTime: "",
+        totalMinutes: "",
+        notes: "",
+        isBillable: true,
       });
       setIsEditing(false);
       setActiveTab("details");
@@ -261,6 +271,26 @@ function TaskDetailDialog({
       toast({ title: "Error", description: "Failed to log time entry", variant: "destructive" });
     },
   });
+
+  const saveNotesMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      const res = await apiRequest("PATCH", `/api/tasks/${task?.id}`, { internalNotes: notes || null });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      taskForm.setValue("internalNotes", notesValue);
+      toast({ title: "Notes saved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save notes", variant: "destructive" });
+    },
+  });
+
+  const handleSaveNotes = () => {
+    if (!task) return;
+    saveNotesMutation.mutate(notesValue);
+  };
 
   const onSubmitTaskEdit = (data: TaskEditFormData) => {
     if (!task) return;
@@ -568,32 +598,22 @@ function TaskDetailDialog({
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-4 pt-4">
-            <Form {...taskForm}>
-              <form onSubmit={taskForm.handleSubmit(onSubmitTaskEdit)} className="space-y-4">
-                <FormField
-                  control={taskForm.control}
-                  name="internalNotes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Internal Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Add internal notes about this task..."
-                          className="min-h-[200px]"
-                          data-testid="input-detail-internal-notes"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Internal Notes</label>
+                <Textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  placeholder="Add internal notes about this task..."
+                  className="min-h-[200px]"
+                  data-testid="input-detail-internal-notes"
                 />
-                <Button type="submit" disabled={updateTaskDetailMutation.isPending} data-testid="button-detail-save-notes">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Notes
-                </Button>
-              </form>
-            </Form>
+              </div>
+              <Button onClick={handleSaveNotes} disabled={saveNotesMutation.isPending} data-testid="button-detail-save-notes">
+                <Save className="h-4 w-4 mr-2" />
+                Save Notes
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="timelog" className="space-y-6 pt-4">

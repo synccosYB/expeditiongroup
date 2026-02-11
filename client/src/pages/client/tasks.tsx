@@ -72,7 +72,11 @@ export default function ClientTasks() {
   };
 
   const isOverdue = (task: TaskWithProject) => {
-    return task.dueDate && task.status !== "done" && isPast(new Date(task.dueDate));
+    if (!task.dueDate || task.status === "done" || task.status === "cancelled") return false;
+    const dueDate = new Date(task.dueDate);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return dueDate < todayStart;
   };
 
   return (

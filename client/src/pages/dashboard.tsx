@@ -90,9 +90,10 @@ export default function Dashboard() {
     queryKey: ["/api/projects/by-status"],
   });
 
-  const { data: overdueTasks, isLoading: overdueLoading } = useQuery<(Task & { project: Project })[]>({
+  const { data: rawOverdueTasks, isLoading: overdueLoading } = useQuery<(Task & { project: Project })[]>({
     queryKey: ["/api/tasks/overdue"],
   });
+  const overdueTasks = rawOverdueTasks?.filter(t => t.status !== "done" && t.status !== "cancelled") || [];
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
     queryKey: ["/api/invoices"],
@@ -489,7 +490,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {overdueTasks && overdueTasks.length > 0 && (
+      {overdueTasks.length > 0 && (
         <Card className="border-destructive/50" data-testid="card-overdue-tasks">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
