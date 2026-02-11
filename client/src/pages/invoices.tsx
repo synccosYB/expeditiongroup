@@ -38,11 +38,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatLocalDate } from "@/lib/dateUtils";
-import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2 } from "lucide-react";
+import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Invoice, Project, Client, InvoiceItem } from "@shared/schema";
+import { ManualInvoiceDialog } from "@/components/manual-invoice-dialog";
 
-type InvoiceWithDetails = Invoice & { project: Project; client: Client; items: InvoiceItem[] };
+type InvoiceWithDetails = Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] };
 
 type InvoiceStats = {
   totalInvoiced: number;
@@ -77,6 +78,7 @@ export default function Invoices() {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showManualDialog, setShowManualDialog] = useState(false);
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery<InvoiceWithDetails[]>({
     queryKey: ["/api/invoices"],
@@ -132,19 +134,25 @@ export default function Invoices() {
           <h1 className="text-2xl font-semibold">Invoices</h1>
           <p className="text-muted-foreground">Manage invoices and billing</p>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Invoices</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button onClick={() => setShowManualDialog(true)} data-testid="button-create-manual-invoice">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Button>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Invoices</SelectItem>
+              <SelectItem value="unpaid">Unpaid</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -223,7 +231,7 @@ export default function Invoices() {
             <div className="text-center py-8 text-muted-foreground" data-testid="empty-state-invoices">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No invoices found</p>
-              <p className="text-sm">Invoices are created from project time logs</p>
+              <p className="text-sm">Create a manual invoice or generate one from project time logs</p>
             </div>
           ) : (
             <Table>
@@ -248,14 +256,24 @@ export default function Invoices() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/clients/${invoice.clientId}`} className="hover:underline" data-testid={`link-client-${invoice.id}`}>
-                        {invoice.client?.name || "Unknown"}
-                      </Link>
+                      {invoice.client && invoice.clientId ? (
+                        <Link href={`/clients/${invoice.clientId}`} className="hover:underline" data-testid={`link-client-${invoice.id}`}>
+                          {invoice.client.name}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground" data-testid={`text-client-${invoice.id}`}>
+                          {invoice.recipientName || "No Client"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Link href={`/projects/${invoice.projectId}`} className="hover:underline" data-testid={`link-project-${invoice.id}`}>
-                        {invoice.project?.name || "Unknown"}
-                      </Link>
+                      {invoice.project && invoice.projectId ? (
+                        <Link href={`/projects/${invoice.projectId}`} className="hover:underline" data-testid={`link-project-${invoice.id}`}>
+                          {invoice.project.name}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground" data-testid={`text-project-${invoice.id}`}>-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge className={statusColors[invoice.status] || ""} data-testid={`badge-status-${invoice.id}`}>
@@ -301,6 +319,8 @@ export default function Invoices() {
           )}
         </CardContent>
       </Card>
+
+      <ManualInvoiceDialog isOpen={showManualDialog} onClose={() => setShowManualDialog(false)} />
 
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

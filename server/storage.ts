@@ -262,10 +262,10 @@ export interface IStorage {
   deleteTaskReminder(id: number): Promise<boolean>;
   
   // Invoices
-  getInvoices(): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] })[]>;
+  getInvoices(): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] })[]>;
   getInvoicesByProjectId(projectId: number): Promise<(Invoice & { items: InvoiceItem[] })[]>;
-  getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]>;
-  getInvoice(id: number): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] }) | undefined>;
+  getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project | null; items: InvoiceItem[] })[]>;
+  getInvoice(id: number): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] }) | undefined>;
   createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }>;
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
@@ -315,7 +315,7 @@ export interface IStorage {
   // Client Portal specific queries
   getClientVisibleProjects(clientId: number): Promise<(Project & { client: Client })[]>;
   getClientVisibleDocuments(projectId: number): Promise<Document[]>;
-  getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]>;
+  getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project | null; items: InvoiceItem[] })[]>;
   getClientVisibleNotes(projectId: number): Promise<(Note & { user?: User })[]>;
   
   // Intake Applications
@@ -1358,7 +1358,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Invoices
-  async getInvoices(): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] })[]> {
+  async getInvoices(): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] })[]> {
     const invoiceList = await db
       .select()
       .from(invoices)
@@ -1370,8 +1370,8 @@ export class DatabaseStorage implements IStorage {
       const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
       return {
         ...r.invoices,
-        project: r.projects!,
-        client: r.clients!,
+        project: r.projects || null,
+        client: r.clients || null,
         items,
       };
     }));
@@ -1397,7 +1397,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]> {
+  async getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project | null; items: InvoiceItem[] })[]> {
     const invoiceList = await db
       .select()
       .from(invoices)
@@ -1409,7 +1409,7 @@ export class DatabaseStorage implements IStorage {
       const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
       return {
         ...r.invoices,
-        project: r.projects!,
+        project: r.projects || null,
         items,
       };
     }));
@@ -1417,7 +1417,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getInvoice(id: number): Promise<(Invoice & { project: Project; client: Client; items: InvoiceItem[] }) | undefined> {
+  async getInvoice(id: number): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] }) | undefined> {
     const [result] = await db
       .select()
       .from(invoices)
@@ -1431,8 +1431,8 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...result.invoices,
-      project: result.projects!,
-      client: result.clients!,
+      project: result.projects || null,
+      client: result.clients || null,
       items,
     };
   }
@@ -1836,7 +1836,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(documents.createdAt));
   }
 
-  async getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project; items: InvoiceItem[] })[]> {
+  async getClientVisibleInvoices(clientId: number): Promise<(Invoice & { project: Project | null; items: InvoiceItem[] })[]> {
     const invoiceList = await db
       .select()
       .from(invoices)
@@ -1851,7 +1851,7 @@ export class DatabaseStorage implements IStorage {
       const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, r.invoices.id));
       return {
         ...r.invoices,
-        project: r.projects!,
+        project: r.projects || null,
         items,
       };
     }));

@@ -343,10 +343,10 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
 export const invoices = pgTable("invoices", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   invoiceNumber: varchar("invoice_number", { length: 50 }).notNull(),
-  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "set null" }),
+  clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
   status: invoiceStatusEnum("status").default("draft").notNull(),
-  hourlyRate: varchar("hourly_rate", { length: 20 }).notNull(),
+  hourlyRate: varchar("hourly_rate", { length: 20 }),
   subtotal: varchar("subtotal", { length: 20 }).notNull(),
   tax: varchar("tax", { length: 20 }),
   total: varchar("total", { length: 20 }).notNull(),
@@ -354,6 +354,9 @@ export const invoices = pgTable("invoices", {
   dueDate: timestamp("due_date"),
   paidAt: timestamp("paid_at"),
   isVisibleToClient: boolean("is_visible_to_client").default(false),
+  recipientName: varchar("recipient_name", { length: 255 }),
+  recipientEmail: varchar("recipient_email", { length: 255 }),
+  recipientAddress: text("recipient_address"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1412,6 +1415,7 @@ export const insertTaskReminderSchema = createInsertSchema(taskReminders).omit({
 });
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true, paidAt: true }).extend({
   dueDate: dateCoercion,
+  hourlyRate: z.string().nullable().optional(),
 });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
 export const insertDailyActivityLogSchema = createInsertSchema(dailyActivityLogs).omit({ id: true, createdAt: true, updatedAt: true }).extend({

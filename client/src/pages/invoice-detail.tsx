@@ -65,7 +65,7 @@ export default function InvoiceDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       toast({ title: "Invoice deleted successfully" });
-      setLocation(invoice?.clientId ? `/clients/${invoice.clientId}` : "/clients");
+      setLocation(invoice?.clientId ? `/clients/${invoice.clientId}` : "/invoices");
     },
     onError: () => {
       toast({ title: "Failed to delete invoice", variant: "destructive" });
@@ -104,7 +104,7 @@ export default function InvoiceDetail() {
       <div className="flex items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
-            <Link href={invoice.client ? `/clients/${invoice.clientId}` : "/clients"} data-testid="button-back">
+            <Link href={invoice.clientId ? `/clients/${invoice.clientId}` : "/invoices"} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -171,7 +171,7 @@ export default function InvoiceDetail() {
             </div>
             <div className="text-right">
               <h2 className="text-lg font-semibold mb-4">Bill To</h2>
-              {invoice.client && (
+              {invoice.client ? (
                 <div className="space-y-1 text-sm">
                   <p className="font-medium">{invoice.client.name}</p>
                   {invoice.client.company && (
@@ -185,6 +185,16 @@ export default function InvoiceDetail() {
                   )}
                   {invoice.client.phone && (
                     <p className="text-muted-foreground print:text-gray-600">{invoice.client.phone}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">{invoice.recipientName || "Manual Invoice"}</p>
+                  {invoice.recipientAddress && (
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.recipientAddress}</p>
+                  )}
+                  {invoice.recipientEmail && (
+                    <p className="text-muted-foreground print:text-gray-600">{invoice.recipientEmail}</p>
                   )}
                 </div>
               )}
