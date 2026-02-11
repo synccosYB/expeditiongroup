@@ -102,8 +102,8 @@ export function parseLocalDateFromISO(dateString: string | Date | null | undefin
 }
 
 /**
- * Check if a due date is strictly before today.
- * Tasks due today are NOT considered overdue — only tasks due before today are.
+ * Check if a due date is today or before today.
+ * Tasks due today AND tasks past due are both considered overdue.
  * This compares dates only, ignoring time components.
  */
 export function isDateOverdue(dueDate: string | Date | null | undefined): boolean {
@@ -113,9 +113,9 @@ export function isDateOverdue(dueDate: string | Date | null | undefined): boolea
   if (!dueDateParsed) return false;
   
   const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+  const tomorrowStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 0, 0, 0);
   
-  return dueDateParsed < todayStart;
+  return dueDateParsed < tomorrowStart;
 }
 
 export function formatTime12h(time24: string | null | undefined): string {

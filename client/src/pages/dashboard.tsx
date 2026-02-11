@@ -336,7 +336,7 @@ export default function Dashboard() {
     {
       title: "Pending Tasks",
       value: stats?.pendingTasks ?? 0,
-      subtitle: `${overdueCount} overdue`,
+      subtitle: `${overdueCount} due/overdue`,
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
@@ -490,23 +490,23 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {overdueTasks.length > 0 && (
-        <Card className="border-destructive/50" data-testid="card-overdue-tasks">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle className="text-lg font-semibold text-destructive">
-                Overdue Tasks ({overdueTasks.length})
-              </CardTitle>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/tasks?filter=overdue">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
+      <Card className={overdueTasks.length > 0 ? "border-destructive/50" : ""} data-testid="card-overdue-tasks">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={`h-5 w-5 ${overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+            <CardTitle className={`text-lg font-semibold ${overdueTasks.length > 0 ? "text-destructive" : ""}`}>
+              Due & Overdue Tasks ({overdueTasks.length})
+            </CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/tasks?filter=overdue">
+              View All
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {overdueTasks.length > 0 ? (
             <div className="space-y-3">
               {overdueTasks.slice(0, 5).map((task) => (
                 <Link
@@ -536,9 +536,11 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground" data-testid="text-no-overdue-tasks">No tasks are due or overdue right now.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

@@ -74,7 +74,7 @@ type TaskWithSubtasks = TaskWithProject & { subtasks?: TaskWithSubtasks[] };
 
 const statusOptions = [
   { value: "all", label: "All Statuses" },
-  { value: "overdue", label: "Overdue" },
+  { value: "overdue", label: "Due & Overdue" },
   { value: "todo", label: "To Do" },
   { value: "in_progress", label: "In Progress" },
   { value: "waiting", label: "Waiting" },
