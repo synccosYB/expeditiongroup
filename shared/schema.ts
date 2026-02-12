@@ -293,6 +293,16 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Folder Templates table
+export const folderTemplates = pgTable("folder_templates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  entityType: varchar("entity_type", { length: 20 }).notNull(),
+  folderNames: jsonb("folder_names").notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Checklist Templates table
 export const checklistTemplates = pgTable("checklist_templates", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -1403,6 +1413,7 @@ export const insertTimeLogSchema = createInsertSchema(timeLogs).omit({ id: true,
 export const insertAssociateSchema = createInsertSchema(associates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProjectAssociateSchema = createInsertSchema(projectAssociates).omit({ id: true, createdAt: true });
 export const insertFolderSchema = createInsertSchema(folders).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFolderTemplateSchema = createInsertSchema(folderTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChecklistInstanceSchema = createInsertSchema(checklistInstances).omit({ id: true, createdAt: true, updatedAt: true });
@@ -1501,6 +1512,8 @@ export type InsertProjectAssociate = z.infer<typeof insertProjectAssociateSchema
 export type ProjectAssociate = typeof projectAssociates.$inferSelect;
 export type InsertFolder = z.infer<typeof insertFolderSchema>;
 export type Folder = typeof folders.$inferSelect;
+export type InsertFolderTemplate = z.infer<typeof insertFolderTemplateSchema>;
+export type FolderTemplate = typeof folderTemplates.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSchema>;

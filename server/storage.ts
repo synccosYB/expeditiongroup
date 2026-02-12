@@ -59,6 +59,9 @@ import {
   type InsertProjectAssociate,
   type Folder,
   type InsertFolder,
+  type FolderTemplate,
+  type InsertFolderTemplate,
+  folderTemplates,
   type Document,
   type InsertDocument,
   type ChecklistTemplate,
@@ -218,6 +221,13 @@ export interface IStorage {
   updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
   
+  // Folder Templates
+  getFolderTemplates(entityType?: string): Promise<FolderTemplate[]>;
+  getFolderTemplate(id: number): Promise<FolderTemplate | undefined>;
+  createFolderTemplate(template: InsertFolderTemplate): Promise<FolderTemplate>;
+  updateFolderTemplate(id: number, template: Partial<InsertFolderTemplate>): Promise<FolderTemplate | undefined>;
+  deleteFolderTemplate(id: number): Promise<boolean>;
+
   // Checklist Templates
   getChecklistTemplates(): Promise<ChecklistTemplate[]>;
   getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined>;
@@ -1101,6 +1111,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument(id: number): Promise<boolean> {
     const result = await db.delete(documents).where(eq(documents.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Folder Templates
+  async getFolderTemplates(entityType?: string): Promise<FolderTemplate[]> {
+    if (entityType) {
+      return await db.select().from(folderTemplates).where(eq(folderTemplates.entityType, entityType)).orderBy(folderTemplates.name);
+    }
+    return await db.select().from(folderTemplates).orderBy(folderTemplates.name);
+  }
+
+  async getFolderTemplate(id: number): Promise<FolderTemplate | undefined> {
+    const [template] = await db.select().from(folderTemplates).where(eq(folderTemplates.id, id));
+    return template;
+  }
+
+  async createFolderTemplate(template: InsertFolderTemplate): Promise<FolderTemplate> {
+    const [newTemplate] = await db.insert(folderTemplates).values(template).returning();
+    return newTemplate;
+  }
+
+  async updateFolderTemplate(id: number, template: Partial<InsertFolderTemplate>): Promise<FolderTemplate | undefined> {
+    const [updated] = await db.update(folderTemplates).set({ ...template, updatedAt: new Date() }).where(eq(folderTemplates.id, id)).returning();
+    return updated;
+  }
+
+  async deleteFolderTemplate(id: number): Promise<boolean> {
+    const result = await db.delete(folderTemplates).where(eq(folderTemplates.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 

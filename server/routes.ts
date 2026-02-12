@@ -1225,6 +1225,92 @@ export async function registerRoutes(
     }
   });
 
+  // Folder Templates
+  app.get("/api/folder-templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const entityType = req.query.entityType as string | undefined;
+      const templates = await storage.getFolderTemplates(entityType);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching folder templates:", error);
+      res.status(500).json({ message: "Failed to fetch folder templates" });
+    }
+  });
+
+  app.post("/api/folder-templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const template = await storage.createFolderTemplate(req.body);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating folder template:", error);
+      res.status(500).json({ message: "Failed to create folder template" });
+    }
+  });
+
+  app.patch("/api/folder-templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const updated = await storage.updateFolderTemplate(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Template not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating folder template:", error);
+      res.status(500).json({ message: "Failed to update folder template" });
+    }
+  });
+
+  app.delete("/api/folder-templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const success = await storage.deleteFolderTemplate(parseInt(req.params.id));
+      if (!success) return res.status(404).json({ message: "Template not found" });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting folder template:", error);
+      res.status(500).json({ message: "Failed to delete folder template" });
+    }
+  });
+
+  app.post("/api/folder-templates/:id/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const template = await storage.getFolderTemplate(parseInt(req.params.id));
+      if (!template) return res.status(404).json({ message: "Template not found" });
+
+      const { entityType, entityId } = req.body;
+      const folderNames = template.folderNames as string[];
+      const createdFolders = [];
+      for (const name of folderNames) {
+        const folderData: any = { name };
+        if (entityType === "project") folderData.projectId = entityId;
+        else if (entityType === "associate") folderData.associateId = entityId;
+        const folder = await storage.createFolder(folderData);
+        createdFolders.push(folder);
+      }
+      res.status(201).json(createdFolders);
+    } catch (error) {
+      console.error("Error applying folder template:", error);
+      res.status(500).json({ message: "Failed to apply folder template" });
+    }
+  });
+
   // Project Associates
   app.get("/api/projects/:projectId/associates", isAuthenticated, async (req: any, res) => {
     try {
