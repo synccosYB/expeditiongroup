@@ -279,6 +279,7 @@ export interface IStorage {
   createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }>;
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
+  replaceInvoiceItems(invoiceId: number, items: InsertInvoiceItem[]): Promise<InvoiceItem[]>;
   getNextInvoiceNumber(): Promise<string>;
   getInvoiceStats(): Promise<{ totalInvoiced: number; totalPaid: number; totalUnpaid: number; totalUnbilled: number }>;
   getUnbilledTimeEntries(): Promise<{ projectId: number; projectName: string; clientName: string; totalMinutes: number; estimatedAmount: number }[]>;
@@ -1511,6 +1512,16 @@ export class DatabaseStorage implements IStorage {
   async deleteInvoice(id: number): Promise<boolean> {
     const result = await db.delete(invoices).where(eq(invoices.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async replaceInvoiceItems(invoiceId: number, items: InsertInvoiceItem[]): Promise<InvoiceItem[]> {
+    await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+    if (items.length === 0) return [];
+    const inserted = await db
+      .insert(invoiceItems)
+      .values(items.map(item => ({ ...item, invoiceId })))
+      .returning();
+    return inserted;
   }
 
   async getNextInvoiceNumber(): Promise<string> {

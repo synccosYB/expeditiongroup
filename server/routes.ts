@@ -3080,57 +3080,72 @@ export async function registerRoutes(
       
       const updateSchema = z.object({
         status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
-        notes: z.string().optional(),
-        dueDate: z.string().optional(),
-        paidAt: z.string().optional(),
+        notes: z.string().nullable().optional(),
+        dueDate: z.string().nullable().optional(),
+        paidAt: z.string().nullable().optional(),
         isVisibleToClient: z.boolean().optional(),
+        recipientName: z.string().nullable().optional(),
+        recipientEmail: z.string().nullable().optional(),
+        recipientAddress: z.string().nullable().optional(),
+        clientId: z.number().nullable().optional(),
+        subtotal: z.string().optional(),
+        total: z.string().optional(),
+        items: z.array(z.object({
+          description: z.string(),
+          quantity: z.string(),
+          unitPrice: z.string(),
+          amount: z.string(),
+          isCustom: z.boolean().optional(),
+        })).optional(),
       });
       
       const parsed = updateSchema.parse(req.body);
       const invoiceId = parseInt(req.params.id);
       
-      // Get current invoice before update
       const currentInvoice = await storage.getInvoice(invoiceId);
       if (!currentInvoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      const updateData: any = { ...parsed };
-      if (parsed.dueDate) updateData.dueDate = new Date(parsed.dueDate);
-      if (parsed.paidAt) updateData.paidAt = new Date(parsed.paidAt);
+      const { items, ...invoiceFields } = parsed;
+      const updateData: any = { ...invoiceFields };
+      if (invoiceFields.dueDate) updateData.dueDate = new Date(invoiceFields.dueDate);
+      if (invoiceFields.dueDate === null) updateData.dueDate = null;
+      if (invoiceFields.paidAt) updateData.paidAt = new Date(invoiceFields.paidAt);
       
-      // First update the invoice
       const invoice = await storage.updateInvoice(invoiceId, updateData);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      // After successful update, create payment record if status is now "paid" 
-      // and there's no payment covering the remaining balance
+      if (items) {
+        await storage.replaceInvoiceItems(invoiceId, items as any);
+      }
+      
       if (parsed.status === "paid" || (currentInvoice.status === "paid" && parsed.status === undefined)) {
         const existingPayments = await storage.getPaymentsByInvoiceId(invoiceId);
         const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-        const invoiceTotal = parseFloat(currentInvoice.total);
+        const invoiceTotal = parseFloat(invoice.total);
         const remainingBalance = invoiceTotal - totalPaid;
         
-        // Only create payment if there's a remaining balance (handles legacy data too)
         if (remainingBalance > 0.01) {
           const paymentNumber = await storage.getNextPaymentNumber();
           const paymentDate = parsed.paidAt ? new Date(parsed.paidAt) : new Date();
           await storage.createPayment({
             paymentNumber,
-            clientId: currentInvoice.clientId,
+            clientId: invoice.clientId,
             invoiceId: invoiceId,
             paymentDate,
             amount: remainingBalance.toFixed(2),
             paymentMethod: "other",
-            memo: `Payment for invoice ${currentInvoice.invoiceNumber}`,
+            memo: `Payment for invoice ${invoice.invoiceNumber}`,
             createdByUserId: req.session.userId,
           });
         }
       }
       
-      res.json(invoice);
+      const fullInvoice = await storage.getInvoice(invoiceId);
+      res.json(fullInvoice);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
