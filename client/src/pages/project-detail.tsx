@@ -1200,8 +1200,14 @@ export default function ProjectDetail() {
 
   const watchedEntityType = noteForm.watch("entityType");
   const prevEntityTypeRef = useRef(watchedEntityType);
+  const skipEntityTypeResetRef = useRef(false);
 
   useEffect(() => {
+    if (skipEntityTypeResetRef.current) {
+      skipEntityTypeResetRef.current = false;
+      prevEntityTypeRef.current = watchedEntityType;
+      return;
+    }
     if (prevEntityTypeRef.current !== watchedEntityType) {
       noteForm.setValue("taskId", null);
       noteForm.setValue("associateId", null);
@@ -2370,6 +2376,7 @@ export default function ProjectDetail() {
                     setIsTimeLogDialogOpen(true);
                   }}
                   onAddNote={(task) => {
+                    skipEntityTypeResetRef.current = true;
                     noteForm.reset({
                       content: "",
                       isVisibleToClient: false,
@@ -2378,10 +2385,7 @@ export default function ProjectDetail() {
                       associateId: null,
                       clientId: null,
                     });
-                    setTimeout(() => {
-                      noteForm.setValue("taskId", task.id);
-                      setIsNoteDialogOpen(true);
-                    }, 0);
+                    setIsNoteDialogOpen(true);
                   }}
                   onUpdateDueDate={(taskId, dueDate) => {
                     updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });
@@ -2443,6 +2447,7 @@ export default function ProjectDetail() {
                         setIsTimeLogDialogOpen(true);
                       }}
                       onAddNote={(task) => {
+                        skipEntityTypeResetRef.current = true;
                         noteForm.reset({
                           content: "",
                           isVisibleToClient: false,
@@ -2451,10 +2456,7 @@ export default function ProjectDetail() {
                           associateId: null,
                           clientId: null,
                         });
-                        setTimeout(() => {
-                          noteForm.setValue("taskId", task.id);
-                          setIsNoteDialogOpen(true);
-                        }, 0);
+                        setIsNoteDialogOpen(true);
                       }}
                       onUpdateDueDate={(taskId, dueDate) => {
                         updateTaskMutation.mutate({ taskId, data: { dueDate: dueDate || undefined } });

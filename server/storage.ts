@@ -151,7 +151,7 @@ export interface IStorage {
   // Projects
   getProjects(): Promise<(Project & { client: Client })[]>;
   getProjectsByClientId(clientId: number): Promise<(Project & { client: Client })[]>;
-  getProject(id: number): Promise<(Project & { client: Client; tasks: Task[]; notes: (Note & { user?: User })[]; timeLogs: TimeLog[]; timeEntries: TimeEntry[] }) | undefined>;
+  getProject(id: number): Promise<(Project & { client: Client; tasks: Task[]; notes: (Note & { user?: User })[]; timeLogs: (TimeLog & { user?: User })[]; timeEntries: TimeEntry[] }) | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
@@ -634,7 +634,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getProject(id: number): Promise<(Project & { client: Client; tasks: Task[]; notes: (Note & { user?: User })[]; timeLogs: TimeLog[]; timeEntries: TimeEntry[] }) | undefined> {
+  async getProject(id: number): Promise<(Project & { client: Client; tasks: Task[]; notes: (Note & { user?: User })[]; timeLogs: (TimeLog & { user?: User })[]; timeEntries: TimeEntry[] }) | undefined> {
     const [projectResult] = await db
       .select()
       .from(projects)
@@ -652,7 +652,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notes.projectId, id))
       .orderBy(desc(notes.createdAt));
     
-    const projectTimeLogs = await db.select().from(timeLogs).where(eq(timeLogs.projectId, id)).orderBy(desc(timeLogs.date));
+    const timeLogsResult = await db
+      .select()
+      .from(timeLogs)
+      .leftJoin(users, eq(timeLogs.userId, users.id))
+      .where(eq(timeLogs.projectId, id))
+      .orderBy(desc(timeLogs.date));
+    const projectTimeLogs = timeLogsResult.map(r => ({
+      ...r.time_logs,
+      user: r.users || undefined,
+    }));
     
     const projectTimeEntries = await db.select().from(timeEntries).where(eq(timeEntries.projectId, id)).orderBy(desc(timeEntries.date));
 
