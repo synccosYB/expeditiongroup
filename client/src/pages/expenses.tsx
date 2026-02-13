@@ -30,13 +30,14 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink, Landmark } from "lucide-react";
+import { useLocation } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Expense, Vendor, Account, Client, Project, Bill } from "@shared/schema";
+import type { Expense, Vendor, Account, Client, Project, Bill, BankAccount } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -70,6 +71,7 @@ const expenseFormSchema = z.object({
   expenseDate: z.string().min(1, "Date is required"),
   vendorId: z.string().optional(),
   accountId: z.string().optional(),
+  bankAccountId: z.string().optional(),
   amount: z.string().min(1, "Amount is required"),
   description: z.string().min(1, "Description is required"),
   reference: z.string().optional(),
@@ -96,6 +98,7 @@ type ExpenseFormData = z.infer<typeof expenseFormSchema>;
 type ExpenseWithRelations = Expense & {
   vendor?: Vendor;
   account?: Account;
+  bankAccount?: BankAccount;
   rebillableClient?: Client;
   rebillableProject?: Project;
   bill?: Bill;
@@ -273,6 +276,7 @@ function ReceiptUploader({
 
 export default function Expenses() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseWithRelations | null>(null);
@@ -302,12 +306,17 @@ export default function Expenses() {
     queryKey: ["/api/bills"],
   });
 
+  const { data: bankAccounts } = useQuery<BankAccount[]>({
+    queryKey: ["/api/bank-accounts"],
+  });
+
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       expenseDate: new Date().toISOString().split("T")[0],
       vendorId: "",
       accountId: "",
+      bankAccountId: "",
       amount: "",
       description: "",
       reference: "",
@@ -333,6 +342,7 @@ export default function Expenses() {
         expenseDate: new Date(data.expenseDate),
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
+        bankAccountId: data.bankAccountId ? parseInt(data.bankAccountId) : null,
         amount: data.amount,
         description: data.description,
         reference: data.reference,
@@ -349,6 +359,7 @@ export default function Expenses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
       toast({ title: "Expense created successfully" });
       setIsDialogOpen(false);
       form.reset();
@@ -379,6 +390,7 @@ export default function Expenses() {
         expenseDate: new Date(data.expenseDate),
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
+        bankAccountId: data.bankAccountId ? parseInt(data.bankAccountId) : null,
         amount: data.amount,
         description: data.description,
         reference: data.reference,
@@ -395,6 +407,7 @@ export default function Expenses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
       toast({ title: "Expense updated successfully" });
       setIsDialogOpen(false);
       setEditingExpense(null);
@@ -426,6 +439,7 @@ export default function Expenses() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
       toast({ title: "Expense deleted successfully" });
       setDeletingExpense(null);
     },
@@ -456,6 +470,7 @@ export default function Expenses() {
         expenseDate: expense.expenseDate ? new Date(expense.expenseDate).toISOString().split("T")[0] : "",
         vendorId: expense.vendorId?.toString() || "",
         accountId: expense.accountId?.toString() || "",
+        bankAccountId: expense.bankAccountId?.toString() || "",
         amount: expense.amount || "",
         description: expense.description || "",
         reference: expense.reference || "",
@@ -515,6 +530,7 @@ export default function Expenses() {
   const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
   const activeVendors = vendors?.filter(v => v.isActive);
   const activeClients = clients?.filter(c => c.status === "active");
+  const activeBankAccounts = bankAccounts?.filter(b => b.isActive);
 
   // Build hierarchical account list with parent accounts first, then children indented
   const hierarchicalAccounts = useMemo(() => {
@@ -771,6 +787,34 @@ export default function Expenses() {
                     />
                   )}
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="bankAccountId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pay From (Bank Account / Card)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-bank-account">
+                            <SelectValue placeholder="Select account to pay from" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {activeBankAccounts?.map((ba) => (
+                            <SelectItem key={ba.id} value={ba.id.toString()} data-testid={`select-option-bank-account-${ba.id}`}>
+                              {ba.name} ({ba.accountType === "credit_card" ? "Credit Card" : ba.accountType === "checking" ? "Checking" : ba.accountType === "savings" ? "Savings" : ba.accountType === "cash" ? "Cash" : "Other"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Which bank account or card is this expense paid from?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 <div className="border rounded-lg p-4 space-y-4">
                   <FormField
@@ -975,6 +1019,11 @@ export default function Expenses() {
                             Pays: {expense.bill.billNumber}
                           </span>
                         )}
+                        {expense.bankAccount && (
+                          <span>
+                            Paid from: {expense.bankAccount.name}
+                          </span>
+                        )}
                         {expense.rebillableClient && (
                           <span className="text-primary">
                             Bill to: {expense.rebillableClient.name}
@@ -1011,6 +1060,15 @@ export default function Expenses() {
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        {expense.bankAccountId && (
+                          <DropdownMenuItem 
+                            onClick={() => setLocation(`/bank-register?accountId=${expense.bankAccountId}`)} 
+                            data-testid={`button-view-transaction-${expense.id}`}
+                          >
+                            <Landmark className="h-4 w-4 mr-2" />
+                            View in Bank Register
+                          </DropdownMenuItem>
+                        )}
                         {expense.receiptUrl && (
                           <DropdownMenuItem onClick={() => window.open(`/api/expenses/receipt/${expense.id}`, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
                             <Image className="h-4 w-4 mr-2" />

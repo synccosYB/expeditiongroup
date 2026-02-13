@@ -4638,7 +4638,47 @@ export async function registerRoutes(
       }
       
       const parsed = insertExpenseSchema.parse(data);
-      const expense = await storage.createExpense(parsed);
+      
+      // Create bank transaction if a bank account is selected
+      let bankTransactionId: number | null = null;
+      if (parsed.bankAccountId) {
+        const bankAccount = await storage.getBankAccount(parsed.bankAccountId);
+        if (bankAccount) {
+          const transactionType = bankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+          const vendorName = parsed.vendorId ? (await storage.getVendor(parsed.vendorId))?.name : undefined;
+          
+          const bankTransaction = await storage.createBankTransaction({
+            bankAccountId: parsed.bankAccountId,
+            transactionDate: parsed.expenseDate,
+            transactionType,
+            payee: vendorName || "Expense Payment",
+            vendorId: parsed.vendorId || undefined,
+            description: `Expense - ${parsed.description || ""}`,
+            reference: parsed.reference || undefined,
+            amount: parsed.amount,
+            accountId: parsed.accountId || undefined,
+          });
+          bankTransactionId = bankTransaction.id;
+          
+          // Update bank account balance
+          const currentBalance = parseFloat(bankAccount.currentBalance || "0");
+          const expenseAmount = parseFloat(parsed.amount);
+          let newBalance: number;
+          if (bankAccount.accountType === "credit_card") {
+            newBalance = currentBalance + expenseAmount;
+          } else {
+            newBalance = currentBalance - expenseAmount;
+          }
+          await storage.updateBankAccount(parsed.bankAccountId, {
+            currentBalance: newBalance.toFixed(2),
+          });
+        }
+      }
+      
+      const expenseData = bankTransactionId 
+        ? { ...parsed, bankTransactionId, status: "paid" as const }
+        : parsed;
+      const expense = await storage.createExpense(expenseData);
       
       // Update bill status if this is a bill payment
       if (parsed.paymentType === "pay_bill" && parsed.billId) {
@@ -4692,11 +4732,105 @@ export async function registerRoutes(
         data.receiptUrl = normalized;
       }
       
-      // Get current expense to check if bill payment is changing
+      // Get current expense to check if bill payment or bank account is changing
       const currentExpense = await storage.getExpense(parseInt(req.params.id));
       
       const parsed = updateExpenseSchema.parse(data);
-      const expense = await storage.updateExpense(parseInt(req.params.id), parsed);
+      
+      // Handle bank transaction updates
+      const updateData: any = { ...parsed };
+      if (currentExpense) {
+        const oldBankAccountId = currentExpense.bankAccountId;
+        const newBankAccountId = parsed.bankAccountId !== undefined ? parsed.bankAccountId : currentExpense.bankAccountId;
+        const oldAmount = parseFloat(currentExpense.amount);
+        const newAmount = parseFloat(parsed.amount || currentExpense.amount);
+        const bankAccountChanged = parsed.bankAccountId !== undefined && parsed.bankAccountId !== oldBankAccountId;
+        const amountChanged = parsed.amount !== undefined && oldAmount !== newAmount;
+        const hasRelevantChange = bankAccountChanged || amountChanged;
+        
+        // Only process balance/transaction changes if bank account or amount actually changed
+        if (hasRelevantChange || (!oldBankAccountId && newBankAccountId) || (oldBankAccountId && parsed.bankAccountId === null)) {
+          const vendorId = parsed.vendorId !== undefined ? parsed.vendorId : currentExpense.vendorId;
+          const vendorName = vendorId ? (await storage.getVendor(vendorId))?.name : undefined;
+          const description = parsed.description || currentExpense.description || "";
+          const reference = parsed.reference !== undefined ? parsed.reference : currentExpense.reference;
+          const expenseDate = parsed.expenseDate || currentExpense.expenseDate;
+          const accountId = parsed.accountId !== undefined ? parsed.accountId : currentExpense.accountId;
+          
+          // Step 1: Reverse old bank account balance if it had one
+          if (oldBankAccountId) {
+            const oldBankAccount = await storage.getBankAccount(oldBankAccountId);
+            if (oldBankAccount) {
+              const bal = parseFloat(oldBankAccount.currentBalance || "0");
+              const reversed = oldBankAccount.accountType === "credit_card" ? bal - oldAmount : bal + oldAmount;
+              await storage.updateBankAccount(oldBankAccountId, { currentBalance: reversed.toFixed(2) });
+            }
+            // Delete old bank transaction if bank account is changing or being removed
+            if (currentExpense.bankTransactionId && oldBankAccountId !== newBankAccountId) {
+              await storage.deleteBankTransaction(currentExpense.bankTransactionId);
+              updateData.bankTransactionId = null;
+            }
+          }
+          
+          // Step 2: Apply new bank account balance and create/update transaction
+          if (newBankAccountId) {
+            const newBankAccount = await storage.getBankAccount(newBankAccountId);
+            if (newBankAccount) {
+              const bal = parseFloat(newBankAccount.currentBalance || "0");
+              const adjusted = newBankAccount.accountType === "credit_card" ? bal + newAmount : bal - newAmount;
+              await storage.updateBankAccount(newBankAccountId, { currentBalance: adjusted.toFixed(2) });
+              
+              const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+              
+              if (currentExpense.bankTransactionId && oldBankAccountId === newBankAccountId) {
+                // Same bank account - update existing transaction
+                await storage.updateBankTransaction(currentExpense.bankTransactionId, {
+                  bankAccountId: newBankAccountId,
+                  transactionDate: expenseDate,
+                  amount: (parsed.amount || currentExpense.amount),
+                  payee: vendorName || "Expense Payment",
+                  description: `Expense - ${description}`,
+                  reference: reference || undefined,
+                });
+              } else {
+                // New bank account or first time - create new transaction
+                const bankTransaction = await storage.createBankTransaction({
+                  bankAccountId: newBankAccountId,
+                  transactionDate: expenseDate,
+                  transactionType,
+                  payee: vendorName || "Expense Payment",
+                  description: `Expense - ${description}`,
+                  reference: reference || undefined,
+                  amount: parsed.amount || currentExpense.amount,
+                  accountId: accountId || undefined,
+                });
+                updateData.bankTransactionId = bankTransaction.id;
+              }
+              updateData.status = "paid";
+            }
+          } else if (oldBankAccountId && !newBankAccountId) {
+            // Bank account removed
+            updateData.bankTransactionId = null;
+            updateData.status = "pending";
+          }
+        } else if (oldBankAccountId && currentExpense.bankTransactionId) {
+          // No balance/account change, but update transaction metadata if description, vendor, etc changed
+          const metadataChanged = parsed.description !== undefined || parsed.vendorId !== undefined || 
+                                  parsed.reference !== undefined || parsed.expenseDate !== undefined;
+          if (metadataChanged) {
+            const vendorId = parsed.vendorId !== undefined ? parsed.vendorId : currentExpense.vendorId;
+            const vendorName = vendorId ? (await storage.getVendor(vendorId))?.name : undefined;
+            await storage.updateBankTransaction(currentExpense.bankTransactionId, {
+              transactionDate: parsed.expenseDate || currentExpense.expenseDate,
+              payee: vendorName || "Expense Payment",
+              description: `Expense - ${parsed.description || currentExpense.description || ""}`,
+              reference: (parsed.reference !== undefined ? parsed.reference : currentExpense.reference) || undefined,
+            });
+          }
+        }
+      }
+      
+      const expense = await storage.updateExpense(parseInt(req.params.id), updateData);
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
@@ -4734,24 +4868,19 @@ export async function registerRoutes(
         
         // Case 1: Expense was linked to a bill, now linked to a different bill
         if (previousBillId && newBillId && previousBillId !== newBillId) {
-          // Remove payment from old bill
           await updateBillStatus(previousBillId, -previousAmount);
-          // Add payment to new bill
           await updateBillStatus(newBillId, newAmount);
         }
-        // Case 2: Expense was linked to a bill, now not linked to any bill (payment type changed)
+        // Case 2: Expense was linked to a bill, now not linked to any bill
         else if (previousBillId && !newBillId) {
-          // Remove payment from old bill
           await updateBillStatus(previousBillId, -previousAmount);
         }
         // Case 3: Expense was not linked to a bill, now linked to a bill
         else if (!previousBillId && newBillId) {
-          // Add payment to new bill
           await updateBillStatus(newBillId, newAmount);
         }
-        // Case 4: Same bill, but amount might have changed
+        // Case 4: Same bill, but amount changed
         else if (previousBillId && newBillId && previousBillId === newBillId && previousAmount !== newAmount) {
-          // Adjust the bill by the difference
           await updateBillStatus(newBillId, newAmount - previousAmount);
         }
       }
@@ -4773,12 +4902,28 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get expense before deletion to handle bill status
+      // Get expense before deletion to handle bill status and bank transaction cleanup
       const expense = await storage.getExpense(parseInt(req.params.id));
       
       const success = await storage.deleteExpense(parseInt(req.params.id));
       if (!success) {
         return res.status(404).json({ message: "Expense not found" });
+      }
+      
+      // Reverse bank account balance and delete bank transaction if linked
+      if (expense && expense.bankAccountId) {
+        const bankAccount = await storage.getBankAccount(expense.bankAccountId);
+        if (bankAccount) {
+          const expenseAmount = parseFloat(expense.amount);
+          const currentBalance = parseFloat(bankAccount.currentBalance || "0");
+          const reversedBalance = bankAccount.accountType === "credit_card"
+            ? currentBalance - expenseAmount
+            : currentBalance + expenseAmount;
+          await storage.updateBankAccount(expense.bankAccountId, { currentBalance: reversedBalance.toFixed(2) });
+        }
+        if (expense.bankTransactionId) {
+          await storage.deleteBankTransaction(expense.bankTransactionId);
+        }
       }
       
       // Revert bill status if this was a bill payment
