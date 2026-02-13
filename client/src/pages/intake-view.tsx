@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation, useParams, Link } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { ArrowLeft, Edit, User, MapPin, FileText, Mountain, History, Building, CheckCircle, ExternalLink, ArrowRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -177,20 +177,16 @@ export default function IntakeView() {
               This intake has been converted to a project.
             </span>
             {application.linkedProjectId && (
-              <Link href={`/projects/${application.linkedProjectId}`}>
-                <Button variant="outline" size="sm" data-testid="link-project">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  View Project
-                </Button>
-              </Link>
+              <Button variant="outline" size="sm" data-testid="link-project" onClick={() => navigate(`/projects/${application.linkedProjectId}`)}>
+                <ExternalLink className="h-3 w-3 mr-1" />
+                View Project
+              </Button>
             )}
             {application.linkedClientId && (
-              <Link href={`/clients/${application.linkedClientId}`}>
-                <Button variant="outline" size="sm" data-testid="link-client">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  View Client
-                </Button>
-              </Link>
+              <Button variant="outline" size="sm" data-testid="link-client" onClick={() => navigate(`/clients/${application.linkedClientId}`)}>
+                <ExternalLink className="h-3 w-3 mr-1" />
+                View Client
+              </Button>
             )}
           </AlertDescription>
         </Alert>
