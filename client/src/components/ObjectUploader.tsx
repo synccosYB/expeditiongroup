@@ -112,6 +112,7 @@ export function ObjectUploader({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uppyFileCount, setUppyFileCount] = useState(0);
   const uppyRef = useRef<Uppy | null>(null);
   const stagedFilesConfigRef = useRef<Map<string, { documentName: string; folderId: string | null }>>(new Map());
 
@@ -141,6 +142,7 @@ export function ObjectUploader({
     setUploadProgress(0);
     setUploadStatus("");
     setUploadError(null);
+    setUppyFileCount(0);
     stagedFilesConfigRef.current.clear();
     setSelectedCategory(defaultCategory);
     setSelectedFolderId(defaultFolderId);
@@ -190,9 +192,18 @@ export function ObjectUploader({
         hideUploadButton: true,
       });
 
+    const updateFileCount = () => {
+      setUppyFileCount(uppy.getFiles().length);
+    };
+
+    uppy.on("file-added", updateFileCount);
+    uppy.on("file-removed", updateFileCount);
+
     uppyRef.current = uppy;
 
     return () => {
+      uppy.off("file-added", updateFileCount);
+      uppy.off("file-removed", updateFileCount);
       uppy.destroy();
       uppyRef.current = null;
     };
@@ -369,16 +380,16 @@ export function ObjectUploader({
       visibility: isVisibleToClient,
     };
 
-    setTimeout(() => {
-      setShowModal(false);
-      resetState();
-    }, 500);
-
     await onCompleteRef.current?.(
       { successful, failed },
       stagedFilesClone,
       settingsSnapshot
     );
+
+    setTimeout(() => {
+      setShowModal(false);
+      resetState();
+    }, 500);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -477,7 +488,7 @@ export function ObjectUploader({
                   <Button
                     type="button"
                     onClick={handleProceedToConfig}
-                    disabled={!uppyRef.current || uppyRef.current.getFiles().length === 0}
+                    disabled={!uppyRef.current || uppyFileCount === 0}
                     data-testid="button-proceed-to-config"
                   >
                     Continue to Configure

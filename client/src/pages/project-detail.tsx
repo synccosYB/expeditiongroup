@@ -2809,145 +2809,10 @@ export default function ProjectDetail() {
         <TabsContent value="notes" className="mt-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold">Notes</h2>
-            <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-note">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Note
-                    </Button>
-                  </DialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Add a note</TooltipContent>
-              </Tooltip>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Note</DialogTitle>
-                </DialogHeader>
-                <Form {...noteForm}>
-                  <form onSubmit={noteForm.handleSubmit((data) => createNoteMutation.mutate(data))} className="space-y-4">
-                    <FormField
-                      control={noteForm.control}
-                      name="entityType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Attach To</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-note-entity-type">
-                                <SelectValue placeholder="Select entity type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="project">This Project</SelectItem>
-                              <SelectItem value="task" disabled={allTasksFlattened.length === 0}>
-                                A Task {allTasksFlattened.length === 0 && "(none available)"}
-                              </SelectItem>
-                              <SelectItem value="associate" disabled={!projectAssociates || projectAssociates.length === 0}>
-                                An Associate {(!projectAssociates || projectAssociates.length === 0) && "(none available)"}
-                              </SelectItem>
-                              <SelectItem value="client" disabled={!project.clientId}>
-                                The Client {!project.clientId && "(not linked)"}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {watchedEntityType === "task" && allTasksFlattened.length > 0 && (
-                      <FormField
-                        control={noteForm.control}
-                        name="taskId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Select Task</FormLabel>
-                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-note-task">
-                                  <SelectValue placeholder="Select a task" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {allTasksFlattened.map((task) => (
-                                  <SelectItem key={task.id} value={task.id.toString()}>{task.displayTitle}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {watchedEntityType === "associate" && projectAssociates && projectAssociates.length > 0 && (
-                      <FormField
-                        control={noteForm.control}
-                        name="associateId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Select Associate</FormLabel>
-                            <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-note-associate">
-                                  <SelectValue placeholder="Select an associate" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {projectAssociates.map((pa) => (
-                                  <SelectItem key={pa.associate.id} value={pa.associate.id.toString()}>{pa.associate.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    <FormField
-                      control={noteForm.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Note *</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Enter your note..." className="min-h-32 resize-none" {...field} data-testid="textarea-note-content" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={noteForm.control}
-                      name="isVisibleToClient"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-note-visible"
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">Visible to client</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-end gap-4">
-                      <Button type="button" variant="outline" onClick={() => setIsNoteDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createNoteMutation.isPending} data-testid="button-save-note">
-                        {createNoteMutation.isPending ? "Saving..." : "Add Note"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={() => setIsNoteDialogOpen(true)} data-testid="button-add-note">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Note
+            </Button>
           </div>
 
           {project.notes && project.notes.length > 0 ? (
@@ -3091,148 +2956,11 @@ export default function ProjectDetail() {
                   <span className="sm:hidden">Invoice</span>
                 </Button>
               )}
-              <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DialogTrigger asChild>
-                      <Button size="sm" data-testid="button-add-time-log">
-                        <Plus className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Log Time</span>
-                        <span className="sm:hidden">Log</span>
-                      </Button>
-                    </DialogTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Log time spent</TooltipContent>
-                </Tooltip>
-              <DialogContent onCloseAutoFocus={() => {
-                setEditingTimeLog(null);
-                timeLogForm.reset({ date: formatDateForInput(new Date()), type: "office", durationUnit: "minutes", duration: "" });
-              }}>
-                <DialogHeader>
-                  <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
-                </DialogHeader>
-                <Form {...timeLogForm}>
-                  <form onSubmit={timeLogForm.handleSubmit((data) => {
-                    if (editingTimeLog) {
-                      updateTimeLogMutation.mutate({ ...data, id: editingTimeLog.id });
-                    } else {
-                      createTimeLogMutation.mutate(data);
-                    }
-                  })} className="space-y-4">
-                    <FormField
-                      control={timeLogForm.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date *</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} data-testid="input-time-log-date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={timeLogForm.control}
-                      name="taskDescription"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description *</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="What did you work on?" className="resize-none" {...field} data-testid="textarea-time-log-description" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField
-                        control={timeLogForm.control}
-                        name="startTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Start</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} data-testid="input-time-log-start" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={timeLogForm.control}
-                        name="endTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>End</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} data-testid="input-time-log-end" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={timeLogForm.control}
-                      name="duration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration *</FormLabel>
-                          <div className="flex gap-2">
-                            <FormControl>
-                              <Input type="number" inputMode="numeric" pattern="[0-9]*" placeholder="30" {...field} className="flex-1" data-testid="input-time-log-duration" />
-                            </FormControl>
-                            <Select
-                              value={timeLogForm.watch("durationUnit")}
-                              onValueChange={(value: "minutes" | "hours") => timeLogForm.setValue("durationUnit", value)}
-                            >
-                              <SelectTrigger className="w-20 sm:w-24" data-testid="select-time-log-unit">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="minutes">Min</SelectItem>
-                                <SelectItem value="hours">Hrs</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={timeLogForm.control}
-                      name="type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-time-log-type">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="office">Office</SelectItem>
-                              <SelectItem value="road">Road</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-end gap-4">
-                      <Button type="button" variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createTimeLogMutation.isPending || updateTimeLogMutation.isPending} data-testid="button-save-time-log">
-                        {(createTimeLogMutation.isPending || updateTimeLogMutation.isPending) ? "Saving..." : (editingTimeLog ? "Update" : "Log Time")}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+              <Button size="sm" onClick={() => setIsTimeLogDialogOpen(true)} data-testid="button-add-time-log">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Log Time</span>
+                <span className="sm:hidden">Log</span>
+              </Button>
             </div>
           </div>
 
@@ -3934,6 +3662,268 @@ export default function ProjectDetail() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Note Dialog - standalone to prevent tab switching */}
+      <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Note</DialogTitle>
+          </DialogHeader>
+          <Form {...noteForm}>
+            <form onSubmit={noteForm.handleSubmit((data) => createNoteMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={noteForm.control}
+                name="entityType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Attach To</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-note-entity-type">
+                          <SelectValue placeholder="Select entity type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="project">This Project</SelectItem>
+                        <SelectItem value="task" disabled={allTasksFlattened.length === 0}>
+                          A Task {allTasksFlattened.length === 0 && "(none available)"}
+                        </SelectItem>
+                        <SelectItem value="associate" disabled={!projectAssociates || projectAssociates.length === 0}>
+                          An Associate {(!projectAssociates || projectAssociates.length === 0) && "(none available)"}
+                        </SelectItem>
+                        <SelectItem value="client" disabled={!project.clientId}>
+                          The Client {!project.clientId && "(not linked)"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {watchedEntityType === "task" && allTasksFlattened.length > 0 && (
+                <FormField
+                  control={noteForm.control}
+                  name="taskId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Task</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-note-task">
+                            <SelectValue placeholder="Select a task" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {allTasksFlattened.map((task) => (
+                            <SelectItem key={task.id} value={task.id.toString()}>{task.displayTitle}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedEntityType === "associate" && projectAssociates && projectAssociates.length > 0 && (
+                <FormField
+                  control={noteForm.control}
+                  name="associateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Associate</FormLabel>
+                      <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value?.toString() || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-note-associate">
+                            <SelectValue placeholder="Select an associate" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {projectAssociates.map((pa) => (
+                            <SelectItem key={pa.associate.id} value={pa.associate.id.toString()}>{pa.associate.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={noteForm.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Note *</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Enter your note..." className="min-h-32 resize-none" {...field} data-testid="textarea-note-content" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={noteForm.control}
+                name="isVisibleToClient"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-note-visible"
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">Visible to client</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={() => setIsNoteDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createNoteMutation.isPending} data-testid="button-save-note">
+                  {createNoteMutation.isPending ? "Saving..." : "Add Note"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Time Log Dialog - standalone to prevent tab switching */}
+      <Dialog open={isTimeLogDialogOpen} onOpenChange={setIsTimeLogDialogOpen}>
+        <DialogContent onCloseAutoFocus={() => {
+          setEditingTimeLog(null);
+          timeLogForm.reset({ date: formatDateForInput(new Date()), type: "office", durationUnit: "minutes", duration: "" });
+        }}>
+          <DialogHeader>
+            <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
+          </DialogHeader>
+          <Form {...timeLogForm}>
+            <form onSubmit={timeLogForm.handleSubmit((data) => {
+              if (editingTimeLog) {
+                updateTimeLogMutation.mutate({ ...data, id: editingTimeLog.id });
+              } else {
+                createTimeLogMutation.mutate(data);
+              }
+            })} className="space-y-4">
+              <FormField
+                control={timeLogForm.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-time-log-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={timeLogForm.control}
+                name="taskDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description *</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="What did you work on?" className="resize-none" {...field} data-testid="textarea-time-log-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={timeLogForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} data-testid="input-time-log-start" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={timeLogForm.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} data-testid="input-time-log-end" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={timeLogForm.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duration *</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input type="number" inputMode="numeric" pattern="[0-9]*" placeholder="30" {...field} className="flex-1" data-testid="input-time-log-duration" />
+                      </FormControl>
+                      <Select
+                        value={timeLogForm.watch("durationUnit")}
+                        onValueChange={(value: "minutes" | "hours") => timeLogForm.setValue("durationUnit", value)}
+                      >
+                        <SelectTrigger className="w-20 sm:w-24" data-testid="select-time-log-unit">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="minutes">Min</SelectItem>
+                          <SelectItem value="hours">Hrs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={timeLogForm.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-time-log-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="office">Office</SelectItem>
+                        <SelectItem value="road">Road</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={() => setIsTimeLogDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createTimeLogMutation.isPending || updateTimeLogMutation.isPending} data-testid="button-save-time-log">
+                  {(createTimeLogMutation.isPending || updateTimeLogMutation.isPending) ? "Saving..." : (editingTimeLog ? "Update" : "Log Time")}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

@@ -6012,5 +6012,38 @@ export async function registerRoutes(
     }
   });
 
+  // Backfill payment records for paid invoices that have no payments
+  try {
+    const allInvoices = await storage.getInvoices();
+    let backfilledCount = 0;
+    for (const invoice of allInvoices) {
+      if (invoice.status === "paid" && invoice.clientId) {
+        const existingPayments = await storage.getPaymentsByInvoiceId(invoice.id);
+        const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        const invoiceTotal = parseFloat(invoice.total);
+        const remainingBalance = invoiceTotal - totalPaid;
+        if (remainingBalance > 0.01) {
+          const paymentNumber = await storage.getNextPaymentNumber();
+          const paymentDate = invoice.paidAt ? new Date(invoice.paidAt) : invoice.createdAt ? new Date(invoice.createdAt) : new Date();
+          await storage.createPayment({
+            paymentNumber,
+            clientId: invoice.clientId,
+            invoiceId: invoice.id,
+            paymentDate,
+            amount: remainingBalance.toFixed(2),
+            paymentMethod: "other",
+            memo: `Payment for invoice ${invoice.invoiceNumber}`,
+          });
+          backfilledCount++;
+        }
+      }
+    }
+    if (backfilledCount > 0) {
+      console.log(`Backfilled ${backfilledCount} payment record(s) for paid invoices`);
+    }
+  } catch (error) {
+    console.error("Error backfilling payments:", error);
+  }
+
   return httpServer;
 }
