@@ -392,13 +392,3 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-
-.sdx-overlay {
-  pointer-events: none !important;
-}
-
-.sdx-overlay .sdx-widget-btn,
-.sdx-overlay .sdx-modal,
-.sdx-overlay > * {
-  pointer-events: auto !important;
-}

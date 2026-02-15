@@ -35,6 +35,25 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <style>
+      .sdx-overlay,
+      .sdx-overlay .sdx-body,
+      .sdx-overlay #sdx-form-container {
+        pointer-events: none !important;
+      }
+      .sdx-overlay button,
+      .sdx-overlay input,
+      .sdx-overlay textarea,
+      .sdx-overlay select,
+      .sdx-overlay a,
+      .sdx-overlay form,
+      .sdx-overlay .sdx-modal,
+      .sdx-overlay .sdx-widget-btn,
+      .sdx-overlay [role="dialog"],
+      .sdx-overlay [role="button"] {
+        pointer-events: auto !important;
+      }
+    </style>
     <script
       src="https://7118a5fb-5aad-402c-a766-1d77b4d52a61-00-2oe7ptyinmjiu.janeway.replit.dev/widget.js"
       data-api-key="sk_4b6217ea6905377b3b38e6e6dac24c8d44b654f8ae695e8d">
