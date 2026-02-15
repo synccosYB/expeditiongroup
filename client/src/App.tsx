@@ -69,6 +69,7 @@ import Reconciliation from "@/pages/reconciliation";
 import UndepositedFunds from "@/pages/undeposited-funds";
 import Deposits from "@/pages/deposits";
 import JournalEntries from "@/pages/journal-entries";
+import { SynkdexWidget } from "@/components/synkdex-widget";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingScreen() {
@@ -177,6 +178,7 @@ function AuthenticatedLayout() {
           </main>
         </div>
       </div>
+      <SynkdexWidget />
     </SidebarProvider>
   );
 }
