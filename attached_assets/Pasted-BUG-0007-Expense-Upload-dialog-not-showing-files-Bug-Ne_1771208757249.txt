@@ -1,0 +1,50 @@
+BUG-0007
+Expense Upload dialog not showing files
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+When I try to upload an invoice attachment in Expenses, the file does not appear in the folder selection window. However, the file is visible on my computer when accessed directly outside the upload process.
+
+AI Analysis
+
+1) **Affected Part of the App**: The `Expense Upload` dialog in the Expenses module is not populating files for upload. Specifically, the issue lies in the file selection interface within the upload procedure.
+
+2) **Root Cause Analysis**: Based on the description:
+   - There may be a compatibility issue with the specified version of Chrome (`145.0.0.0` is anomalous and likely not a valid or supported version).
+   - Alternatively, there may be an issue in the file type filters or handling of directory permissions in the `Expense Upload` dialog.
+   - A corrupted or missing frontend file-selection script can also prevent the dialog from enumerating or displaying files.
+
+3) **Recommended Fix/Next Steps**:
+   - **Validate Browser Version**: Confirm whether Chrome `145.0.0.0` is intentional (it may be an invalid or outdated version). Test the upload on another, more stable browser version or supported browser.
+   - **Check File Type Filter**: Ensure the dialog is configured to allow all intended file formats (e.g., PDFs, JPEGs, etc.) and that filter logic is error-free.
+   - **Debug File Permissions**: Investigate whether the dialog enforces permissions or restrictions incorrectly, blocking visible files.
+   - **Console Debugging**: Use browser developer tools to check for JavaScript errors or network issues in the upload dialog module when it opens.
+
+```json
+{"severity": "medium", "category": "frontend functionality"}
+```
+
+https://expeditiongroupny.com/expenses
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Issac Braun
+ibraun@expeditiongroupny.com
+Client: ExpeditionGroup
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
