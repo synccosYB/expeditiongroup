@@ -331,7 +331,9 @@
   [data-sidebar],
   [data-testid="button-sidebar-toggle"],
   aside,
-  .print\\:hidden {
+  .print\\:hidden,
+  .sdx-widget-btn,
+  .sdx-overlay {
     display: none !important;
     visibility: hidden !important;
     width: 0 !important;
@@ -342,10 +344,29 @@
   /* Reset everything to print-friendly defaults */
   html, body {
     background: white !important;
+    color: #111 !important;
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
     overflow: visible !important;
+  }
+
+  /* Force light colors everywhere for printing */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-scheme: light !important;
+  }
+
+  /* Override dark mode backgrounds and text */
+  .dark * {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --border: 0 0% 90%;
   }
   
   /* Override flex layout to make main content full width */
@@ -365,12 +386,6 @@
     width: 100% !important;
     max-width: 100% !important;
     overflow: visible !important;
-  }
-  
-  /* Ensure colors print correctly */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
   
   /* Remove card shadows and borders for cleaner print */

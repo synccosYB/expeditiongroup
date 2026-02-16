@@ -241,80 +241,80 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      <Card className="print:shadow-none print:border-0">
+      <Card className="print:shadow-none print:border-0" data-testid="invoice-print-area">
         <CardContent className="p-8">
           <div className="flex justify-between gap-8 mb-8">
-            <div>
+            <div data-testid="invoice-company-info">
               <img 
                 src={logoUrl} 
                 alt="Expedition Group" 
                 className="h-12 dark:invert print:filter-none"
                 data-testid="img-company-logo"
               />
-              <div className="mt-3 text-sm text-muted-foreground space-y-0.5 print:text-gray-600">
+              <div className="mt-3 text-sm text-muted-foreground space-y-0.5">
                 <p>17 Sandybrook Drive</p>
                 <p>Spring Valley, NY 10977</p>
                 <p>(845) 212-2040</p>
                 <p>Info@expeditiongroupny.com</p>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right" data-testid="invoice-bill-to">
               <h2 className="text-lg font-semibold mb-4">Bill To</h2>
               {invoice.client ? (
                 <div className="space-y-1 text-sm">
                   <p className="font-medium">{invoice.client.name}</p>
                   {invoice.client.company && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.company}</p>
+                    <p className="text-muted-foreground">{invoice.client.company}</p>
                   )}
                   {invoice.client.address && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.address}</p>
+                    <p className="text-muted-foreground">{invoice.client.address}</p>
                   )}
                   {invoice.client.email && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.email}</p>
+                    <p className="text-muted-foreground">{invoice.client.email}</p>
                   )}
                   {invoice.client.phone && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.client.phone}</p>
+                    <p className="text-muted-foreground">{invoice.client.phone}</p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-1 text-sm">
                   <p className="font-medium">{invoice.recipientName || "Manual Invoice"}</p>
                   {invoice.recipientAddress && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.recipientAddress}</p>
+                    <p className="text-muted-foreground">{invoice.recipientAddress}</p>
                   )}
                   {invoice.recipientEmail && (
-                    <p className="text-muted-foreground print:text-gray-600">{invoice.recipientEmail}</p>
+                    <p className="text-muted-foreground">{invoice.recipientEmail}</p>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-md">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="invoice-info-grid">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice Number</p>
-              <p className="font-mono font-medium">{invoice.invoiceNumber}</p>
+              <p className="font-mono font-medium" data-testid="text-invoice-num-value">{invoice.invoiceNumber}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice Date</p>
-              <p className="font-medium">{format(invoiceDate, "MMMM d, yyyy")}</p>
+              <p className="font-medium" data-testid="text-invoice-date-value">{format(invoiceDate, "MMMM d, yyyy")}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Due Date</p>
-              <p className="font-medium">
+              <p className="font-medium" data-testid="text-due-date-value">
                 {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMMM d, yyyy") : "Upon Receipt"}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
-              <Badge variant={statusInfo.variant} className="mt-1">
+              <Badge variant={statusInfo.variant} className="mt-1" data-testid="badge-invoice-status">
                 {statusInfo.label}
               </Badge>
             </div>
           </div>
 
           {invoice.project && (
-            <div className="mb-8 p-4 border rounded-md">
+            <div className="mb-8 p-4 border rounded-md" data-testid="invoice-project-box">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-medium">Project</p>
@@ -355,7 +355,7 @@ export default function InvoiceDetail() {
             </table>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end" data-testid="invoice-totals">
             <div className="w-64 space-y-2">
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -370,7 +370,7 @@ export default function InvoiceDetail() {
           </div>
 
           {invoice.notes && (
-            <div className="mt-8 p-4 bg-muted/30 rounded-md">
+            <div className="mt-8 p-4 bg-muted/30 rounded-md" data-testid="invoice-notes-box">
               <p className="text-sm font-medium mb-2">Notes</p>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
             </div>
@@ -389,37 +389,75 @@ export default function InvoiceDetail() {
 
       <style>{`
         @media print {
-          body {
+          body, html {
             background: white !important;
+            color: #111 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .print\\:hidden {
             display: none !important;
           }
-          [class*="space-y-6"] {
-            margin: 0 !important;
-            padding: 20px !important;
-          }
-          [class*="CardContent"] {
+          [data-testid="invoice-print-area"] {
+            background: white !important;
+            color: #111 !important;
             padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
           }
-          [class*="bg-muted"] {
+          [data-testid="invoice-print-area"] * {
+            color: #111 !important;
+            background-color: transparent !important;
+            border-color: #ddd !important;
+          }
+          [data-testid="invoice-info-grid"] {
             background-color: #f5f5f5 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
           }
-          [class*="text-muted-foreground"] {
+          [data-testid="invoice-info-grid"] p {
+            color: #111 !important;
+          }
+          [data-testid="invoice-info-grid"] .text-xs {
             color: #666 !important;
           }
-          .dark\\:invert {
+          [data-testid="invoice-project-box"] {
+            border: 1px solid #ddd !important;
+            background: transparent !important;
+          }
+          [data-testid="invoice-notes-box"] {
+            background-color: #f5f5f5 !important;
+          }
+          .dark\\:invert, img.dark\\:invert {
             filter: none !important;
+          }
+          [data-testid="img-company-logo"] {
+            filter: none !important;
+          }
+          [data-testid="invoice-bill-to"] p {
+            color: #333 !important;
+          }
+          [data-testid="invoice-bill-to"] .font-medium {
+            color: #111 !important;
+          }
+          [data-testid="invoice-company-info"] p {
+            color: #555 !important;
           }
           table {
             border-collapse: collapse;
           }
-          th, td {
-            border-bottom: 1px solid #ddd;
+          th {
+            color: #111 !important;
+            border-bottom: 2px solid #333 !important;
+          }
+          td {
+            color: #111 !important;
+            border-bottom: 1px solid #ddd !important;
+          }
+          [data-testid="invoice-totals"] span {
+            color: #111 !important;
+          }
+          .space-y-6 > * {
+            margin: 0 !important;
           }
         }
       `}</style>
