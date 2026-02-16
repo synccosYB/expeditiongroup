@@ -81,27 +81,41 @@ export async function registerRoutes(
 
   app.all("/api/widget/*", async (req, res) => {
     try {
-      const targetPath = req.path;
+      const targetPath = req.path.replace(/^\/api\/widget/, "");
       const targetUrl = `${SYNKDEX_URL}${targetPath}`;
       const queryString = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
       const fullUrl = targetUrl + queryString;
 
+      console.log(`[SynkDex Proxy] ${req.method} ${fullUrl}`);
+
       const headers: Record<string, string> = {
         "X-API-Key": SYNKDEX_API_KEY,
       };
+
+      if (req.headers["content-type"]) {
+        headers["Content-Type"] = req.headers["content-type"] as string;
+      }
 
       const fetchOptions: RequestInit = {
         method: req.method,
         headers,
       };
 
-      if (req.method !== "GET" && req.method !== "HEAD") {
-        headers["Content-Type"] = "application/json";
-        fetchOptions.body = JSON.stringify(req.body);
+      if (req.method !== "GET" && req.method !== "HEAD" && req.body) {
+        if (typeof req.body === "object") {
+          if (!headers["Content-Type"]) {
+            headers["Content-Type"] = "application/json";
+          }
+          fetchOptions.body = JSON.stringify(req.body);
+        } else {
+          fetchOptions.body = req.body;
+        }
       }
 
       const response = await fetch(fullUrl, fetchOptions);
       const contentType = response.headers.get("content-type") || "";
+
+      console.log(`[SynkDex Proxy] Response: ${response.status} ${contentType}`);
 
       res.status(response.status);
 
@@ -109,9 +123,9 @@ export async function registerRoutes(
         const data = await response.json();
         res.json(data);
       } else {
-        const text = await response.text();
+        const buffer = await response.arrayBuffer();
         res.set("Content-Type", contentType);
-        res.send(text);
+        res.send(Buffer.from(buffer));
       }
     } catch (error) {
       console.error("SynkDex proxy error:", error);

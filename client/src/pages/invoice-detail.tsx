@@ -122,8 +122,28 @@ export default function InvoiceDetail() {
   const handlePrint = () => {
     const originalTitle = document.title;
     document.title = invoice?.invoiceNumber || "Invoice";
-    window.print();
-    document.title = originalTitle;
+
+    const htmlEl = document.documentElement;
+    const wasDark = htmlEl.classList.contains("dark");
+    if (wasDark) {
+      htmlEl.classList.remove("dark");
+    }
+
+    const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
+    const widgetOverlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
+    if (widgetBtn) widgetBtn.style.display = "none";
+    if (widgetOverlay) widgetOverlay.style.display = "none";
+
+    requestAnimationFrame(() => {
+      window.print();
+
+      if (wasDark) {
+        htmlEl.classList.add("dark");
+      }
+      if (widgetBtn) widgetBtn.style.display = "";
+      if (widgetOverlay) widgetOverlay.style.display = "";
+      document.title = originalTitle;
+    });
   };
 
   if (isLoading) {
