@@ -70,11 +70,54 @@ const updateBillSchema = insertBillSchema.partial();
 const updateBankReconciliationSchema = insertBankReconciliationSchema.partial();
 const updatePaymentSchema = insertPaymentSchema.partial();
 
+const SYNKDEX_URL = "https://synkdex.com";
+const SYNKDEX_API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  app.all("/api/widget/*", async (req, res) => {
+    try {
+      const targetPath = req.path;
+      const targetUrl = `${SYNKDEX_URL}${targetPath}`;
+      const queryString = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
+      const fullUrl = targetUrl + queryString;
+
+      const headers: Record<string, string> = {
+        "X-API-Key": SYNKDEX_API_KEY,
+      };
+
+      const fetchOptions: RequestInit = {
+        method: req.method,
+        headers,
+      };
+
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        headers["Content-Type"] = "application/json";
+        fetchOptions.body = JSON.stringify(req.body);
+      }
+
+      const response = await fetch(fullUrl, fetchOptions);
+      const contentType = response.headers.get("content-type") || "";
+
+      res.status(response.status);
+
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        res.json(data);
+      } else {
+        const text = await response.text();
+        res.set("Content-Type", contentType);
+        res.send(text);
+      }
+    } catch (error) {
+      console.error("SynkDex proxy error:", error);
+      res.status(502).json({ error: "Failed to proxy request to SynkDex" });
+    }
+  });
 
   app.get('/api/auth/user', isAuthenticated, async (req: Request, res) => {
     try {
