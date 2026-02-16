@@ -413,3 +413,13 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Ensure SynkDex widget does not block Radix UI portals (dialogs, selects, popovers) */
+[data-radix-popper-content-wrapper] {
+  z-index: 200000 !important;
+}
+
+/* Hide widget button when a dialog overlay is active */
+body:has([data-state="open"][role="dialog"]) .sdx-widget-btn {
+  display: none !important;
+}
