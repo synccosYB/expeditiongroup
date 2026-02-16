@@ -3057,6 +3057,9 @@ export async function registerRoutes(
       }
       
       const { items, ...invoiceData } = req.body;
+      if (!invoiceData.invoiceNumber) {
+        invoiceData.invoiceNumber = await storage.getNextInvoiceNumber();
+      }
       const parsedInvoice = insertInvoiceSchema.parse(invoiceData);
       const parsedItems = z.array(insertInvoiceItemSchema.omit({ invoiceId: true })).parse(items || []);
       

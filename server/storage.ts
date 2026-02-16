@@ -2452,7 +2452,7 @@ export class DatabaseStorage implements IStorage {
     
     const result = await db
       .update(expenses)
-      .set({ rebilledInvoiceId: invoiceId, rebilledAt: new Date(), updatedAt: new Date() })
+      .set({ isRebilled: true, rebilledInvoiceId: invoiceId, rebilledAt: new Date(), updatedAt: new Date() })
       .where(inArray(expenses.id, expenseIds));
     
     return (result.rowCount ?? 0) > 0;
