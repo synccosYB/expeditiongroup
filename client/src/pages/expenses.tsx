@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink, Landmark } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink, Landmark, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
@@ -124,10 +124,11 @@ function ReceiptUploader({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    const allowedTypes = ["image/", "application/pdf"];
+    if (!allowedTypes.some(t => file.type.startsWith(t))) {
       toast({
         title: "Invalid file type",
-        description: "Please upload an image file (JPG, PNG, etc.)",
+        description: "Please upload an image (JPG, PNG) or PDF file",
         variant: "destructive",
       });
       return;
@@ -136,7 +137,7 @@ function ReceiptUploader({
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Please upload an image smaller than 10MB",
+        description: "Please upload a file smaller than 10MB",
         variant: "destructive",
       });
       return;
@@ -227,11 +228,18 @@ function ReceiptUploader({
           </div>
         </div>
         <div className="aspect-video bg-muted rounded-md overflow-hidden">
-          <img
-            src={viewUrl}
-            alt="Receipt"
-            className="w-full h-full object-contain"
-          />
+          {receiptUrl?.toLowerCase().endsWith(".pdf") ? (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+              <FileText className="h-12 w-12 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">PDF Receipt</p>
+            </div>
+          ) : (
+            <img
+              src={viewUrl}
+              alt="Receipt"
+              className="w-full h-full object-contain"
+            />
+          )}
         </div>
       </div>
     );
@@ -259,11 +267,11 @@ function ReceiptUploader({
         >
           <Upload className="h-8 w-8 text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">Click to upload receipt</p>
-          <p className="text-xs text-muted-foreground mt-1">JPG, PNG up to 10MB</p>
+          <p className="text-xs text-muted-foreground mt-1">JPG, PNG, PDF up to 10MB</p>
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             className="hidden"
             onChange={handleFileSelect}
             data-testid="input-receipt-file"
