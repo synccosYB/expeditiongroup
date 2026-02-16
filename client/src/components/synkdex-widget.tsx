@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-const API_KEY = "sk_98854f09aa58cd8870ccde674a46a658a070627979ee7b02";
+const API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
 const SCRIPT_SELECTOR = `script[data-api-key="${API_KEY}"]`;
 
 function removeSynkdex() {
@@ -25,7 +25,7 @@ export function SynkdexWidget() {
     const s = document.createElement("script");
     s.src = "https://synkdex.com/widget.js";
     s.setAttribute("data-api-key", API_KEY);
-    s.setAttribute("data-brand-name", "Synccos Inc.");
+    s.setAttribute("data-brand-name", "Expedition Group");
     s.setAttribute("data-brand-logo", "https://synkdex.com/synkdex-logo.webp");
 
     const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ");
