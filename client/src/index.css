@@ -327,21 +327,46 @@
 
 /* Print styles */
 @media print {
-  /* Hide sidebar, navigation, header, and utility elements */
   [data-sidebar],
   [data-testid="button-sidebar-toggle"],
   aside,
   .print\\:hidden,
   .sdx-widget-btn,
-  .sdx-overlay {
+  .sdx-overlay,
+  #synkdex-widget,
+  header {
     display: none !important;
     visibility: hidden !important;
     width: 0 !important;
     height: 0 !important;
     overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
-  
-  /* Reset everything to print-friendly defaults */
+
+  :root,
+  :root.dark,
+  .dark {
+    --background: 0 0% 100% !important;
+    --foreground: 0 0% 7% !important;
+    --card: 0 0% 100% !important;
+    --card-foreground: 0 0% 7% !important;
+    --muted: 0 0% 96% !important;
+    --muted-foreground: 0 0% 40% !important;
+    --border: 0 0% 90% !important;
+    --popover: 0 0% 100% !important;
+    --popover-foreground: 0 0% 7% !important;
+    --primary: 0 0% 15% !important;
+    --primary-foreground: 0 0% 100% !important;
+    --secondary: 0 0% 96% !important;
+    --secondary-foreground: 0 0% 15% !important;
+    --accent: 0 0% 96% !important;
+    --accent-foreground: 0 0% 15% !important;
+    --input: 0 0% 90% !important;
+    --ring: 0 0% 70% !important;
+    color-scheme: light !important;
+  }
+
   html, body {
     background: white !important;
     color: #111 !important;
@@ -349,27 +374,10 @@
     padding: 0 !important;
     height: auto !important;
     overflow: visible !important;
-  }
-
-  /* Force light colors everywhere for printing */
-  *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color-scheme: light !important;
   }
 
-  /* Override dark mode backgrounds and text */
-  .dark * {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 7%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
-    --border: 0 0% 90%;
-  }
-  
-  /* Override flex layout to make main content full width */
   body > div,
   body > div > div,
   [style*="--sidebar-width"] > div {
@@ -378,8 +386,7 @@
     height: auto !important;
     overflow: visible !important;
   }
-  
-  /* Make main content take full width */
+
   main {
     margin: 0 !important;
     padding: 20px !important;
@@ -387,12 +394,11 @@
     max-width: 100% !important;
     overflow: visible !important;
   }
-  
-  /* Remove card shadows and borders for cleaner print */
+
   .print\\:shadow-none {
     box-shadow: none !important;
   }
-  
+
   .print\\:border-0 {
     border: none !important;
   }

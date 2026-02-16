@@ -13,13 +13,9 @@ const API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
 const SYNKDEX_URL = "https://synkdex.com";
 const SCRIPT_SELECTOR = `script[data-api-key="${API_KEY}"]`;
 
-function getProxyBase() {
-  return `${window.location.origin}/api/widget`;
-}
-
 function rewriteUrl(url: string): string {
   if (url.startsWith(SYNKDEX_URL + "/api/")) {
-    return url.replace(SYNKDEX_URL, getProxyBase());
+    return url.replace(SYNKDEX_URL, window.location.origin);
   }
   return url;
 }
@@ -120,7 +116,7 @@ export function SynkdexWidget() {
     const s = document.createElement("script");
     s.src = `${SYNKDEX_URL}/widget.js`;
     s.setAttribute("data-api-key", API_KEY);
-    s.setAttribute("data-api-url", getProxyBase());
+    s.setAttribute("data-api-url", window.location.origin);
     s.setAttribute("data-brand-name", "Expedition Group");
     s.setAttribute("data-brand-logo", `${SYNKDEX_URL}/synkdex-logo.webp`);
 

@@ -79,10 +79,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
-  app.all("/api/widget/*", async (req, res) => {
+  const synkdexProxy = async (req: Request, res: any) => {
     try {
-      const targetPath = req.path.replace(/^\/api\/widget/, "");
-      const targetUrl = `${SYNKDEX_URL}${targetPath}`;
+      const targetUrl = `${SYNKDEX_URL}${req.path}`;
       const queryString = req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : "";
       const fullUrl = targetUrl + queryString;
 
@@ -131,7 +130,10 @@ export async function registerRoutes(
       console.error("SynkDex proxy error:", error);
       res.status(502).json({ error: "Failed to proxy request to SynkDex" });
     }
-  });
+  };
+
+  app.all("/api/widget/*", synkdexProxy);
+  app.all("/api/v1/bugs/*", synkdexProxy);
 
   app.get('/api/auth/user', isAuthenticated, async (req: Request, res) => {
     try {

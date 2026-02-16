@@ -104,18 +104,25 @@ export default function ClientInvoiceDetail() {
 
     const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
     const widgetOverlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
-    if (widgetBtn) widgetBtn.style.display = "none";
-    if (widgetOverlay) widgetOverlay.style.display = "none";
+    const widgetRoot = document.getElementById("synkdex-widget") as HTMLElement | null;
+    if (widgetBtn) widgetBtn.style.setProperty("display", "none", "important");
+    if (widgetOverlay) widgetOverlay.style.setProperty("display", "none", "important");
+    if (widgetRoot) widgetRoot.style.setProperty("display", "none", "important");
 
-    requestAnimationFrame(() => {
-      window.print();
-
+    const restore = () => {
       if (wasDark) {
         htmlEl.classList.add("dark");
       }
-      if (widgetBtn) widgetBtn.style.display = "";
-      if (widgetOverlay) widgetOverlay.style.display = "";
-    });
+      if (widgetBtn) widgetBtn.style.removeProperty("display");
+      if (widgetOverlay) widgetOverlay.style.removeProperty("display");
+      if (widgetRoot) widgetRoot.style.removeProperty("display");
+    };
+
+    window.addEventListener("afterprint", restore, { once: true });
+
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
 
   return (
