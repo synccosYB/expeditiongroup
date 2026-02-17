@@ -1,5 +1,5 @@
-const SYNKDEX_WEBHOOK_URL = "https://synkdex.com/api/webhooks/synkdex/1";
-const SYNKDEX_API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
+const SYNKDEX_WEBHOOK_URL = process.env.SYNKDEX_WEBHOOK_URL || "https://synkdex.com/api/webhooks/synkdex/1";
+const SYNKDEX_API_KEY = process.env.SYNKDEX_API_KEY || "";
 
 export type WebhookEventType =
   | "project.created"

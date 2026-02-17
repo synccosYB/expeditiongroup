@@ -72,7 +72,7 @@ const updateBankReconciliationSchema = insertBankReconciliationSchema.partial();
 const updatePaymentSchema = insertPaymentSchema.partial();
 
 const SYNKDEX_URL = "https://synkdex.com";
-const SYNKDEX_API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
+const SYNKDEX_PROXY_API_KEY = process.env.SYNKDEX_API_KEY || "";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -89,7 +89,7 @@ export async function registerRoutes(
       console.log(`[SynkDex Proxy] ${req.method} ${fullUrl}`);
 
       const headers: Record<string, string> = {
-        "X-API-Key": SYNKDEX_API_KEY,
+        "X-API-Key": SYNKDEX_PROXY_API_KEY,
       };
 
       if (req.headers["content-type"]) {
