@@ -15,6 +15,13 @@
       "when": 1769964909981,
       "tag": "0001_eager_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771351349547,
+      "tag": "0002_watery_sasquatch",
+      "breakpoints": true
     }
   ]
 }

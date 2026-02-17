@@ -443,6 +443,7 @@ export const auditLogs = pgTable("audit_logs", {
   metadata: jsonb("metadata"),
   ipAddress: varchar("ip_address", { length: 50 }),
   userAgent: text("user_agent"),
+  isVisibleToClient: boolean("is_visible_to_client").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

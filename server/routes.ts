@@ -150,7 +150,7 @@ export async function registerRoutes(
   app.get("/api/dashboard/stats", isAuthenticated, async (req: Request, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
@@ -166,7 +166,7 @@ export async function registerRoutes(
   app.get("/api/clients", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const clients = await storage.getClients();
@@ -180,7 +180,7 @@ export async function registerRoutes(
   app.get("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const client = await storage.getClient(parseInt(req.params.id));
@@ -197,7 +197,7 @@ export async function registerRoutes(
   app.post("/api/clients", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertClientSchema.parse(req.body);
@@ -215,7 +215,7 @@ export async function registerRoutes(
   app.patch("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateClientSchema.parse(req.body);
@@ -236,7 +236,7 @@ export async function registerRoutes(
   app.delete("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -268,7 +268,7 @@ export async function registerRoutes(
   app.get("/api/clients/:id/related-counts", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const counts = await storage.getClientRelatedDataCounts(parseInt(req.params.id));
@@ -286,7 +286,7 @@ export async function registerRoutes(
   app.post("/api/clients/:id/archive", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -306,7 +306,7 @@ export async function registerRoutes(
   app.delete("/api/clients/:id/permanent", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -326,7 +326,7 @@ export async function registerRoutes(
   app.get("/api/clients/:id/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const projects = await storage.getProjectsByClientId(parseInt(req.params.id));
@@ -340,7 +340,7 @@ export async function registerRoutes(
   app.get("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const projects = await storage.getProjects();
@@ -355,7 +355,7 @@ export async function registerRoutes(
   app.get("/api/projects/by-status", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const statusCounts = await storage.getProjectsByStatus();
@@ -373,7 +373,7 @@ export async function registerRoutes(
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
-      if (user?.role !== "admin" && user?.clientId !== project.clientId) {
+      if (user?.role !== "admin" && user?.role !== "super_admin" && user?.clientId !== project.clientId) {
         return res.status(403).json({ message: "Forbidden" });
       }
       res.json(project);
@@ -386,7 +386,7 @@ export async function registerRoutes(
   app.post("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertProjectSchema.parse(req.body);
@@ -405,7 +405,7 @@ export async function registerRoutes(
   app.patch("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateProjectSchema.parse(req.body);
@@ -429,7 +429,7 @@ export async function registerRoutes(
   app.delete("/api/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -462,7 +462,7 @@ export async function registerRoutes(
   app.get("/api/projects/:id/related-data-counts", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const counts = await storage.getProjectRelatedDataCounts(parseInt(req.params.id));
@@ -479,7 +479,7 @@ export async function registerRoutes(
   app.post("/api/projects/:id/archive", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -499,7 +499,7 @@ export async function registerRoutes(
   app.delete("/api/projects/:id/permanent", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const projectId = parseInt(req.params.id);
@@ -519,7 +519,7 @@ export async function registerRoutes(
   app.get("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const tasks = await storage.getTasks();
@@ -533,7 +533,7 @@ export async function registerRoutes(
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertTaskSchema.parse(req.body);
@@ -552,7 +552,7 @@ export async function registerRoutes(
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateTaskSchema.parse(req.body);
@@ -575,7 +575,7 @@ export async function registerRoutes(
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const taskId = parseInt(req.params.id);
@@ -608,6 +608,10 @@ export async function registerRoutes(
 
   app.patch("/api/notes/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const updateNoteSchema = z.object({
         content: z.string().optional(),
         isVisibleToClient: z.boolean().optional(),
@@ -629,6 +633,10 @@ export async function registerRoutes(
 
   app.delete("/api/notes/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const deleted = await storage.deleteNote(parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Note not found" });
@@ -643,7 +651,7 @@ export async function registerRoutes(
   app.get("/api/time-logs", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const timeLogs = await storage.getTimeLogs();
@@ -657,7 +665,7 @@ export async function registerRoutes(
   app.post("/api/time-logs", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const userId = req.session.userId!;
@@ -676,7 +684,7 @@ export async function registerRoutes(
   app.patch("/api/time-logs/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const updateTimeLogSchema = insertTimeLogSchema.partial();
@@ -698,7 +706,7 @@ export async function registerRoutes(
   app.delete("/api/time-logs/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteTimeLog(parseInt(req.params.id));
@@ -715,7 +723,7 @@ export async function registerRoutes(
   app.get("/api/associates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const associates = await storage.getAssociates();
@@ -729,7 +737,7 @@ export async function registerRoutes(
   app.get("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const associate = await storage.getAssociate(parseInt(req.params.id));
@@ -746,7 +754,7 @@ export async function registerRoutes(
   app.post("/api/associates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertAssociateSchema.parse(req.body);
@@ -764,7 +772,7 @@ export async function registerRoutes(
   app.patch("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateAssociateSchema.parse(req.body);
@@ -785,7 +793,7 @@ export async function registerRoutes(
   app.delete("/api/associates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteAssociate(parseInt(req.params.id));
@@ -917,7 +925,7 @@ export async function registerRoutes(
   app.get("/api/time-entries", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const timeEntries = await storage.getTimeEntries();
@@ -931,7 +939,7 @@ export async function registerRoutes(
   app.get("/api/tasks/:taskId/time-entries", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const timeEntries = await storage.getTimeEntriesByTaskId(parseInt(req.params.taskId));
@@ -945,7 +953,7 @@ export async function registerRoutes(
   app.post("/api/time-entries", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const userId = req.session.userId!;
@@ -964,7 +972,7 @@ export async function registerRoutes(
   app.patch("/api/time-entries/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateTimeEntrySchema.parse(req.body);
@@ -985,7 +993,7 @@ export async function registerRoutes(
   app.delete("/api/time-entries/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteTimeEntry(parseInt(req.params.id));
@@ -1003,7 +1011,7 @@ export async function registerRoutes(
   app.get("/api/projects/:projectId/folders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const folders = await storage.getFoldersByProjectId(parseInt(req.params.projectId));
@@ -1017,7 +1025,7 @@ export async function registerRoutes(
   app.post("/api/projects/:projectId/folders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertFolderSchema.parse({ ...req.body, projectId: parseInt(req.params.projectId) });
@@ -1035,7 +1043,7 @@ export async function registerRoutes(
   app.patch("/api/folders/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateFolderSchema.parse(req.body);
@@ -1056,7 +1064,7 @@ export async function registerRoutes(
   app.delete("/api/folders/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteFolder(parseInt(req.params.id));
@@ -1074,7 +1082,7 @@ export async function registerRoutes(
   app.get("/api/projects/:projectId/documents", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const documents = await storage.getDocumentsByProjectId(parseInt(req.params.projectId));
@@ -1088,7 +1096,7 @@ export async function registerRoutes(
   app.get("/api/folders/:folderId/documents", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const documents = await storage.getDocumentsByFolderId(parseInt(req.params.folderId));
@@ -1102,7 +1110,7 @@ export async function registerRoutes(
   app.post("/api/projects/:projectId/documents", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const userId = req.session.userId!;
@@ -1136,7 +1144,7 @@ export async function registerRoutes(
   app.patch("/api/documents/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateDocumentSchema.parse(req.body);
@@ -1157,7 +1165,7 @@ export async function registerRoutes(
   app.delete("/api/documents/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteDocument(parseInt(req.params.id));
@@ -1175,7 +1183,7 @@ export async function registerRoutes(
   app.get("/api/associates/:associateId/folders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const folders = await storage.getFoldersByAssociateId(parseInt(req.params.associateId));
@@ -1189,7 +1197,7 @@ export async function registerRoutes(
   app.post("/api/associates/:associateId/folders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertFolderSchema.parse({ ...req.body, associateId: parseInt(req.params.associateId) });
@@ -1208,7 +1216,7 @@ export async function registerRoutes(
   app.get("/api/associates/:associateId/documents", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const documents = await storage.getDocumentsByAssociateId(parseInt(req.params.associateId));
@@ -1222,7 +1230,7 @@ export async function registerRoutes(
   app.post("/api/associates/:associateId/documents", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const userId = req.session.userId!;
@@ -1255,7 +1263,7 @@ export async function registerRoutes(
   app.post("/api/associates/:associateId/documents/upload", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
 
@@ -1301,7 +1309,7 @@ export async function registerRoutes(
   app.get("/api/folder-templates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const entityType = req.query.entityType as string | undefined;
@@ -1316,7 +1324,7 @@ export async function registerRoutes(
   app.post("/api/folder-templates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const template = await storage.createFolderTemplate(req.body);
@@ -1330,7 +1338,7 @@ export async function registerRoutes(
   app.patch("/api/folder-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const updated = await storage.updateFolderTemplate(parseInt(req.params.id), req.body);
@@ -1345,7 +1353,7 @@ export async function registerRoutes(
   app.delete("/api/folder-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const success = await storage.deleteFolderTemplate(parseInt(req.params.id));
@@ -1360,7 +1368,7 @@ export async function registerRoutes(
   app.post("/api/folder-templates/:id/apply", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const template = await storage.getFolderTemplate(parseInt(req.params.id));
@@ -1387,7 +1395,7 @@ export async function registerRoutes(
   app.get("/api/projects/:projectId/associates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const associates = await storage.getProjectAssociates(parseInt(req.params.projectId));
@@ -1401,7 +1409,7 @@ export async function registerRoutes(
   app.post("/api/projects/:projectId/associates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertProjectAssociateSchema.parse({ ...req.body, projectId: parseInt(req.params.projectId) });
@@ -1419,7 +1427,7 @@ export async function registerRoutes(
   app.delete("/api/projects/:projectId/associates/:associateId", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.removeProjectAssociate(parseInt(req.params.projectId), parseInt(req.params.associateId));
@@ -1437,7 +1445,7 @@ export async function registerRoutes(
   app.get("/api/checklist-templates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const templates = await storage.getChecklistTemplates();
@@ -1451,7 +1459,7 @@ export async function registerRoutes(
   app.get("/api/checklist-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const template = await storage.getChecklistTemplate(parseInt(req.params.id));
@@ -1468,7 +1476,7 @@ export async function registerRoutes(
   app.post("/api/checklist-templates", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertChecklistTemplateSchema.parse(req.body);
@@ -1486,7 +1494,7 @@ export async function registerRoutes(
   app.patch("/api/checklist-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateChecklistTemplateSchema.parse(req.body);
@@ -1507,7 +1515,7 @@ export async function registerRoutes(
   app.delete("/api/checklist-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteChecklistTemplate(parseInt(req.params.id));
@@ -1525,7 +1533,7 @@ export async function registerRoutes(
   app.get("/api/projects/:projectId/checklists", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const checklists = await storage.getChecklistInstancesByProjectId(parseInt(req.params.projectId));
@@ -1539,7 +1547,7 @@ export async function registerRoutes(
   app.post("/api/projects/:projectId/checklists", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertChecklistInstanceSchema.parse({ ...req.body, projectId: parseInt(req.params.projectId) });
@@ -1557,7 +1565,7 @@ export async function registerRoutes(
   app.patch("/api/checklists/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateChecklistInstanceSchema.parse(req.body);
@@ -1578,7 +1586,7 @@ export async function registerRoutes(
   app.delete("/api/checklists/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteChecklistInstance(parseInt(req.params.id));
@@ -1596,7 +1604,7 @@ export async function registerRoutes(
   app.get("/api/search", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const query = req.query.q as string;
@@ -1615,7 +1623,7 @@ export async function registerRoutes(
   app.get("/api/tasks/overdue", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const tasks = await storage.getOverdueTasks();
@@ -1630,7 +1638,7 @@ export async function registerRoutes(
   app.get("/api/associates/:id/full", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const associate = await storage.getAssociateWithRelations(parseInt(req.params.id));
@@ -1648,7 +1656,7 @@ export async function registerRoutes(
   app.get("/api/users/admins", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const admins = await storage.getAdminUsers();
@@ -2427,7 +2435,7 @@ export async function registerRoutes(
   app.get("/api/reminders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const reminders = await storage.getAllReminders();
@@ -2468,7 +2476,7 @@ export async function registerRoutes(
   app.get("/api/tasks/:taskId/reminders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const reminders = await storage.getTaskReminders(parseInt(req.params.taskId));
@@ -2482,7 +2490,7 @@ export async function registerRoutes(
   app.post("/api/tasks/:taskId/reminders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertTaskReminderSchema.parse({
@@ -2503,7 +2511,7 @@ export async function registerRoutes(
   app.delete("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
       const deleted = await storage.deleteTaskReminder(parseInt(req.params.id));
@@ -2542,7 +2550,7 @@ export async function registerRoutes(
   app.post("/api/projects/:projectId/documents/upload", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin") {
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
 
