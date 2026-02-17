@@ -3,7 +3,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { format } from "date-fns";
 import { Bell, ClipboardList, Clock, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Task, TaskReminder, Project } from "@shared/schema";
 
 export type CalendarEvent = {
@@ -29,6 +28,7 @@ export function CalendarItem({ event, onClick }: CalendarItemProps) {
 
   const style = {
     transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 9999 : undefined,
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -39,47 +39,37 @@ export function CalendarItem({ event, onClick }: CalendarItemProps) {
   };
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div
-          ref={setNodeRef}
-          style={style}
-          {...listeners}
-          {...attributes}
-          onClick={handleClick}
-          className={cn(
-            "text-xs p-1 rounded cursor-pointer hover:ring-1 hover:ring-primary/50 flex items-center gap-1 truncate transition-all",
-            event.type === "task" && "bg-chart-4/20 text-chart-4 border border-chart-4/30",
-            event.type === "reminder" && "bg-chart-3/20 text-chart-3 border border-chart-3/30",
-            event.type === "deadline" && "bg-destructive/20 text-destructive border border-destructive/30",
-            event.status === "done" && "opacity-50 line-through",
-            isDragging && "opacity-50 shadow-lg cursor-grabbing"
-          )}
-          data-testid={`calendar-item-${event.id}`}
-        >
-          <GripVertical className="h-3 w-3 flex-shrink-0 opacity-50" />
-          {event.type === "task" && <ClipboardList className="h-3 w-3 flex-shrink-0" />}
-          {event.type === "reminder" && <Bell className="h-3 w-3 flex-shrink-0" />}
-          <span className="truncate">{event.title}</span>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="max-w-xs">
-        <div className="space-y-1">
-          <p className="font-medium">{event.title}</p>
-          {event.projectName && (
-            <p className="text-xs text-muted-foreground">Project: {event.projectName}</p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {format(event.date, "MMM d, yyyy")}
-            {event.type === "reminder" && ` at ${format(event.date, "h:mm a")}`}
-          </p>
-          {event.status && (
-            <p className="text-xs capitalize">Status: {event.status.replace(/_/g, " ")}</p>
-          )}
-          <p className="text-xs text-muted-foreground italic">Click to view, drag to reschedule</p>
-        </div>
-      </TooltipContent>
-    </Tooltip>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "text-xs p-1 rounded cursor-grab flex items-center gap-1 truncate transition-all group",
+        event.type === "task" && "bg-chart-4/20 text-chart-4 border border-chart-4/30",
+        event.type === "reminder" && "bg-chart-3/20 text-chart-3 border border-chart-3/30",
+        event.type === "deadline" && "bg-destructive/20 text-destructive border border-destructive/30",
+        event.status === "done" && "opacity-50 line-through",
+        isDragging && "opacity-50 shadow-lg cursor-grabbing"
+      )}
+      data-testid={`calendar-item-${event.id}`}
+    >
+      <div
+        {...listeners}
+        {...attributes}
+        className="flex-shrink-0 cursor-grab touch-none"
+        data-testid={`drag-handle-${event.id}`}
+      >
+        <GripVertical className="h-3 w-3 opacity-50 group-hover:opacity-100" />
+      </div>
+      <div
+        className="flex items-center gap-1 truncate flex-1 min-w-0"
+        onClick={handleClick}
+        title={`${event.title}${event.projectName ? ` — ${event.projectName}` : ""}`}
+      >
+        {event.type === "task" && <ClipboardList className="h-3 w-3 flex-shrink-0" />}
+        {event.type === "reminder" && <Bell className="h-3 w-3 flex-shrink-0" />}
+        <span className="truncate">{event.title}</span>
+      </div>
+    </div>
   );
 }
 
