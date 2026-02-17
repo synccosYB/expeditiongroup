@@ -2,6 +2,7 @@ import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage, db } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
+import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
@@ -390,6 +391,7 @@ export async function registerRoutes(
       }
       const parsed = insertProjectSchema.parse(req.body);
       const project = await storage.createProject(parsed);
+      sendWebhook("project.created", { project }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(project);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -413,6 +415,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Project not found" });
       }
       console.log("[DEBUG] Project updated, isVisibleToClient:", project.isVisibleToClient);
+      sendWebhook("project.updated", { project, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(project);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -443,10 +446,12 @@ export async function registerRoutes(
         });
       }
       
-      const deleted = await storage.deleteProject(parseInt(req.params.id));
+      const projectId = parseInt(req.params.id);
+      const deleted = await storage.deleteProject(projectId);
       if (!deleted) {
         return res.status(404).json({ message: "Project not found" });
       }
+      sendWebhook("project.deleted", { projectId }, { id: req.session.userId!, email: user?.email });
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -483,6 +488,7 @@ export async function registerRoutes(
         const statusCode = result.error === "Project not found" ? 404 : 400;
         return res.status(statusCode).json({ message: result.error });
       }
+      sendWebhook("project.archived", { project: result.project }, { id: req.session.userId!, email: user?.email });
       res.json(result.project);
     } catch (error) {
       console.error("Error archiving project:", error);
@@ -496,11 +502,13 @@ export async function registerRoutes(
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const result = await storage.permanentlyDeleteProject(parseInt(req.params.id));
+      const projectId = parseInt(req.params.id);
+      const result = await storage.permanentlyDeleteProject(projectId);
       if (!result.success) {
         const statusCode = result.error === "Project not found" ? 404 : 400;
         return res.status(statusCode).json({ message: result.error });
       }
+      sendWebhook("project.deleted", { projectId, permanent: true }, { id: req.session.userId!, email: user?.email });
       res.status(204).send();
     } catch (error) {
       console.error("Error permanently deleting project:", error);
@@ -530,6 +538,7 @@ export async function registerRoutes(
       }
       const parsed = insertTaskSchema.parse(req.body);
       const task = await storage.createTask(parsed);
+      sendWebhook("task.created", { task }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -551,6 +560,8 @@ export async function registerRoutes(
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
+      const eventType = parsed.status === "done" ? "task.completed" : "task.updated";
+      sendWebhook(eventType, { task, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(task);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -567,10 +578,12 @@ export async function registerRoutes(
       if (user?.role !== "admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const deleted = await storage.deleteTask(parseInt(req.params.id));
+      const taskId = parseInt(req.params.id);
+      const deleted = await storage.deleteTask(taskId);
       if (!deleted) {
         return res.status(404).json({ message: "Task not found" });
       }
+      sendWebhook("task.deleted", { taskId }, { id: req.session.userId!, email: user?.email });
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -3123,6 +3136,7 @@ export async function registerRoutes(
       const parsedItems = z.array(insertInvoiceItemSchema.omit({ invoiceId: true })).parse(items || []);
       
       const invoice = await storage.createInvoice(parsedInvoice, parsedItems as any);
+      sendWebhook("invoice.created", { invoice }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(invoice);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -3207,6 +3221,8 @@ export async function registerRoutes(
       }
       
       const fullInvoice = await storage.getInvoice(invoiceId);
+      const invoiceEventType = parsed.status === "paid" ? "invoice.paid" : "invoice.updated";
+      sendWebhook(invoiceEventType, { invoice: fullInvoice, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(fullInvoice);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -4049,6 +4065,7 @@ export async function registerRoutes(
         { ...parsed, createdByUserId: user.id },
         parsedItems
       );
+      sendWebhook("proposal.created", { proposal }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(proposal);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -4070,6 +4087,8 @@ export async function registerRoutes(
       if (!proposal) {
         return res.status(404).json({ message: "Proposal not found" });
       }
+      const proposalEventType = parsed.status === "accepted" ? "proposal.accepted" : "proposal.updated";
+      sendWebhook(proposalEventType, { proposal, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(proposal);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -5767,6 +5786,7 @@ export async function registerRoutes(
         }
       }
       
+      sendWebhook("payment.received", { payment }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(payment);
     } catch (error) {
       if (error instanceof ZodError) {

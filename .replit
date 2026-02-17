@@ -50,3 +50,4 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_database:1.0.
 
 [userenv.shared]
 TZ = "America/New_York"
+SYNKDEX_WEBHOOK_URL = "https://synkdex.com/api/webhooks/synkdex/1"
