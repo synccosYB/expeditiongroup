@@ -412,7 +412,7 @@ export function ObjectUploader({
       </Button>
 
       <Dialog open={showModal} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl z-[100]">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {step === "select" ? "Bulk Upload Documents" : "Configure Documents"}

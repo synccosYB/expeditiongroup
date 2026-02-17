@@ -145,7 +145,7 @@ export function SimpleFileUploader({
       </Button>
 
       <Dialog open={showModal} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md z-[200]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload File</DialogTitle>
           </DialogHeader>

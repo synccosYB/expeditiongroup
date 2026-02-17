@@ -660,7 +660,7 @@ export function DocumentManager({
       </Dialog>
 
       <Dialog open={showUploadDialog} onOpenChange={(open) => { if (!open) resetUploadDialog(); }}>
-        <DialogContent className="max-w-md z-[150]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
           </DialogHeader>
