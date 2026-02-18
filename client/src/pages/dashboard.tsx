@@ -167,7 +167,7 @@ export default function Dashboard() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    const currentDate = new Date().toLocaleDateString();
+    const currentDate = new Date().toLocaleDateString("en-US");
     
     let tableContent = "";
     if (reportType === "clients") {
@@ -221,7 +221,7 @@ export default function Dashboard() {
                 <td>${t.project?.name ?? "-"}</td>
                 <td>${t.status?.replace(/_/g, " ")}</td>
                 <td>${t.type ?? "-"}</td>
-                <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "-"}</td>
+                <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-US") : "-"}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -255,8 +255,8 @@ export default function Dashboard() {
                 <tr>
                   <td>${inv.invoiceNumber}</td>
                   <td>${inv.project?.name ?? "-"}</td>
-                  <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "-"}</td>
-                  <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "-"}</td>
+                  <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString("en-US") : "-"}</td>
+                  <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-US") : "-"}</td>
                   <td>$${parseFloat(inv?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
                 </tr>
               `).join("")}

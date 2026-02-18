@@ -28,7 +28,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { TimeLog, TimeEntry, Project, User, Task, Client, Invoice } from "@shared/schema";
-import { formatTimeRange12h, formatLocalDate } from "@/lib/dateUtils";
+import { formatTimeRange12h, formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type TimeLogWithRelations = TimeLog & { project: Project; user?: User };
 type TimeEntryWithRelations = TimeEntry & { project: Project; task: Task };
@@ -234,10 +234,9 @@ export default function TimeLogs() {
 
     let matchesDateRange = true;
     if (dateFrom || dateTo) {
-      const formatted = formatLocalDate(log.date);
-      if (formatted) {
-        const parts = formatted.split("-");
-        const logYmd = `${parts[2]}-${parts[0]}-${parts[1]}`;
+      const parsed = log.date ? parseLocalDateFromISO(log.date) : null;
+      if (parsed) {
+        const logYmd = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
         if (dateFrom && logYmd < dateFrom) matchesDateRange = false;
         if (dateTo && logYmd > dateTo) matchesDateRange = false;
       }
@@ -508,9 +507,8 @@ function EditTimeLogDialog({
 
   const handleOpen = () => {
     if (log) {
-      const formatted = log.date ? formatLocalDate(log.date) : "";
-      const dateParts = formatted ? formatted.split("-") : [];
-      const dateStr = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}` : "";
+      const parsed = log.date ? parseLocalDateFromISO(log.date) : null;
+      const dateStr = parsed ? `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}` : "";
       setDate(dateStr);
       setStartTime(log.startTime || "");
       setEndTime(log.endTime || "");

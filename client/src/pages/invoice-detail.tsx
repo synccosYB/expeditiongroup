@@ -47,8 +47,7 @@ import {
   FileText,
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import { format } from "date-fns";
-import { parseLocalDateFromISO } from "@/lib/dateUtils";
+import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceItem, Project, Client } from "@shared/schema";
@@ -324,12 +323,12 @@ export default function InvoiceDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice Date</p>
-              <p className="font-medium" data-testid="text-invoice-date-value">{format(invoiceDate, "MMMM d, yyyy")}</p>
+              <p className="font-medium" data-testid="text-invoice-date-value">{formatLocalDate(invoiceDate)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Due Date</p>
               <p className="font-medium" data-testid="text-due-date-value">
-                {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMMM d, yyyy") : "Upon Receipt"}
+                {invoice.dueDate ? formatLocalDate(parseLocalDateFromISO(invoice.dueDate)!) : "Upon Receipt"}
               </p>
             </div>
             <div>

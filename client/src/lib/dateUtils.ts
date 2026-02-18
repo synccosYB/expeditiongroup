@@ -5,7 +5,7 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
- * Format a date in local time as MM-DD-YYYY format (US standard).
+ * Format a date in local time as M/D/YYYY format (US standard).
  * Use this for consistent date display throughout the application.
  */
 export function formatLocalDate(date: Date | string | null | undefined): string {
@@ -14,15 +14,15 @@ export function formatLocalDate(date: Date | string | null | undefined): string 
   const d = typeof date === 'string' ? parseLocalDateFromISO(date) : date;
   if (!d || isNaN(d.getTime())) return "";
   
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
   const year = d.getFullYear();
   
-  return `${month}-${day}-${year}`;
+  return `${month}/${day}/${year}`;
 }
 
 /**
- * Format a date with time in local time as "MM-DD-YYYY at h:mm AM/PM" format (US standard).
+ * Format a date with time in local time as "M/D/YYYY at h:mm AM/PM" format (US standard).
  */
 export function formatLocalDateTime(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -30,8 +30,8 @@ export function formatLocalDateTime(date: Date | string | null | undefined): str
   const d = typeof date === 'string' ? new Date(date) : date;
   if (!d || isNaN(d.getTime())) return "";
   
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
   const year = d.getFullYear();
   
   let hours = d.getHours();
@@ -39,7 +39,7 @@ export function formatLocalDateTime(date: Date | string | null | undefined): str
   const period = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
   
-  return `${month}-${day}-${year} at ${hours}:${minutes} ${period}`;
+  return `${month}/${day}/${year} at ${hours}:${minutes} ${period}`;
 }
 
 /**
