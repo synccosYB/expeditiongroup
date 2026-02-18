@@ -1,0 +1,48 @@
+index-CLD8WCHP.js:937 SW registered: https://expeditiongroupny.com/
+widget.js:288  GET https://7118a5fb-5aad-402c-a766-1d77b4d52a61-00-2oe7ptyinmjiu.janeway.replit.dev/api/widget/brand-info 401 (Unauthorized)
+fetchBrandInfo @ widget.js:288
+verifyAndFetchBrand @ widget.js:283
+createWidget @ widget.js:258Understand this error
+widget.js:308  GET https://7118a5fb-5aad-402c-a766-1d77b4d52a61-00-2oe7ptyinmjiu.janeway.replit.dev/api/widget/user-info 401 (Unauthorized)
+fetchUserInfo @ widget.js:308
+createWidget @ widget.js:261Understand this error
+widget.js:276 [SynkDex Widget] API key issue: Key not found Key length: 21
+(anonymous) @ widget.js:276
+Promise.then
+verifyAndFetchBrand @ widget.js:271
+createWidget @ widget.js:258Understand this warning
+widget.js:274 [SynkDex Widget] API key verified for: Financery
+2index-CLD8WCHP.js:642 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-CLD8WCHP.js:642
+My @ index-CLD8WCHP.js:40
+Jd @ index-CLD8WCHP.js:40
+PH @ index-CLD8WCHP.js:40
+pc @ index-CLD8WCHP.js:40
+_k @ index-CLD8WCHP.js:40
+Jl @ index-CLD8WCHP.js:38
+Qc @ index-CLD8WCHP.js:40
+Ti.flushSync @ index-CLD8WCHP.js:40
+y1 @ index-CLD8WCHP.js:48
+u @ index-CLD8WCHP.js:760
+(anonymous) @ index-CLD8WCHP.js:48
+Q7 @ index-CLD8WCHP.js:37
+G7 @ index-CLD8WCHP.js:37
+X7 @ index-CLD8WCHP.js:37
+Z2 @ index-CLD8WCHP.js:37
+dF @ index-CLD8WCHP.js:37
+(anonymous) @ index-CLD8WCHP.js:37
+t1 @ index-CLD8WCHP.js:40
+MM @ index-CLD8WCHP.js:37
+hj @ index-CLD8WCHP.js:37
+PN @ index-CLD8WCHP.js:37
+mq @ index-CLD8WCHP.js:37Understand this warning
+index-CLD8WCHP.js:642 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-CLD8WCHP.js:642
+My @ index-CLD8WCHP.js:40
+Jd @ index-CLD8WCHP.js:40
+PH @ index-CLD8WCHP.js:40
+pc @ index-CLD8WCHP.js:40
+_k @ index-CLD8WCHP.js:40
+Jl @ index-CLD8WCHP.js:38
+(anonymous) @ index-CLD8WCHP.js:40Understand this warning
+index-CLD8WCHP.js:642 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
