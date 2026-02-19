@@ -7,6 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   FolderKanban,
   MapPin,
   Calendar,
@@ -23,6 +30,10 @@ import {
   Reply,
   X,
   Download,
+  Eye,
+  File,
+  Folder,
+  FolderOpen,
   Users,
   Archive,
 } from "lucide-react";
@@ -31,7 +42,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Project, Client, Task, Note, User, Document, ClientPortalSettings, Associate } from "@shared/schema";
+import type { Project, Client, Task, Note, User, Document, ClientPortalSettings, Associate, Folder as FolderType } from "@shared/schema";
 import { formatLocalDate } from "@/lib/dateUtils";
 
 type TaskWithSubtasks = Task & {
@@ -143,6 +154,8 @@ export default function ClientProjectDetail() {
   const [replyingTo, setReplyingTo] = useState<{ id: number; content: string; author: string } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
 
   const toggleExpand = (taskId: number) => {
     setExpandedTasks(prev => {
@@ -167,6 +180,11 @@ export default function ClientProjectDetail() {
 
   const { data: documents } = useQuery<Document[]>({
     queryKey: ["/api/client/projects", id, "documents"],
+    enabled: !!id && !!portalSettings?.showDocuments,
+  });
+
+  const { data: folders } = useQuery<FolderType[]>({
+    queryKey: ["/api/client/projects", id, "folders"],
     enabled: !!id && !!portalSettings?.showDocuments,
   });
 
@@ -276,6 +294,43 @@ export default function ClientProjectDetail() {
   const completedTasks = tasksByStatus.completed.length;
   const totalTasks = project.tasks?.length || 0;
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  const filteredDocuments = selectedFolderId
+    ? (documents || []).filter((d) => d.folderId === selectedFolderId)
+    : (documents || []);
+
+  const categoryOptions = [
+    { value: "plan", label: "Plan" },
+    { value: "permit", label: "Permit" },
+    { value: "survey", label: "Survey" },
+    { value: "dob_letter", label: "DOB Letter" },
+    { value: "correspondence", label: "Correspondence" },
+    { value: "legal", label: "Legal" },
+    { value: "photo", label: "Photo" },
+    { value: "inspection", label: "Inspection" },
+    { value: "other", label: "Other" },
+  ];
+
+  const getFilePreviewType = (doc: Document): "pdf" | "image" | "other" => {
+    const ext = (doc.storagePath || "").split(".").pop()?.toLowerCase() || "";
+    const fileType = (doc.fileType || "").toLowerCase();
+    if (fileType.includes("pdf") || ext === "pdf") return "pdf";
+    if (
+      fileType.startsWith("image/") ||
+      ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)
+    )
+      return "image";
+    return "other";
+  };
+
+  const formatFileSize = (bytes: number | null | undefined): string => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const previewType = viewingDocument ? getFilePreviewType(viewingDocument) : "other";
 
   return (
     <div className="space-y-6">
@@ -487,47 +542,146 @@ export default function ClientProjectDetail() {
         </TabsContent>
 
         <TabsContent value="documents" className="mt-6">
-          {documents && documents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {documents.map((doc) => (
-                <Card key={doc.id} className="hover-elevate" data-testid={`card-document-${doc.id}`}>
-                  <CardContent className="py-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-md bg-muted">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{doc.fileName}</p>
-                        <p className="text-xs text-muted-foreground mt-1 capitalize">
-                          {doc.category?.replace(/_/g, " ") || "Document"}
-                        </p>
-                        {doc.createdAt && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatLocalDate(doc.createdAt)}
-                          </p>
-                        )}
-                      </div>
-                      <Button variant="ghost" size="icon" asChild>
-                        <a href={doc.storagePath} target="_blank" rel="noopener noreferrer" data-testid={`button-download-doc-${doc.id}`}>
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant={selectedFolderId === null ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedFolderId(null)}
+                data-testid="button-all-folders"
+              >
+                All Folders
+              </Button>
+              {(folders || []).map((folder) => (
+                <Button
+                  key={folder.id}
+                  variant={selectedFolderId === folder.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedFolderId(folder.id)}
+                  data-testid={`button-folder-${folder.id}`}
+                >
+                  <Folder className="h-3.5 w-3.5 mr-1.5" />
+                  {folder.name}
+                </Button>
               ))}
             </div>
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <EmptyState
-                  icon={FileText}
-                  title="No documents yet"
-                  description="Documents will appear here as they are uploaded"
-                />
-              </CardContent>
-            </Card>
-          )}
+
+            {selectedFolderId && (
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {(folders || []).find((f) => f.id === selectedFolderId)?.name}
+                </h3>
+              </div>
+            )}
+
+            {filteredDocuments.length > 0 ? (
+              <div className="space-y-3">
+                {filteredDocuments.map((doc) => (
+                  <Card key={doc.id} data-testid={`document-item-${doc.id}`}>
+                    <CardContent className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 py-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <File className="h-6 w-6 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate" data-testid={`text-document-name-${doc.id}`}>
+                            {doc.fileName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                            {doc.category && doc.category !== "other" && (
+                              <Badge variant="secondary" className="text-xs">
+                                {categoryOptions.find((c) => c.value === doc.category)?.label || doc.category}
+                              </Badge>
+                            )}
+                            {doc.folderId && (
+                              <span>
+                                {(folders || []).find((f) => f.id === doc.folderId)?.name}
+                              </span>
+                            )}
+                            {doc.fileSize ? <span>{formatFileSize(doc.fileSize)}</span> : null}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setViewingDocument(doc)}
+                          data-testid={`button-view-document-${doc.id}`}
+                        >
+                          <Eye className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">View</span>
+                        </Button>
+                        <Button size="sm" variant="ghost" asChild data-testid={`button-download-document-${doc.id}`}>
+                          <a href={doc.storagePath} download={doc.fileName}>
+                            <Download className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Download</span>
+                          </a>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-10">
+                  <File className="h-10 w-10 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground text-sm" data-testid="text-no-documents">
+                    {selectedFolderId ? "No documents in this folder" : "No documents yet"}
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">Documents will appear here as they are uploaded</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <Dialog open={viewingDocument !== null} onOpenChange={(open) => { if (!open) setViewingDocument(null); }}>
+            <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                <DialogTitle data-testid="text-viewer-title">{viewingDocument?.fileName}</DialogTitle>
+              </DialogHeader>
+              <div className="py-2">
+                {viewingDocument && previewType === "pdf" && (
+                  <iframe
+                    src={`${viewingDocument.storagePath}?inline=true`}
+                    className="w-full h-[70vh]"
+                    title={viewingDocument.fileName}
+                    data-testid="viewer-pdf"
+                  />
+                )}
+                {viewingDocument && previewType === "image" && (
+                  <img
+                    src={`${viewingDocument.storagePath}?inline=true`}
+                    className="max-w-full max-h-[70vh] object-contain mx-auto"
+                    alt={viewingDocument.fileName}
+                    data-testid="viewer-image"
+                  />
+                )}
+                {viewingDocument && previewType === "other" && (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-4" data-testid="viewer-other">
+                    <File className="h-16 w-16 text-muted-foreground" />
+                    <p className="text-muted-foreground">Preview not available for this file type</p>
+                    <Button asChild>
+                      <a href={viewingDocument.storagePath} download={viewingDocument.fileName} data-testid="button-viewer-download-fallback">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download File
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {viewingDocument && (
+                <DialogFooter>
+                  <Button asChild data-testid="button-viewer-download">
+                    <a href={viewingDocument.storagePath} download={viewingDocument.fileName}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </a>
+                  </Button>
+                </DialogFooter>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="messages" className="mt-6">

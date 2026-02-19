@@ -1782,6 +1782,29 @@ export async function registerRoutes(
     }
   });
 
+  // Client Portal - Get folders for a project
+  app.get("/api/client/projects/:id/folders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showDocuments) {
+        return res.json([]);
+      }
+      const project = await storage.getProject(parseInt(req.params.id));
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      const folders = await storage.getFoldersByProjectId(parseInt(req.params.id));
+      res.json(folders);
+    } catch (error) {
+      console.error("Error fetching client folders:", error);
+      res.status(500).json({ message: "Failed to fetch folders" });
+    }
+  });
+
   // Client Portal - Get documents visible to client
   app.get("/api/client/projects/:id/documents", isAuthenticated, async (req: any, res) => {
     try {
