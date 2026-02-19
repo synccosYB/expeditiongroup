@@ -1,0 +1,51 @@
+BUG-0039
+Client Standardize Folder & Upload System
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Verify that the folder layout matches the Admin view exactly. Users should be able to click a folder name and see all folders within that category expand/display the same way as Admin. The download and view options should also function and appear exactly the same as in the Admin layout. Ensure consistency in structure, behavior, and UI.
+
+AI Analysis
+
+1) What part of the app is affected:
+- The Client-side "Standardize Folder & Upload System," specifically the folder layout, rendering, and interactive options ("download" and "view" buttons), which should mirror the Admin view in structure and behavior.
+
+2) Root cause analysis:
+- Based on the description, the main issues likely involve inconsistencies between the Client and Admin UI for the folder system. This could include differences in folder tree expansion logic, UI elements (such as missing or rearranged "download" and "view" buttons), or discrepancies in the list of folders displayed when a category is expanded.
+- There may also be logic issues (folder expand/collapse behaviors), permissions/settings differences, or CSS/UI mismatches contributing to this lack of standardization.
+
+3) Recommended fix or next steps:
+- Perform a detailed comparison between the Client and Admin folder layouts:
+   - Verify folder structure—ensure folder trees are generated with identical logic/data sources.
+   - Ensure clicking folder names expands/shows subfolders identically.
+   - Check all feature buttons ("download", "view") for presence, position, and functionality.
+- Audit the component/codebase to factor out any duplicative or divergent logic between Client and Admin views. Ideally, shared UI components should be used, and access permissions cleanly managed.
+- Conduct a thorough UI review for CSS, spacing, iconography, and interactions for complete parity.
+
+```json
+{"severity": "medium", "category": "ui"}
+```
+
+https://expeditiongroupny.com/expenses
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: Financery (synccos.world)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
