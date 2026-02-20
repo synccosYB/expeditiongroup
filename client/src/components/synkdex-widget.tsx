@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 declare global {
@@ -9,9 +9,7 @@ declare global {
   }
 }
 
-const API_KEY = "sk_b6387eab3b7ebf486a52f9aae18ed1ee48ffbda30a922566";
 const SYNKDEX_URL = "https://synkdex.com";
-const SCRIPT_SELECTOR = `script[data-api-key="${API_KEY}"]`;
 
 function rewriteUrl(url: string): string {
   if (url.startsWith(SYNKDEX_URL + "/api/")) {
@@ -78,8 +76,8 @@ function removeXHRInterceptor() {
 }
 
 function removeSynkdex() {
-  const scriptEl = document.querySelector(SCRIPT_SELECTOR);
-  if (scriptEl) scriptEl.remove();
+  const scripts = document.querySelectorAll('script[data-api-key]');
+  scripts.forEach((el) => el.remove());
   const widgetEl = document.getElementById("synkdex-widget");
   if (widgetEl) widgetEl.remove();
   const overlays = document.querySelectorAll(".sdx-overlay");
@@ -97,16 +95,26 @@ function removeSynkdex() {
 
 export function SynkdexWidget() {
   const { user, isAdmin } = useAuth();
+  const [apiKey, setApiKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !isAdmin) {
+    if (!user || !isAdmin) return;
+    fetch("/api/synkdex-config", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setApiKey(data.apiKey || null))
+      .catch(() => setApiKey(null));
+  }, [user, isAdmin]);
+
+  useEffect(() => {
+    if (!user || !isAdmin || !apiKey) {
       removeSynkdex();
       removeFetchInterceptor();
       removeXHRInterceptor();
       return;
     }
 
-    if (document.querySelector(SCRIPT_SELECTOR)) return;
+    const selector = `script[data-api-key="${apiKey}"]`;
+    if (document.querySelector(selector)) return;
 
     removeSynkdex();
 
@@ -115,7 +123,7 @@ export function SynkdexWidget() {
 
     const s = document.createElement("script");
     s.src = `${SYNKDEX_URL}/widget.js`;
-    s.setAttribute("data-api-key", API_KEY);
+    s.setAttribute("data-api-key", apiKey);
     s.setAttribute("data-api-url", window.location.origin);
     s.setAttribute("data-brand-name", "Expedition Group");
     s.setAttribute("data-brand-logo", `${SYNKDEX_URL}/synkdex-logo.webp`);
@@ -137,7 +145,7 @@ export function SynkdexWidget() {
       removeFetchInterceptor();
       removeXHRInterceptor();
     };
-  }, [user, isAdmin]);
+  }, [user, isAdmin, apiKey]);
 
   return null;
 }

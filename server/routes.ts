@@ -133,6 +133,10 @@ export async function registerRoutes(
     }
   };
 
+  app.get("/api/synkdex-config", isAuthenticated, (_req: Request, res) => {
+    res.json({ apiKey: SYNKDEX_PROXY_API_KEY });
+  });
+
   app.all("/api/widget/*", synkdexProxy);
   app.all("/api/v1/bugs/*", synkdexProxy);
 
