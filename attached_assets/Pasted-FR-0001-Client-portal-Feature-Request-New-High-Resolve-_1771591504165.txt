@@ -1,0 +1,103 @@
+FR-0001
+Client portal
+Feature Request
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+" The client portal must match the admin portal exactly in layout, navigation, and functionality, except for permissions to add, edit, or delete.
+
+The client should be able to view and access all of the following modules exactly like admin:
+
+Required Visible Modules & Features:
+
+Dashboard – identical to admin, including:
+
+Past-due tasks
+
+Upcoming tasks
+
+Project summaries
+
+Notifications
+
+Activity overview
+
+Projects – exact same layout and features:
+
+Tasks
+
+Notes
+
+Time logs
+
+Archived notes
+
+Folders
+
+Documents
+
+File viewing & downloads
+
+Tasks – full task viewing:
+
+Notes
+
+Time logs
+
+Status
+
+Deadlines
+
+Calendar – full calendar visibility
+
+Time Logs – full viewing access
+
+Invoices – full invoice viewing
+
+Activity Log – full system activity visibility
+
+Associates & Folders – same structure and navigation"
+
+AI Analysis
+
+1) What part of the app is affected  
+The client portal’s UI and feature set are affected, specifically its consistency with the admin portal. The bug report states that the client portal should mirror the admin portal’s layout, navigation, and features for view permissions but currently does not.
+
+2) Root cause analysis  
+Based solely on the description, the root issue appears to be incomplete or inconsistent implementation of the client portal’s interface and modules compared to the admin portal. The discrepancies may be due to:
+- Conditional rendering logic that hides or omits certain components or modules in the client portal.
+- Missing routes, features, or navigation elements in the client portal view.
+- Insufficient permission checks that remove not only edit/add/delete capabilities but also read/view capabilities.
+
+3) Recommended fix or next steps  
+a. Review the admin portal’s UI and feature set in detail.
+b. Audit the client portal to identify all missing or altered modules, navigation items, and layouts relative to the admin portal.
+c. Adjust the client portal codebase to replicate the same modules, layout, and navigation, but restrict add/edit/delete permissions to view-only as required.
+d. Add/extend automated tests to ensure new parity between portals with respect to visible features.
+e. If design differences are intentional, document them and communicate changes to stakeholders.
+
+```json
+{"severity": "high", "category": "ui"}
+```
+
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: Financery (synccos.world)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
+
