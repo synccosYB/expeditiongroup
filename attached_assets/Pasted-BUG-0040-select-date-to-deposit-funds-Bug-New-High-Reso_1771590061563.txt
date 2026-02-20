@@ -1,0 +1,76 @@
+BUG-0040
+select date to deposit funds
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+**Steps to Reproduce:**
+1. Navigate to the "Deposit Funds" section in the application.
+2. Attempt to select a date for the deposit by using the provided date selector or date input field.
+
+**Expected Behavior:**
+Users should be able to select a desired date for their deposit using the available date selection tool without any issues.
+
+**Actual Behavior:**
+The date selection functionality does not work as expected. Either the date selector is unresponsive, the input field does not accept a date, or there is an error preventing the user from completing the date selection process.
+
+**Additional Context:**
+It is unclear whether this issue occurs for all users or specific account types. This bug might be related to how the date selection tool is integrated into the "Deposit Funds" feature. Ensure to check browser compatibility or mobile responsiveness if applicable. Any error messages displayed during this process could also help diagnose the issue.
+
+AI Analysis
+
+**Analysis of Bug Report and Screenshot:**
+
+1. **Affected Part of App:**  
+   The issue involves the "Deposit Funds" section, specifically the date selection tool used to specify a deposit date. From the screenshot, this is accessed via the "Undeposited Funds" area under Bookkeeping.
+
+2. **UI State & Errors:**  
+   - The screenshot shows no visible date selector (calendar, dropdown, or input field) within the main screen. There are buttons for "Deposit Selected" and "Receive Payment," but there is no obvious place where a date could be selected.
+   - No visible error messages or warnings are shown on the UI, nor any indication of why the date selection might not work.
+   - The UI appears to be responsive and loads pending payments as expected, so the unresponsiveness or absence of the date input may occur after clicking "Deposit Selected" or in a modal/dialog not captured here.
+   - There are no visible console errors or system alerts within the screenshot.
+
+3. **Root Cause Analysis:**  
+   - **Missing/Inaccessible UI Element:** The most likely cause is that the date selector is either not rendered, not attached properly to the UI, or hidden (possibly due to conditional rendering, user permissions, or responsive display issues).
+   - **Integration Issues:** If the date selector only appears after an action (e.g., after clicking "Deposit Selected"), the bug may be due to faulty modal/dialog component logic, browser incompatibility, or event handling problems.
+   - **Browser/Mobile Compatibility:** Since the report mentions to check browser compatibility, the issue could be CSS or JS-related, leading to broken or non-interactive date pickers in specific environments.
+   - **Backend/API errors:** There are no visible indications of failed requests or backend errors; however, if the date input is linked to backend validation, failure could occur after submission (not visible in this screenshot).
+
+4. **Recommended Fix / Next Steps:**  
+   - **UI Review:** Ensure the date picker is rendered and accessible everywhere it's required. Check conditional rendering logic and permissions.
+   - **Event Handling:** If the selector is inside a modal/dialog, verify that it's triggered and displayed properly. Test with various browsers and devices.
+   - **Console Review:** Gather more information on errors by checking browser console logs and network requests when attempting to select a date.
+   - **User Testing:** Confirm if the issue affects all users or just certain account types.
+   - **Accessibility:** Verify the selector is not hidden due to styling or layout issues on smaller screens or in different browsers.
+   - **Backend Validation:** Ensure no hidden errors prevent date selection or submission.
+
+---
+
+```json
+{"severity": "high", "category": "ui"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/undeposited-funds
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: Financery (synccos.world)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
+

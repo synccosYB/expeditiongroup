@@ -90,6 +90,7 @@ export default function UndepositedFunds() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
   const [depositBankAccountId, setDepositBankAccountId] = useState<string>("");
+  const [depositDate, setDepositDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   const { data: payments, isLoading: paymentsLoading } = useQuery<PaymentWithRelations[]>({
     queryKey: ["/api/payments/undeposited"],
@@ -201,7 +202,7 @@ export default function UndepositedFunds() {
       const totalAmount = selectedPaymentData.reduce((sum, p) => sum + parseFloat(p.amount), 0);
       
       const response = await apiRequest("POST", "/api/deposits", {
-        depositDate: new Date().toISOString(),
+        depositDate: new Date(depositDate + "T12:00:00").toISOString(),
         bankAccountId: parseInt(depositBankAccountId),
         totalAmount: totalAmount.toFixed(2),
         memo: `Deposit of ${selectedPayments.length} payment(s)`,
@@ -219,6 +220,7 @@ export default function UndepositedFunds() {
       setIsDepositDialogOpen(false);
       setSelectedPayments([]);
       setDepositBankAccountId("");
+      setDepositDate(format(new Date(), "yyyy-MM-dd"));
     },
     onError: () => {
       toast({ title: "Failed to create deposit", variant: "destructive" });
@@ -562,7 +564,13 @@ export default function UndepositedFunds() {
         </Card>
       )}
 
-      <Dialog open={isDepositDialogOpen} onOpenChange={setIsDepositDialogOpen}>
+      <Dialog open={isDepositDialogOpen} onOpenChange={(open) => {
+        setIsDepositDialogOpen(open);
+        if (!open) {
+          setDepositBankAccountId("");
+          setDepositDate(format(new Date(), "yyyy-MM-dd"));
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Make Deposit</DialogTitle>
@@ -573,6 +581,16 @@ export default function UndepositedFunds() {
                 Depositing {selectedPayments.length} payment(s) totaling:
               </p>
               <p className="text-2xl font-bold">{formatCurrency(selectedTotal)}</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Deposit Date</label>
+              <Input
+                type="date"
+                value={depositDate}
+                onChange={(e) => setDepositDate(e.target.value)}
+                data-testid="input-deposit-date"
+              />
             </div>
 
             <div className="space-y-2">
@@ -597,7 +615,7 @@ export default function UndepositedFunds() {
               </Button>
               <Button
                 onClick={() => createDepositMutation.mutate()}
-                disabled={!depositBankAccountId || createDepositMutation.isPending}
+                disabled={!depositBankAccountId || !depositDate || createDepositMutation.isPending}
                 data-testid="button-confirm-deposit"
               >
                 {createDepositMutation.isPending ? "Depositing..." : "Confirm Deposit"}
