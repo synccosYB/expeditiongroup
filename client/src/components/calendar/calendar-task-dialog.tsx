@@ -162,14 +162,16 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
       const res = await apiRequest("PATCH", `/api/tasks/${task?.id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task updated successfully" });
+      const isNotesOnly = Object.keys(variables).length === 1 && "internalNotes" in variables;
+      toast({ title: isNotesOnly ? "Notes saved successfully" : "Task updated successfully" });
       setIsEditing(false);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    onError: (_error, variables) => {
+      const isNotesOnly = Object.keys(variables).length === 1 && "internalNotes" in variables;
+      toast({ title: "Error", description: isNotesOnly ? "Failed to save notes" : "Failed to update task", variant: "destructive" });
     },
   });
 
@@ -214,6 +216,12 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
       dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
       internalNotes: data.internalNotes || null,
     });
+  };
+
+  const saveNotesDirectly = () => {
+    if (!task) return;
+    const notes = taskForm.getValues("internalNotes");
+    updateTaskMutation.mutate({ internalNotes: notes || null });
   };
 
   const onSubmitTimeEntry = (data: TimeEntryFormData) => {
@@ -472,32 +480,21 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
             </TabsContent>
 
             <TabsContent value="notes" className="space-y-4 pt-4">
-              <Form {...taskForm}>
-                <form onSubmit={taskForm.handleSubmit(onSubmitTaskEdit)} className="space-y-4">
-                  <FormField
-                    control={taskForm.control}
-                    name="internalNotes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Internal Notes</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            placeholder="Add internal notes about this task..."
-                            className="min-h-[200px]"
-                            data-testid="input-internal-notes"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none">Internal Notes</label>
+                  <Textarea
+                    {...taskForm.register("internalNotes")}
+                    placeholder="Add internal notes about this task..."
+                    className="min-h-[200px]"
+                    data-testid="input-internal-notes"
                   />
-                  <Button type="submit" disabled={updateTaskMutation.isPending} data-testid="button-save-notes">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Notes
-                  </Button>
-                </form>
-              </Form>
+                </div>
+                <Button onClick={saveNotesDirectly} disabled={updateTaskMutation.isPending} data-testid="button-save-notes">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Notes
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="timelog" className="space-y-6 pt-4">
