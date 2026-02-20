@@ -41,6 +41,19 @@ export type CalendarEvent = {
 
 type ViewMode = "month" | "week";
 
+function toLocalDate(dateValue: string | Date): Date {
+  if (!dateValue) return new Date();
+  if (typeof dateValue === 'string') {
+    const isoMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0);
+    }
+  }
+  const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0);
+}
+
 export function CalendarView() {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -83,6 +96,8 @@ export function CalendarView() {
     queryKey: ["/api/calendar/events", format(currentDate, "yyyy-MM")],
   });
 
+  const [lastDropDate, setLastDropDate] = useState<string>("");
+
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, dueDate }: { taskId: number; dueDate: string }) => {
       const res = await apiRequest("PATCH", `/api/tasks/${taskId}`, { dueDate });
@@ -91,7 +106,7 @@ export function CalendarView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task updated", description: "Due date has been changed" });
+      toast({ title: "Task moved", description: `Due date changed to ${lastDropDate}` });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
@@ -122,7 +137,7 @@ export function CalendarView() {
           id: `task-${task.id}`,
           type: "task",
           title: task.title,
-          date: new Date(task.dueDate),
+          date: toLocalDate(task.dueDate),
           originalData: task,
           projectId: task.projectId,
           projectName: task.project?.name,
@@ -137,8 +152,8 @@ export function CalendarView() {
           id: `reminder-${reminder.id}`,
           type: "reminder",
           title: reminder.message || `Reminder for: ${reminder.task?.title}`,
-          date: new Date(reminder.scheduledAt),
-          originalData: reminder,
+          date: toLocalDate(reminder.scheduledAt),
+          originalData: { ...reminder, _originalScheduledAt: reminder.scheduledAt },
           projectId: reminder.project?.id,
           projectName: reminder.project?.name,
           status: reminder.status,
@@ -227,16 +242,20 @@ export function CalendarView() {
 
     if (!calendarEvent || isSameDay(calendarEvent.date, targetDate)) return;
 
+    const formattedDate = format(targetDate, "yyyy-MM-dd");
+    const displayDate = format(targetDate, "MMM d, yyyy");
+    setLastDropDate(displayDate);
     if (calendarEvent.type === "task") {
       updateTaskMutation.mutate({
         taskId: calendarEvent.originalData.id,
-        dueDate: format(targetDate, "yyyy-MM-dd"),
+        dueDate: `${formattedDate}T12:00:00`,
       });
     } else if (calendarEvent.type === "reminder") {
-      const originalTime = format(calendarEvent.date, "HH:mm:ss");
+      const origScheduled = new Date(calendarEvent.originalData._originalScheduledAt || calendarEvent.originalData.scheduledAt);
+      const originalTime = format(origScheduled, "HH:mm:ss");
       updateReminderMutation.mutate({
         reminderId: calendarEvent.originalData.id,
-        scheduledAt: `${format(targetDate, "yyyy-MM-dd")}T${originalTime}`,
+        scheduledAt: `${formattedDate}T${originalTime}`,
       });
     }
   };

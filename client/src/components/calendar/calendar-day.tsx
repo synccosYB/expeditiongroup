@@ -21,11 +21,11 @@ export function CalendarDay({ day, events, isCurrentMonth, isToday, viewMode, on
     <div
       ref={setNodeRef}
       className={cn(
-        "border-r border-b last:border-r-0 p-1 transition-colors",
+        "border-r border-b last:border-r-0 p-1 transition-all duration-150",
         viewMode === "week" ? "min-h-[400px]" : "min-h-[100px]",
         !isCurrentMonth && "bg-muted/30",
-        isOver && "bg-primary/10",
-        isToday && "bg-primary/5"
+        isOver && "bg-primary/15 ring-2 ring-inset ring-primary/40",
+        isToday && !isOver && "bg-primary/5"
       )}
       data-testid={`calendar-day-${format(day, "yyyy-MM-dd")}`}
     >

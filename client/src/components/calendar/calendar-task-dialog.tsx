@@ -50,7 +50,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, parseLocalDate, formatDateForInput } from "@/lib/dateUtils";
 import type { Task, Project, User, TimeEntry } from "@shared/schema";
 import type { CalendarEvent } from "./calendar-item";
 
@@ -129,7 +129,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
         description: task.description || "",
         status: task.status || "todo",
         priority: task.priority || "normal",
-        dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+        dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
         internalNotes: task.internalNotes || "",
       });
       setIsEditing(false);
