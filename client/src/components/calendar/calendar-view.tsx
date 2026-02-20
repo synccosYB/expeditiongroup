@@ -5,14 +5,16 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  MouseSensor,
   TouchSensor,
+  PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse, setMonth, setYear, getMonth, getYear } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, ClipboardList, Clock, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +50,7 @@ export function CalendarView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
       },
@@ -60,6 +62,19 @@ export function CalendarView() {
       },
     })
   );
+
+  const calendarCollisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      const dayCollisions = pointerCollisions.filter(c => String(c.id).startsWith("day-"));
+      if (dayCollisions.length > 0) return dayCollisions;
+      return pointerCollisions;
+    }
+    const rectCollisions = rectIntersection(args);
+    const dayRectCollisions = rectCollisions.filter(c => String(c.id).startsWith("day-"));
+    if (dayRectCollisions.length > 0) return dayRectCollisions;
+    return rectCollisions;
+  };
 
   const { data: calendarData, isLoading } = useQuery<{
     tasks: (Task & { project: Project })[];
@@ -308,7 +323,7 @@ export function CalendarView() {
       <CardContent className="p-0">
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
+          collisionDetection={calendarCollisionDetection}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >

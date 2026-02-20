@@ -1,0 +1,70 @@
+BUG-0037
+Fix Calendar Drag Issue
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Dragging tasks to new dates is not working properly. When moving a task, it jumps to incorrect dates instead of the selected one. Previously this feature made problems and caused misplacement of tasks. Investigate and fix drag-and-drop so it works very easy 
+
+AI Analysis
+
+**Analysis:**
+
+1. **Affected Part of the App**
+   - The issue occurs in the **Calendar** module within the "Reminders & Calendar" section.
+   - The main functionality impacted is the **drag-and-drop** interaction for moving tasks between calendar days.
+
+2. **UI State (from Screenshot)**
+   - The calendar is displaying tasks on specific dates.
+   - There are multiple tasks stacked on certain days.
+   - The mouse cursor is positioned over the calendar, possibly mid-drag, but there’s no visible indicator or feedback for drag-and-drop. No error messages or toast notifications are visible.
+   - Nothing in the screenshot shows misplacement actively, but the report highlights that dragging tasks results in them landing on the wrong dates.
+
+3. **Root Cause Hypothesis**
+   - No visible console errors are present, but based on your report and historical issues:
+     - The root cause is likely due to **incorrect date mapping during drag-and-drop** operations. Possible issues may include:
+         - Vertical/horizontal pixel-to-date calculations are off (e.g., task dropped at a certain pixel but mapped to the wrong date).
+         - Time zone handling errors—if dates are calculated in UTC but displayed in local time.
+         - Calendar “month view” grid misalignment—if the calendar days or headers are not correctly linked to their grid slots.
+         - State update logic not synchronizing correctly—task data updates, but UI or backend assigns it to the wrong date.
+     - Such bugs commonly occur if the drag event’s target day is not reliably captured, or event handlers are using the wrong calendar slot.
+
+4. **Recommended Fix/Next Steps**
+   - Audit the drag-and-drop handlers:
+     - Ensure that the `onDragEnd`/`onDrop` event is capturing the intended date accurately based on the user's drop location.
+     - Check if the calendar grid is using unique keys or IDs for each day to map the movement correctly.
+   - Test for edge cases:
+     - Move tasks between the start/end of the month, and between weeks, to ensure date calculations are robust.
+   - Fix time zone and date conversion issues, if any.
+   - Add visual feedback during drag-and-drop (highlight target day/slot before drop).
+   - Add logging or console output when a task is moved for better debugging.
+
+---
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: Financery (synccos.world)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
