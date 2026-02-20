@@ -1,0 +1,66 @@
+BUG-0038
+Calendar Notes Not Saving
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When entering notes through calendar tasks, the notes are not saved to the associated record. After saving or refreshing, the notes do not appear in the record. Investigate and fix so that notes entered via calendar tasks properly persist and sync to the related record.
+
+AI Analysis
+
+**Analysis:**
+
+1. **Affected Part of the App:**  
+The issue impacts the "Calendar" module under "Reminders & Calendar". Specifically, it affects the functionality of saving notes within calendar tasks.
+
+2. **UI State and Errors:**  
+From the screenshot:
+- The "Reminders & Calendar" calendar is visible, with multiple tasks/events shown on particular dates.
+- There are no visible error messages or warning banners in the UI.
+- The calendar appears functional from a display perspective, but the problem relates to backend persistence: after entering notes, they do not remain after saving or refreshing.
+
+3. **Root Cause Analysis:**  
+- Absence of visible errors suggests silent failure—likely either a front-end issue (notes not included in save payload), API problem (notes not handled in backend), or data mapping issue (notes not linked to record).
+- The screenshot does **not** show any errors in the console; if there were failed API requests or stack traces, they would be crucial to narrowing this further.
+- If notes are missing after refresh, the most probable causes are:
+    - The client is not posting notes to backend during save.
+    - The backend API endpoint for saving calendar tasks is not persisting notes (potential missing field or mapping in controller/model).
+    - There is a sync issue between calendar tasks and the associated records (wrong ID, notes field not queried).
+
+4. **Recommended Fix or Next Steps:**
+- **Immediate QA next step:** Try saving a note, then monitor network requests (DevTools) to confirm if the notes field is present in the payload.
+- If notes are missing from payload: Update the client-side save logic to include notes.
+- If API endpoint is missing notes: Update backend schema/controller to persist notes and ensure mapping to related record.
+- If notes are saved but not visible after refresh: Check how notes are fetched/displayed. Ensure notes retrieval logic properly associates notes with records/tasks on calendar.
+- Consider adding error handling for failed note saves and feedback for users.
+- Run regression tests to confirm fix for all calendar note save pathways.
+
+---
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: Financery (synccos.world)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
