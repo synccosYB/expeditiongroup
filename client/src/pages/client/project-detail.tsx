@@ -94,8 +94,8 @@ function ReadOnlyTaskItem({
             <p className={`text-sm font-medium ${task.status === "done" ? "line-through text-muted-foreground" : ""}`}>
               {task.title}
             </p>
-            <Badge variant="outline" size="sm">{task.type.replace(/_/g, ' ')}</Badge>
-            <Badge variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'} size="sm">
+            <Badge variant="outline">{task.type.replace(/_/g, ' ')}</Badge>
+            <Badge variant={task.priority === 'urgent' ? 'destructive' : task.priority === 'high' ? 'default' : 'secondary'}>
               {task.priority}
             </Badge>
             <StatusBadge status={task.status} type="task" />

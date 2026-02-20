@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import {
   FolderKanban,
@@ -14,7 +15,7 @@ import {
   Calendar,
   DollarSign,
 } from "lucide-react";
-import { StatusBadge } from "@/components/status-badge";
+import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import type { Project, Task, Invoice } from "@shared/schema";
@@ -42,6 +43,7 @@ const STATUS_PIPELINE_ORDER = [
   { key: "with_dob", label: "With DOB", color: "bg-purple-500" },
   { key: "on_hold", label: "On Hold", color: "bg-gray-500" },
   { key: "completed", label: "Completed", color: "bg-green-500" },
+  { key: "cancelled", label: "Cancelled", color: "bg-red-500" },
 ] as const;
 
 export default function ClientDashboard() {
@@ -74,7 +76,7 @@ export default function ClientDashboard() {
   }
 
   const recentProjects = projects?.slice(0, 5) || [];
-  const pendingTasks = tasks?.filter(t => t.status !== "done").slice(0, 5) || [];
+  const pendingTasks = tasks?.filter(t => t.status !== "done" && t.status !== "cancelled").slice(0, 5) || [];
   const overdueTasks = tasks?.filter(t => {
     if (t.status === "done" || t.status === "cancelled" || !t.dueDate) return false;
     const dueDate = new Date(t.dueDate);
@@ -93,6 +95,8 @@ export default function ClientDashboard() {
   const unpaidInvoices = invoices?.filter(Boolean).filter(i => i.status === "sent") || [];
   const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
 
+  const overdueCount = overdueTasks.length;
+
   const statCards = [
     {
       title: "My Projects",
@@ -103,9 +107,9 @@ export default function ClientDashboard() {
       bgColor: "bg-chart-2/10",
     },
     {
-      title: "Tasks",
+      title: "Pending Tasks",
       value: stats?.pendingTasks ?? pendingTasks.length,
-      subtitle: `${stats?.completedTasks ?? 0} completed`,
+      subtitle: `${overdueCount} due/overdue`,
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
@@ -162,57 +166,64 @@ export default function ClientDashboard() {
         ))}
       </div>
 
-      {totalPipelineProjects > 0 && (
-        <Card data-testid="card-project-pipeline">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg font-semibold">Project Status</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {totalPipelineProjects} total projects
-              </p>
-            </div>
-            <Link href="/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
+      <Card data-testid="card-project-pipeline">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-semibold">Job Pipeline</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {totalPipelineProjects} total jobs across all stages
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/projects">
               View All
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {STATUS_PIPELINE_ORDER.map((stage) => {
-                const count = statusCountMap.get(stage.key) ?? 0;
-                return (
-                  <div
-                    key={stage.key}
-                    className="text-center p-3 rounded-lg bg-muted/30"
-                    data-testid={`pipeline-stage-${stage.key}`}
-                  >
-                    <div className={`w-3 h-3 rounded-full ${stage.color} mx-auto mb-2`} />
-                    <div className="text-2xl font-bold text-foreground">{count}</div>
-                    <div className="text-xs text-muted-foreground">{stage.label}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {STATUS_PIPELINE_ORDER.map((stage) => {
+              const count = statusCountMap.get(stage.key) ?? 0;
+              return (
+                <div
+                  key={stage.key}
+                  className="text-center p-3 rounded-lg bg-muted/30"
+                  data-testid={`pipeline-stage-${stage.key}`}
+                >
+                  <div className={`w-3 h-3 rounded-full ${stage.color} mx-auto mb-2`} />
+                  <div className="text-2xl font-bold text-foreground">{count}</div>
+                  <div className="text-xs text-muted-foreground">{stage.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
-      {overdueTasks.length > 0 && (
-        <Card className="border-destructive/50" data-testid="card-overdue-tasks">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle className="text-lg font-semibold text-destructive">
-                Attention Required ({overdueTasks.length})
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
+      <Card className={overdueTasks.length > 0 ? "border-destructive/50" : ""} data-testid="card-overdue-tasks">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={`h-5 w-5 ${overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+            <CardTitle className={`text-lg font-semibold ${overdueTasks.length > 0 ? "text-destructive" : ""}`}>
+              Due & Overdue Tasks ({overdueTasks.length})
+            </CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/tasks">
+              View All
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {overdueTasks.length > 0 ? (
             <div className="space-y-3">
               {overdueTasks.slice(0, 5).map((task) => (
-                <div
+                <Link
                   key={task.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-destructive/5"
+                  href={`/projects/${task.projectId}`}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-destructive/5 hover-elevate cursor-pointer"
                   data-testid={`overdue-task-${task.id}`}
                 >
                   <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
@@ -224,27 +235,34 @@ export default function ClientDashboard() {
                       {task.project?.name}
                     </p>
                   </div>
-                  {task.dueDate && (
-                    <Badge variant="outline" className="text-xs text-destructive border-destructive/30 shrink-0">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
-                    </Badge>
-                  )}
-                </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {(task.type === "road" || task.type === "office") && <TaskTypeBadge type={task.type} />}
+                    {task.dueDate && (
+                      <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
+                      </Badge>
+                    )}
+                  </div>
+                </Link>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <p className="text-sm text-muted-foreground" data-testid="text-no-overdue-tasks">No tasks are due or overdue right now.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-lg font-semibold">Recent Projects</CardTitle>
-            <Link href="/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/projects">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {recentProjects.length > 0 ? (
@@ -280,10 +298,12 @@ export default function ClientDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-lg font-semibold">Pending Tasks</CardTitle>
-            <Link href="/tasks" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/tasks">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {pendingTasks.length > 0 ? (
@@ -291,27 +311,27 @@ export default function ClientDashboard() {
                 {pendingTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-4 p-3 rounded-lg hover-elevate"
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
                     data-testid={`task-item-${task.id}`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {task.status === "done" ? (
-                        <CheckCircle2 className="h-4 w-4 text-chart-2 shrink-0" />
-                      ) : task.status === "in_progress" ? (
-                        <Clock className="h-4 w-4 text-chart-4 shrink-0" />
-                      ) : (
-                        <Timer className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {task.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {task.project?.name}
-                        </p>
-                      </div>
+                    {task.status === "done" ? (
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-chart-2" />
+                    ) : (task.status as string) === "waiting" || (task.status as string) === "waiting_on_client" ? (
+                      <AlertCircle className="h-4 w-4 mt-0.5 text-chart-3" />
+                    ) : (
+                      <Timer className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {task.project?.name}
+                      </p>
                     </div>
-                    <StatusBadge status={task.status} type="task" />
+                    <div className="flex items-center gap-2">
+                      {(task.type === "road" || task.type === "office") && <TaskTypeBadge type={task.type} />}
+                    </div>
                   </div>
                 ))}
               </div>
