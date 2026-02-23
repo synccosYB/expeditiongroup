@@ -559,9 +559,7 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      console.log("[DEBUG TASK PATCH] Raw body keys:", Object.keys(req.body), "internalNotes:", JSON.stringify(req.body.internalNotes));
       const parsed = updateTaskSchema.parse(req.body);
-      console.log("[DEBUG TASK PATCH] Parsed keys:", Object.keys(parsed), "internalNotes:", JSON.stringify((parsed as any).internalNotes));
       const task = await storage.updateTask(parseInt(req.params.id), parsed);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });

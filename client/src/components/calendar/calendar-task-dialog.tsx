@@ -87,6 +87,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("details");
   const [isEditing, setIsEditing] = useState(false);
+  const [notesText, setNotesText] = useState("");
 
   const task = event?.type === "task" ? event.originalData as Task & { project: Project; assignee?: User } : null;
   const reminder = event?.type === "reminder" ? event.originalData : null;
@@ -132,6 +133,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
         dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
         internalNotes: task.internalNotes || "",
       });
+      setNotesText(task.internalNotes || "");
       setIsEditing(false);
       setActiveTab("details");
     }
@@ -214,14 +216,13 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
       status: data.status as "todo" | "in_progress" | "waiting" | "done",
       priority: data.priority as "low" | "normal" | "high" | "urgent",
       dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
-      internalNotes: data.internalNotes || null,
+      internalNotes: notesText || null,
     });
   };
 
   const saveNotesDirectly = () => {
     if (!task) return;
-    const notes = taskForm.getValues("internalNotes");
-    updateTaskMutation.mutate({ internalNotes: notes || null });
+    updateTaskMutation.mutate({ internalNotes: notesText || null });
   };
 
   const onSubmitTimeEntry = (data: TimeEntryFormData) => {
@@ -484,7 +485,8 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
                 <div className="space-y-2">
                   <label className="text-sm font-medium leading-none">Internal Notes</label>
                   <Textarea
-                    {...taskForm.register("internalNotes")}
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
                     placeholder="Add internal notes about this task..."
                     className="min-h-[200px]"
                     data-testid="input-internal-notes"
