@@ -1,0 +1,60 @@
+BUG-0041
+Calendar Notes Not Saving
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+The notes entered into a task through the calendar are not saving properly. This ticket has already been entered twice, and each time the system indicates that it worked. However, when I go back to check, the notes are not there.
+
+Please look into this issue, as the entries are not being saved despite the confirmation message indicating success.
+
+AI Analysis
+
+1. Affected Part of the App:  
+The Calendar module—specifically, the feature allowing users to add or edit notes to tasks within the calendar view—is affected.
+
+2. Root Cause Analysis:  
+Based on the description:
+- The user is able to enter notes and receives a confirmation message indicating the save was successful, but upon revisiting the task, the notes are missing.
+- This suggests a mismatch between the UI feedback and the actual data persistence.
+
+Likely causes (absent further evidence) are:
+- The frontend is optimistically displaying a success message without confirming success from the backend.
+- There could be an issue in the API endpoint responsible for saving notes (e.g., failed requests, silent backend validation errors, or a missing update in the database).
+- Alternatively, the data might be saved in a temporary (client-side) store and not actually persisted server-side.
+- Since the issue has been reported multiple times by the user, it's unlikely to be a transient connectivity issue.
+
+3. Recommended Fix / Next Steps:
+- Log backend requests when saving notes from the calendar to verify that the save API is both called and succeeding with 2xx responses.
+- Check the backend logs/database to see if the notes are being persisted.
+- Ensure the frontend only shows a success confirmation after receiving a successful response from the backend (not on-submit).
+- Test if the issue occurs with all calendar tasks or only certain ones (e.g., tasks created in a particular way or edited by specific users).
+- Consider adding error handling and notification if the save action fails silently.
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/projects/53
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
