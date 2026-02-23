@@ -1,0 +1,66 @@
+BUG-0042
+Enable Viewing of Notes History in Calendar Task
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Enable Viewing of Notes History in Calendar Task 
+
+AI Analysis
+
+### Analysis
+
+**1. What part of the app is affected**
+- The issue is related to the "Calendar" feature inside the "Reminders & Calendar" module.
+- Specifically, the bug report requests enabling the viewing of notes history for tasks displayed on the calendar.
+
+**2. UI State & Visible Errors**
+- The screenshot shows a calendar view with tasks/reminders displayed on specific days.
+- There is no visible UI element, icon, or action that allows the user to view history or past notes related to these tasks. No errors or visible warnings on the UI.
+- Hover or clicking on tasks appears not to show any modal or detailed history.
+
+**3. Root Cause Analysis**
+- The main root cause appears to be a **missing feature**: there is no visible function that allows viewing the notes history for a calendar task directly from this view.
+- No console errors, stack traces, or failed requests are available from the screenshot, so there is no indication of a backend or runtime failure — this is a functional gap.
+
+**4. Recommended Fix or Next Steps**
+- Implement a feature allowing users to view notes history for each calendar task:
+    - Add a clickable action (e.g., right-click, hover, or icon) on each calendar task/reminder.
+    - Display a modal or sidebar with the notes history for that task.
+    - Ensure this feature pulls historical notes from the backend, and verify with the product owner how far back the history should go and what format is expected.
+    - Add UI affordance (icon or label) to indicate history viewing is available.
+
+---
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
+
