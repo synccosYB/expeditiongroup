@@ -152,30 +152,32 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     },
   });
 
-  const [dialogInitialized, setDialogInitialized] = useState(false);
+  const [lastInitializedTaskId, setLastInitializedTaskId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && eventTask) {
       setIsEditing(false);
       setActiveTab("details");
-      setDialogInitialized(false);
+    }
+    if (!isOpen) {
+      setLastInitializedTaskId(null);
     }
   }, [eventTask?.id, isOpen]);
 
   useEffect(() => {
-    if (task && isOpen && !dialogInitialized) {
+    if (freshTask && isOpen && lastInitializedTaskId !== freshTask.id) {
       taskForm.reset({
-        title: task.title || "",
-        description: task.description || "",
-        status: task.status || "todo",
-        priority: task.priority || "normal",
-        dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
-        internalNotes: task.internalNotes || "",
+        title: freshTask.title || "",
+        description: freshTask.description || "",
+        status: freshTask.status || "todo",
+        priority: freshTask.priority || "normal",
+        dueDate: freshTask.dueDate ? formatDateForInput(freshTask.dueDate) : "",
+        internalNotes: freshTask.internalNotes || "",
       });
-      setNotesText(task.internalNotes || "");
-      setDialogInitialized(true);
+      setNotesText(freshTask.internalNotes || "");
+      setLastInitializedTaskId(freshTask.id);
     }
-  }, [task, isOpen, dialogInitialized]);
+  }, [freshTask, isOpen, lastInitializedTaskId]);
 
   const watchedStartTime = timeLogForm.watch("startTime");
   const watchedEndTime = timeLogForm.watch("endTime");
