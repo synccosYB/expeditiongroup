@@ -90,8 +90,20 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
   const [isEditing, setIsEditing] = useState(false);
   const [notesText, setNotesText] = useState("");
 
-  const task = event?.type === "task" ? event.originalData as Task & { project: Project; assignee?: User } : null;
+  const eventTask = event?.type === "task" ? event.originalData as Task & { project: Project; assignee?: User } : null;
   const reminder = event?.type === "reminder" ? event.originalData : null;
+
+  const { data: freshTask } = useQuery<Task & { project: Project; assignee?: User }>({
+    queryKey: ["/api/tasks", eventTask?.id],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/tasks/${eventTask?.id}`);
+      return res.json();
+    },
+    enabled: !!eventTask?.id && isOpen,
+    staleTime: 0,
+  });
+
+  const task = freshTask ?? eventTask;
 
   const { data: timeEntries } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries", { taskId: task?.id }],
@@ -140,8 +152,18 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     },
   });
 
+  const [dialogInitialized, setDialogInitialized] = useState(false);
+
   useEffect(() => {
-    if (task && isOpen) {
+    if (isOpen && eventTask) {
+      setIsEditing(false);
+      setActiveTab("details");
+      setDialogInitialized(false);
+    }
+  }, [eventTask?.id, isOpen]);
+
+  useEffect(() => {
+    if (task && isOpen && !dialogInitialized) {
       taskForm.reset({
         title: task.title || "",
         description: task.description || "",
@@ -151,10 +173,9 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
         internalNotes: task.internalNotes || "",
       });
       setNotesText(task.internalNotes || "");
-      setIsEditing(false);
-      setActiveTab("details");
+      setDialogInitialized(true);
     }
-  }, [task, isOpen]);
+  }, [task, isOpen, dialogInitialized]);
 
   const watchedStartTime = timeLogForm.watch("startTime");
   const watchedEndTime = timeLogForm.watch("endTime");
