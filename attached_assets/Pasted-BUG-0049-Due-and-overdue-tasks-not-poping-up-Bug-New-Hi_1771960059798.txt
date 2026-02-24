@@ -1,0 +1,68 @@
+BUG-0049
+Due and overdue tasks not poping up
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Due and overdue tasks not poping up
+
+AI Analysis
+
+**Analysis:**
+
+### 1. **Affected Part of the App:**
+- The **Dashboard** component, specifically the "Due & Overdue Tasks" widget.
+
+### 2. **UI State & Explanation:**
+- The "Due & Overdue Tasks" widget displays:  
+  `"No tasks are due or overdue right now."`
+- However, the summary statistics at the top show:
+  - **Pending Tasks:** "14 Due/Overdue" (top summary card)
+- This mismatch suggests that there *are* due or overdue tasks, but they're not appearing in the dashboard widget.
+
+### 3. **Root Cause Analysis:**
+- **Data Sync Issue:** The count at the top (14) and the widget (0) are out of sync.
+- **Potential Causes:**
+  - **Frontend Filtering:** The widget may be receiving the data but incorrectly filtering/processing it, causing it to display zero results.
+  - **API Response/Query:** The API request for the widget may not be returning the correct tasks, possibly because of the wrong date filter, incorrect status filter, or a background fetch error.
+  - **State Management:** The task count and widget may be using different sources or queries for their data (e.g., top cards fetch all tasks, widget fetches a filtered subset).
+
+### 4. **Recommended Fix or Next Steps:**
+- **Check API Queries:** Ensure the queries powering the summary card and widget are consistent about what counts as "due/overdue."
+- **Verify Filters:** Review frontend logic in the "Due & Overdue Tasks" widget to ensure it's accurately filtering for both "due" and "overdue" tasks.
+- **Debug Data Flow:** Use browser dev tools to watch network requests and compare responses for summary cards vs. widget.
+- **Console Errors:** No visible errors in the screenshot; check the browser console for silent fetch errors during the widget's render.
+
+---
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
