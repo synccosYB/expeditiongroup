@@ -540,6 +540,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/tasks/overdue", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const tasks = await storage.getOverdueTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching overdue tasks:", error);
+      res.status(500).json({ message: "Failed to fetch overdue tasks" });
+    }
+  });
+
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -1684,21 +1698,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error performing search:", error);
       res.status(500).json({ message: "Failed to perform search" });
-    }
-  });
-
-  // Overdue tasks
-  app.get("/api/tasks/overdue", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin" && user?.role !== "super_admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-      const tasks = await storage.getOverdueTasks();
-      res.json(tasks);
-    } catch (error) {
-      console.error("Error fetching overdue tasks:", error);
-      res.status(500).json({ message: "Failed to fetch overdue tasks" });
     }
   });
 

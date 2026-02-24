@@ -80,9 +80,9 @@ export default function ClientDashboard() {
   const overdueTasks = tasks?.filter(t => {
     if (t.status === "done" || t.status === "cancelled" || !t.dueDate) return false;
     const dueDate = new Date(t.dueDate);
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    return dueDate < todayStart;
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    return dueDate <= todayEnd;
   }) || [];
 
   const statusCountMap = new Map<string, number>();
