@@ -95,6 +95,12 @@ export async function registerRoutes(
       if (req.headers["content-type"]) {
         headers["Content-Type"] = req.headers["content-type"] as string;
       }
+      if (req.headers["origin"]) {
+        headers["Origin"] = req.headers["origin"] as string;
+      }
+      if (req.headers["referer"]) {
+        headers["Referer"] = req.headers["referer"] as string;
+      }
 
       const fetchOptions: RequestInit = {
         method: req.method,
@@ -560,10 +566,34 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateTaskSchema.parse(req.body);
-      const task = await storage.updateTask(parseInt(req.params.id), parsed);
+      const taskId = parseInt(req.params.id);
+
+      const oldTask = "internalNotes" in parsed ? await storage.getTask(taskId) : null;
+
+      const task = await storage.updateTask(taskId, parsed);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
+
+      if ("internalNotes" in parsed && oldTask) {
+        const oldNotes = oldTask.internalNotes || null;
+        const newNotes = parsed.internalNotes || null;
+        if (oldNotes !== newNotes) {
+          await storage.createAuditLog({
+            userId: req.session.userId!,
+            action: "update",
+            entityType: "task_notes",
+            entityId: String(taskId),
+            description: `Updated internal notes on task "${task.title}"`,
+            metadata: {
+              oldNotes: oldNotes,
+              newNotes: newNotes,
+              taskTitle: task.title,
+            },
+          });
+        }
+      }
+
       const eventType = parsed.status === "done" ? "task.completed" : "task.updated";
       sendWebhook(eventType, { task, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(task);
@@ -592,6 +622,21 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  app.get("/api/tasks/:id/notes-history", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const taskId = req.params.id;
+      const history = await storage.getAuditLogsByEntity("task_notes", taskId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching notes history:", error);
+      res.status(500).json({ message: "Failed to fetch notes history" });
     }
   });
 

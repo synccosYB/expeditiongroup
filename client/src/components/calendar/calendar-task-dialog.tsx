@@ -45,6 +45,7 @@ import {
   Save,
   X,
   StickyNote,
+  History,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/hooks/use-toast";
@@ -95,6 +96,22 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
   const { data: timeEntries } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries", { taskId: task?.id }],
     enabled: !!task?.id,
+  });
+
+  interface NotesHistoryEntry {
+    id: number;
+    createdAt: string;
+    metadata: { oldNotes: string | null; newNotes: string | null; taskTitle?: string } | null;
+    user?: { firstName: string | null; lastName: string | null };
+  }
+
+  const { data: notesHistory } = useQuery<NotesHistoryEntry[]>({
+    queryKey: ["/api/tasks", task?.id, "notes-history"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/tasks/${task?.id}/notes-history`);
+      return res.json();
+    },
+    enabled: !!task?.id && activeTab === "notes",
   });
 
   const taskTimeEntries = timeEntries?.filter(te => te.taskId === task?.id) || [];
@@ -167,6 +184,9 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      if ("internalNotes" in variables) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "notes-history"] });
+      }
       const isNotesOnly = Object.keys(variables).length === 1 && "internalNotes" in variables;
       toast({ title: isNotesOnly ? "Notes saved successfully" : "Task updated successfully" });
       setIsEditing(false);
@@ -497,6 +517,55 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
                   Save Notes
                 </Button>
               </div>
+
+              {notesHistory && notesHistory.length > 0 && (
+                <div className="space-y-3 pt-2" data-testid="notes-history-section">
+                  <Separator />
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Notes History
+                  </h4>
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                    {notesHistory.map((entry) => {
+                      const meta = entry.metadata;
+                      const userName = entry.user
+                        ? `${entry.user.firstName || ""} ${entry.user.lastName || ""}`.trim()
+                        : "Unknown";
+                      const timestamp = entry.createdAt
+                        ? format(new Date(entry.createdAt), "MM-dd-yyyy 'at' h:mm a")
+                        : "";
+                      return (
+                        <div
+                          key={entry.id}
+                          className="rounded-md border p-3 text-sm space-y-2"
+                          data-testid={`notes-history-entry-${entry.id}`}
+                        >
+                          <div className="flex items-center justify-between text-muted-foreground text-xs">
+                            <span>{userName}</span>
+                            <span>{timestamp}</span>
+                          </div>
+                          {meta?.oldNotes && (
+                            <div className="space-y-1">
+                              <span className="text-xs font-medium text-muted-foreground">Previous:</span>
+                              <p className="text-muted-foreground whitespace-pre-wrap bg-muted/50 rounded p-2 text-xs">
+                                {meta.oldNotes}
+                              </p>
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <span className="text-xs font-medium">
+                              {meta?.oldNotes ? "Changed to:" : "Added:"}
+                            </span>
+                            <p className="whitespace-pre-wrap bg-muted/30 rounded p-2 text-xs">
+                              {meta?.newNotes || <span className="italic text-muted-foreground">Notes cleared</span>}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="timelog" className="space-y-6 pt-4">

@@ -314,6 +314,7 @@ export interface IStorage {
   getAuditLogsByUserId(userId: string): Promise<AuditLog[]>;
   getAuditLogsByClientId(clientId: number): Promise<AuditLog[]>;
   getRecentActivityByClientId(clientId: number, limit?: number): Promise<AuditLog[]>;
+  getAuditLogsByEntity(entityType: string, entityId: string): Promise<(AuditLog & { user?: { firstName: string | null; lastName: string | null } })[]>;
   
   // Date Range Queries for Activity Generation
   getTimeEntriesForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]>;
@@ -1863,6 +1864,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(auditLogs.clientId, clientId))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
+  }
+
+  async getAuditLogsByEntity(entityType: string, entityId: string): Promise<(AuditLog & { user?: { firstName: string | null; lastName: string | null } })[]> {
+    const result = await db
+      .select()
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
+      .where(and(eq(auditLogs.entityType, entityType), eq(auditLogs.entityId, entityId)))
+      .orderBy(desc(auditLogs.createdAt));
+
+    return result.map(r => ({
+      ...r.audit_logs,
+      user: r.users ? { firstName: r.users.firstName, lastName: r.users.lastName } : undefined,
+    }));
   }
 
   // Client Portal specific queries
