@@ -145,6 +145,8 @@ export async function registerRoutes(
 
   app.all("/api/widget/*", synkdexProxy);
   app.all("/api/v1/bugs/*", synkdexProxy);
+  app.all("/api/support-tickets/*", synkdexProxy);
+  app.all("/api/support-tickets", synkdexProxy);
 
   app.get('/api/auth/user', isAuthenticated, async (req: Request, res) => {
     try {
