@@ -166,6 +166,7 @@ export default function UndepositedFunds() {
       queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payments/next-number"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-balances"] });
       toast({ title: "Payment recorded successfully" });
       setIsPaymentDialogOpen(false);
       form.reset();
@@ -188,6 +189,7 @@ export default function UndepositedFunds() {
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-balances"] });
       toast({ title: "Payment deleted successfully" });
       setDeleteId(null);
     },
@@ -249,7 +251,35 @@ export default function UndepositedFunds() {
 
   const unpaidInvoices = invoices?.filter(inv => inv.status === 'sent' || inv.status === 'draft');
   const selectedClientId = form.watch("clientId");
-  const clientInvoices = unpaidInvoices?.filter(inv => inv.clientId.toString() === selectedClientId);
+  const selectedInvoiceId = form.watch("invoiceId");
+  const clientInvoicesRaw = unpaidInvoices?.filter(inv => inv.clientId.toString() === selectedClientId);
+
+  const clientInvoiceIds = clientInvoicesRaw?.map(inv => inv.id).sort() || [];
+  const { data: invoiceBalances, isLoading: balancesLoading } = useQuery<Record<string, { total: number; totalPaid: number; remainingBalance: number }>>({
+    queryKey: ["/api/invoice-balances", selectedClientId, clientInvoiceIds.join(",")],
+    queryFn: async () => {
+      if (!clientInvoicesRaw || clientInvoicesRaw.length === 0) return {};
+      const results: Record<string, { total: number; totalPaid: number; remainingBalance: number }> = {};
+      await Promise.all(
+        clientInvoicesRaw.map(async (inv) => {
+          const res = await fetch(`/api/invoices/${inv.id}/balance`, { credentials: "include" });
+          if (res.ok) {
+            results[inv.id.toString()] = await res.json();
+          }
+        })
+      );
+      return results;
+    },
+    enabled: !!selectedClientId && !!clientInvoicesRaw && clientInvoicesRaw.length > 0,
+  });
+
+  const clientInvoices = clientInvoicesRaw?.filter(inv => {
+    const balance = invoiceBalances?.[inv.id.toString()];
+    if (balance && balance.remainingBalance <= 0) return false;
+    return true;
+  });
+
+  const currentBalance = selectedInvoiceId && selectedInvoiceId !== "none" ? invoiceBalances?.[selectedInvoiceId] : null;
 
   if (paymentsLoading) {
     return <ListSkeleton />;
@@ -339,9 +369,14 @@ export default function UndepositedFunds() {
                             onValueChange={(value) => {
                               field.onChange(value);
                               if (value && value !== "none") {
-                                const selectedInvoice = clientInvoices?.find(inv => inv.id.toString() === value);
-                                if (selectedInvoice) {
-                                  form.setValue("amount", selectedInvoice.total);
+                                const balance = invoiceBalances?.[value];
+                                if (balance) {
+                                  form.setValue("amount", balance.remainingBalance.toFixed(2));
+                                } else {
+                                  const selectedInvoice = clientInvoices?.find(inv => inv.id.toString() === value);
+                                  if (selectedInvoice) {
+                                    form.setValue("amount", selectedInvoice.total);
+                                  }
                                 }
                               } else {
                                 form.setValue("amount", "");
@@ -351,17 +386,22 @@ export default function UndepositedFunds() {
                           >
                             <FormControl>
                               <SelectTrigger data-testid="select-invoice">
-                                <SelectValue placeholder="Select invoice" />
+                                <SelectValue placeholder={balancesLoading ? "Loading invoices..." : "Select invoice"} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">No invoice (general payment)</SelectItem>
                               {clientInvoices && clientInvoices.length > 0 ? (
-                                clientInvoices.map((invoice) => (
-                                  <SelectItem key={invoice.id} value={invoice.id.toString()}>
-                                    {invoice.invoiceNumber} - {formatCurrency(invoice.total)}
-                                  </SelectItem>
-                                ))
+                                clientInvoices.map((invoice) => {
+                                  const balance = invoiceBalances?.[invoice.id.toString()];
+                                  const displayAmount = balance ? balance.remainingBalance : parseFloat(invoice.total);
+                                  const hasPartialPayment = balance && balance.totalPaid > 0;
+                                  return (
+                                    <SelectItem key={invoice.id} value={invoice.id.toString()}>
+                                      {invoice.invoiceNumber} - {formatCurrency(displayAmount)}{hasPartialPayment ? " remaining" : ""}
+                                    </SelectItem>
+                                  );
+                                })
                               ) : (
                                 <SelectItem value="no-invoices" disabled>
                                   No unpaid invoices for this client
@@ -369,6 +409,11 @@ export default function UndepositedFunds() {
                               )}
                             </SelectContent>
                           </Select>
+                          {currentBalance && currentBalance.totalPaid > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1" data-testid="text-invoice-balance">
+                              Invoice total: {formatCurrency(currentBalance.total)} | Paid: {formatCurrency(currentBalance.totalPaid)} | Balance due: {formatCurrency(currentBalance.remainingBalance)}
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
