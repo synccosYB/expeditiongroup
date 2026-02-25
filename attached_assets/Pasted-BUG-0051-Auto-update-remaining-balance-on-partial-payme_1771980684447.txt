@@ -1,0 +1,65 @@
+BUG-0051
+Auto-update remaining balance on partial payments
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+When collecting payment under Undeposited Funds > Receive Payment and selecting an invoice, if a partial payment is entered, the system should automatically display only the remaining balance due each time an additional partial payment is made.
+
+AI Analysis
+
+**UI State Description:**
+- The screenshot shows the "Undeposited Funds" section under "BOOKKEEPING."
+- "Payments Pending Deposit" are listed with details (payment type, client, linked invoice, amount).
+- There’s no visible balance breakdown per invoice or any dynamic display for remaining invoice balances after partial payments.
+- There are no error messages or visual indications of processing errors in the UI.
+
+**Bug Analysis:**
+1. **Affected area:**  
+   The issue is with the *Receive Payment* flow (specifically when handling partial payments against invoices).
+
+2. **Root cause:**  
+   The system does not refresh or dynamically update the "remaining balance due" for an invoice when a partial payment is entered and processed. Once a partial payment is made, users expect the UI to reflect the new balance due on the invoice. From the screenshot, it's not clear if there is a remaining balance field directly visible during payment collection, but the lack of automation is the core issue described.
+
+   Likely causes:
+   - The client-side logic/form may not recalculate the outstanding balance after posting a partial payment.
+   - The UI may not be fetching or rendering the updated invoice balance after each transaction.
+   - The backend may update the invoice balance correctly, but the change is not pushed or retrieved for real-time display.
+
+3. **Recommended fix / next steps:**
+   - **Frontend:** Update the payment form workflow so when a payment is submitted (especially partial), the UI automatically fetches and displays the new remaining balance without requiring a manual refresh. This can be achieved with:
+     - A call to fetch the invoice status after payment submission,
+     - Or, real-time computation by the client using the known invoice total and cumulative payments.
+   - **Backend:** Verify that the API responding with invoice/payment details provides the current remaining balance.
+   - **Acceptance Criteria:** After any partial payment, the "remaining balance due" field (or equivalent) visibly and immediately shows the updated amount for the invoice in the payment collection UI.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/undeposited-funds
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
