@@ -1,0 +1,52 @@
+BUG-0058
+Unable to scroll within “My Reports” section using mouse.
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Attempted to scroll down in the “My Reports” section in Widgit, but the mouse scroll function is not responding. Unable to navigate through the full report list. Issue needs to be checked.
+
+AI Analysis
+
+1) Affected Part of the App:
+- The “My Reports” section in Widgit is impacted. Specifically, users can’t scroll through the reports list using the mouse scroll wheel.
+
+2) Root Cause Analysis:
+- Since no console errors or screenshots were provided, this is likely a UI/UX issue. Possible causes include:
+  - CSS styling: An element (container or overlay) might have overflow set incorrectly (e.g., overflow: hidden instead of overflow: auto or scroll).
+  - JavaScript event handling: A custom handler might be intercepting or suppressing mouse wheel events (e.g., preventDefault or passive event listener misconfiguration).
+  - Report list rendering: The scrollable container may not have the correct height or may be nested within another element blocking scroll events.
+
+3) Recommended Fix/Next Steps:
+- Inspect the “My Reports” section using browser dev tools to check scroll container properties.
+- Review CSS for overflow settings and ensure the correct scroll container has overflow: auto or scroll.
+- Check for JavaScript event listeners on the scrollable area for inadvertent suppression of wheel events.
+- Ensure the report list fills enough content to actually require scrolling and that scroll events are not being blocked by parent containers.
+
+```json
+{"severity": "medium", "category": "ui"}
+```
+
+https://expeditiongroupny.com/intake/4
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

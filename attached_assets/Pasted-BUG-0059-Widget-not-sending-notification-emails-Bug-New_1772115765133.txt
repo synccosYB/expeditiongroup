@@ -1,0 +1,58 @@
+BUG-0059
+Widget not sending notification emails.
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Not receiving email notifications from the widget when items are opened, resolved, or updated. Needs to be checked to ensure notification settings and email integration are functioning properly.
+
+AI Analysis
+
+1) What part of the app is affected:
+The notification and email integration component of the widget is affected. Specifically, the logic responsible for sending email notifications when items are opened, resolved, or updated.
+
+2) Root cause analysis:
+Based on the report, the most likely causes include:
+- Notification settings not configured properly (user/service-level preferences might prevent emails from being sent).
+- Email integration misconfigured (SMTP settings, API keys, or connection issues).
+- Backend logic failure (notification triggers may not be firing when item state changes occur).
+- Email queue or service may be down (emails could be stuck in queue or failed to send).
+Because no errors or logs are provided, further investigation is required:
+- Check notification settings for the affected widget and user(s).
+- Review email integration setup and logs for failures.
+- Confirm that item status changes occur as expected and trigger notification events.
+
+3) Recommended fix or next steps:
+- Verify widget notification settings are enabled for email notifications.
+- Confirm email integration credentials/configuration is valid.
+- Review backend logs to ensure notification triggers are firing and not failing silently.
+- Test item state changes (open, resolve, update) and monitor email delivery.
+- If needed, add logging or error handling in notification/email service for better visibility.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
