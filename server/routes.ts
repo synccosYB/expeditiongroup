@@ -1005,6 +1005,53 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/client/invoices/:id/payments", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const invoiceId = parseInt(req.params.id);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice || invoice.clientId !== user.clientId || !invoice.isVisibleToClient) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      const payments = await storage.getPaymentsByInvoiceId(invoiceId);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching client invoice payments:", error);
+      res.status(500).json({ message: "Failed to fetch invoice payments" });
+    }
+  });
+
+  app.get("/api/client/invoices/:id/balance", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const invoiceId = parseInt(req.params.id);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ message: "Invalid invoice ID" });
+      }
+      const invoice = await storage.getInvoice(invoiceId);
+      if (!invoice || invoice.clientId !== user.clientId || !invoice.isVisibleToClient) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      const payments = await storage.getPaymentsByInvoiceId(invoiceId);
+      const total = parseFloat(invoice.total);
+      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const remainingBalance = Math.max(0, total - totalPaid);
+      res.json({ total, totalPaid, remainingBalance });
+    } catch (error) {
+      console.error("Error fetching client invoice balance:", error);
+      res.status(500).json({ message: "Failed to fetch invoice balance" });
+    }
+  });
+
   // Time Entries
   app.get("/api/time-entries", isAuthenticated, async (req: any, res) => {
     try {

@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
-import type { Invoice, Project, Client, InvoiceItem } from "@shared/schema";
+import type { Invoice, Project, Client, InvoiceItem, Payment } from "@shared/schema";
 import { format } from "date-fns";
 
 type InvoiceWithRelations = Invoice & {
@@ -42,9 +42,31 @@ type InvoiceWithRelations = Invoice & {
 export default function ClientInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
 
+  const invoiceId = parseInt(id || "0");
+
   const { data: invoice, isLoading } = useQuery<InvoiceWithRelations>({
     queryKey: ["/api/client/invoices", id],
     enabled: !!id,
+  });
+
+  const { data: invoicePayments } = useQuery<Payment[]>({
+    queryKey: ["/api/client/invoices", invoiceId, "payments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/client/invoices/${invoiceId}/payments`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!invoiceId,
+  });
+
+  const { data: balanceData } = useQuery<{ total: number; totalPaid: number; remainingBalance: number }>({
+    queryKey: ["/api/client/invoices", invoiceId, "balance"],
+    queryFn: async () => {
+      const res = await fetch(`/api/client/invoices/${invoiceId}/balance`, { credentials: "include" });
+      if (!res.ok) return { total: 0, totalPaid: 0, remainingBalance: 0 };
+      return res.json();
+    },
+    enabled: !!invoiceId,
   });
 
   if (isLoading) {
@@ -231,9 +253,21 @@ export default function ClientInvoiceDetail() {
             )}
             <Separator className="my-2" />
             <div className="flex justify-between font-medium">
-              <span>Total Due</span>
+              <span>Total</span>
               <span className="text-lg">${parseFloat(invoice?.total || "0").toLocaleString()}</span>
             </div>
+            {balanceData && balanceData.totalPaid > 0 && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Paid</span>
+                  <span className="text-green-600">${balanceData.totalPaid.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span>{balanceData.remainingBalance <= 0 ? "Paid in Full" : "Balance Due"}</span>
+                  <span className="text-lg" data-testid="text-summary-balance">${balanceData.remainingBalance.toFixed(2)}</span>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -279,6 +313,39 @@ export default function ClientInvoiceDetail() {
                   ${parseFloat(invoice?.total || "0").toFixed(2)}
                 </TableCell>
               </TableRow>
+              {invoicePayments && invoicePayments.length > 0 && (
+                <>
+                  {invoicePayments.map((pmt) => (
+                    <TableRow key={pmt.id} data-testid={`row-payment-${pmt.id}`}>
+                      <TableCell colSpan={3} className="text-right text-sm text-muted-foreground">
+                        Payment {pmt.paymentDate ? format(new Date(pmt.paymentDate), "MMM d, yyyy") : ""}
+                        {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-green-600">
+                        -${parseFloat(pmt.amount).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-right text-lg font-bold">
+                      {balanceData && balanceData.remainingBalance <= 0 ? "Paid in Full" : "Balance Due"}
+                    </TableCell>
+                    <TableCell className="text-right text-lg font-bold" data-testid="text-balance-due">
+                      ${balanceData ? balanceData.remainingBalance.toFixed(2) : parseFloat(invoice?.total || "0").toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                </>
+              )}
+              {invoice.status === "paid" && (!invoicePayments || invoicePayments.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right text-lg font-bold text-green-600">
+                    Paid in Full
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-green-600" data-testid="text-paid-in-full">
+                    {invoice.paidAt ? format(new Date(invoice.paidAt), "MMM d, yyyy") : ""}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableFooter>
           </Table>
         </CardContent>
@@ -294,6 +361,14 @@ export default function ClientInvoiceDetail() {
           </CardContent>
         </Card>
       )}
+
+      <style>{`
+        @media print {
+          .text-green-600 {
+            color: #16a34a !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

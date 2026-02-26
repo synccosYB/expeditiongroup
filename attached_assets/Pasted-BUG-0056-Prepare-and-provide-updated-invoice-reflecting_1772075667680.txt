@@ -1,0 +1,67 @@
+BUG-0056
+Prepare and provide updated invoice reflecting payments received, including remaining balance or paid-in-full receipt with payment details.
+Bug
+In Progress
+High
+Resolve
+Status
+In Progress
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Client requested documentation reflecting payment status. If partial payment was made, issue updated invoice showing total amount, payments received (with dates and amounts), and remaining balance. If paid in full, issue receipt/invoice marked “Paid in Full” including payment date(s) and method.
+
+AI Analysis
+
+**UI State Analysis:**
+
+- The screenshot shows the "Invoices" dashboard in the application.
+- There are summary cards for Total Invoiced, Total Paid, Total Unpaid, and Unbilled Time.
+- Below is an "Invoice List" with invoice IDs, client names, project names, statuses, totals, due dates, creation dates, and actions.
+- Statuses are "Paid" or "Sent." 
+- Nowhere in the "Invoice List" or presumed details does there appear to be an option to view or generate documentation reflecting payments received (payment breakdown, remaining balance, or a “Paid in Full” receipt).
+
+**Bug Analysis:**
+
+1. **Part of the App Affected:**
+   - Invoices module: The process of generating or updating invoices to reflect payment status (partial or full) with payment breakdown is affected.
+   
+2. **Root Cause Analysis:**
+   - There is no **visible feature** allowing users to generate updated invoices showing the payment history (dates and amounts paid) or issue a receipt clearly marked “Paid in Full,” including payment details.
+   - The UI does not show any button, menu, or action in the "Actions" column for this purpose.
+   - If payment information is displayed elsewhere (such as an invoice detail modal or page), it is not indicated on this screen, and the bug report suggests the feature is missing or insufficient.
+
+3. **Recommended Fix / Next Steps:**
+   - Add a feature in the Invoices module that allows users to:
+     - Generate or download an updated invoice showing all payments received (dates, amounts, methods).
+     - If the invoice is partially paid, display remaining balance on the invoice.
+     - If the invoice is fully paid, generate an invoice/receipt marked “Paid in Full,” including payment date(s) and method(s).
+   - Provide clear actions or links in the "Actions" column for this functionality (e.g., "Download payment receipt", "Send updated invoice").
+   - Confirm with end-users the expected format/content for such documentation.
+   - Test for invoices with multiple payments and edge cases (overpayment, refunds).
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

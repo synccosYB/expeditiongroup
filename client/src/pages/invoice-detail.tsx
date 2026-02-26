@@ -50,7 +50,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Invoice, InvoiceItem, Project, Client } from "@shared/schema";
+import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
 import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 
 interface InvoiceWithRelations extends Invoice {
@@ -82,6 +82,26 @@ export default function InvoiceDetail() {
 
   const { data: invoice, isLoading } = useQuery<InvoiceWithRelations>({
     queryKey: ["/api/invoices", invoiceId],
+    enabled: !!invoiceId,
+  });
+
+  const { data: invoicePayments } = useQuery<Payment[]>({
+    queryKey: ["/api/invoices", invoiceId, "payments"],
+    queryFn: async () => {
+      const res = await fetch(`/api/invoices/${invoiceId}/payments`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!invoiceId,
+  });
+
+  const { data: balanceData } = useQuery<{ total: number; totalPaid: number; remainingBalance: number }>({
+    queryKey: ["/api/invoices", invoiceId, "balance"],
+    queryFn: async () => {
+      const res = await fetch(`/api/invoices/${invoiceId}/balance`, { credentials: "include" });
+      if (!res.ok) return { total: 0, totalPaid: 0, remainingBalance: 0 };
+      return res.json();
+    },
     enabled: !!invoiceId,
   });
 
@@ -382,7 +402,7 @@ export default function InvoiceDetail() {
           </div>
 
           <div className="flex justify-end" data-testid="invoice-totals">
-            <div className="w-64 space-y-2">
+            <div className="w-72 space-y-2">
               <div className="flex justify-between gap-4 text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>${subtotal.toFixed(2)}</span>
@@ -392,6 +412,38 @@ export default function InvoiceDetail() {
                 <span>Total</span>
                 <span data-testid="text-total-amount">${total.toFixed(2)}</span>
               </div>
+              {invoicePayments && invoicePayments.length > 0 && (
+                <>
+                  <Separator />
+                  {invoicePayments.map((pmt) => (
+                    <div key={pmt.id} className="flex justify-between gap-4 text-sm" data-testid={`row-payment-${pmt.id}`}>
+                      <span className="text-muted-foreground">
+                        Payment {pmt.paymentDate ? formatLocalDate(new Date(pmt.paymentDate)) : ""}
+                        {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
+                      </span>
+                      <span className="text-green-600">-${parseFloat(pmt.amount).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <Separator />
+                  <div className="flex justify-between gap-4 text-lg font-semibold">
+                    <span>{balanceData && balanceData.remainingBalance <= 0 ? "Paid in Full" : "Balance Due"}</span>
+                    <span data-testid="text-balance-due">
+                      ${balanceData ? balanceData.remainingBalance.toFixed(2) : total.toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              )}
+              {invoice.status === "paid" && (!invoicePayments || invoicePayments.length === 0) && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between gap-4 text-lg font-semibold text-green-600">
+                    <span>Paid in Full</span>
+                    <span data-testid="text-paid-in-full">
+                      {invoice.paidAt ? formatLocalDate(new Date(invoice.paidAt)) : ""}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -481,6 +533,9 @@ export default function InvoiceDetail() {
           }
           [data-testid="invoice-totals"] span {
             color: #111 !important;
+          }
+          [data-testid="invoice-totals"] .text-green-600 {
+            color: #16a34a !important;
           }
           .space-y-6 > * {
             margin: 0 !important;
