@@ -1,0 +1,59 @@
+BUG-0062
+Invoice number doesn't align in order
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Have a look at the screenshot and the invoice number should be in order 2026-0069 and it gave a number INV-1772133028576
+
+AI Analysis
+
+**Analysis:**
+
+1. **Affected Part of the App:**
+   - **Invoices List UI** in the "Invoices" section.
+
+2. **Root Cause Analysis:**
+   - **Issue:** There's an inconsistency in the invoice number sequence. All other invoices follow the format `INV-2026-xxxx`, but the first entry displays `INV-1772133028576`.
+   - **Expected:** The invoice number should obey the same sequence/order as the rest: `INV-2026-0069`.
+   - This suggests either:
+     - A bug in the invoice number generation logic (possibly using a timestamp or unique ID incorrectly).
+     - Incorrect database entry or data being fetched out of order.
+     - Race condition or fallback logic causing the wrong format to display for some records.
+   - No visible console errors are present in the screenshot, so this is likely a backend or business logic bug rather than frontend display.
+
+3. **Recommended Fix/Next Steps:**
+   - **Backend:** Review the logic responsible for generating invoice numbers and ensure the correct sequence and prefix are used—especially during invoice creation.
+   - **Database/Seed Data:** Check database entries for anomalies or legacy/test invoices with incorrect formats.
+   - **UI/Fetch Logic:** Ensure the UI correctly sorts and displays invoices by creation date or sequence number.
+   - **Testing:** Add test cases for invoice number format consistency and ordering.
+
+```json
+{"severity": "medium", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
