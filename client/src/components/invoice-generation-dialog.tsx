@@ -57,7 +57,7 @@ export function InvoiceGenerationDialog({
     format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
   );
 
-  const { data: nextNumber, refetch: refetchNextNumber } = useQuery<{ invoiceNumber: string }>({
+  const { data: nextNumber, isLoading: isNextNumberLoading, refetch: refetchNextNumber } = useQuery<{ invoiceNumber: string }>({
     queryKey: ["/api/invoices/next-number"],
     enabled: isOpen,
     staleTime: 0,
@@ -206,7 +206,7 @@ export function InvoiceGenerationDialog({
     }
 
     createInvoiceMutation.mutate({
-      invoiceNumber: nextNumber?.invoiceNumber || `INV-${Date.now()}`,
+      invoiceNumber: nextNumber?.invoiceNumber || undefined,
       projectId: project.id,
       clientId: project.clientId,
       hourlyRate: hourlyRate,
@@ -446,7 +446,7 @@ export function InvoiceGenerationDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={createInvoiceMutation.isPending || lineItems.length === 0}
+            disabled={createInvoiceMutation.isPending || lineItems.length === 0 || isNextNumberLoading}
             data-testid="button-create-invoice"
           >
             {createInvoiceMutation.isPending ? "Creating..." : "Create Invoice"}

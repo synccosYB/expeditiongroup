@@ -6,7 +6,7 @@ import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { clients, projects, intakeApplications } from "@shared/schema";
 import {
   insertClientSchema,
@@ -79,6 +79,10 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  db.execute(sql`UPDATE invoices SET invoice_number = 'INV-2026-0069' WHERE invoice_number = 'INV-1772133028576'`)
+    .then(() => console.log('[Data Fix] Corrected malformed invoice number INV-1772133028576 -> INV-2026-0069'))
+    .catch((err: any) => console.log('[Data Fix] Invoice number fix skipped:', err?.message));
 
   const synkdexProxy = async (req: Request, res: any) => {
     try {
