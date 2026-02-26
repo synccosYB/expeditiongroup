@@ -1,0 +1,69 @@
+BUG-0063
+Add Rebill Project to Invoice
+Bug
+In Progress
+Medium
+Resolve
+Status
+In Progress
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Please add the project that I am rebilling for to the invoice it should show on the PSF for the customer to see
+
+AI Analysis
+
+### UI State & Visible Errors
+- The screenshot shows the **Invoices** module for a company. An invoice (INV-2026-0068) is displayed.  
+- The main invoice viewer section has typical items: **From (company info), Bill To, Invoice Number, Invoice Date, Due Date, Status (Sent), Description table (item/qty/price/amount),** and a **Notes** section.
+- The **Description** field lists: "Certification mail for 03-09-2026 Planning board hearing mailing" and a unit price/amount.
+- The **Notes** section just says: "Rebillable expenses."
+
+### Bug Description Review
+**User request:** "Add the project that I am rebilling for to the invoice so it shows on the PSF for the customer to see."
+
+### Root Cause Analysis
+- From the screenshot, **nowhere on the invoice UI** is a field that specifies or displays the **associated project** for this invoice/rebill.
+- If multiple projects are being rebilled or an invoice is for project-specific work, this info is currently absent on both the main section and the client-facing area.
+- There are **no visible UI or console errors** in this screenshot. The issue is **missing functionality**, not a runtime fault.
+
+### Impacted App Area
+- **Invoices:** The invoice object and view lack an explicit field or section that designates the related/linked project for rebillable expenses.
+
+### Recommended Fix / Next Steps
+1. **Backend:**
+   - Ensure invoices support a **linked project field** (likely a foreign key to a Project record).
+2. **Frontend/UI:**
+   - Display the rebilled project's name/identifier in the invoice UI (either in the header, alongside the line item, or as a dedicated "Project" line).
+   - Ensure this information is rendered on the customer-facing invoice/PSF printout.
+3. **Testing:**
+   - Add a rebill item to an invoice, ensure the project is selected and visible on both internal and customer-facing views.
+
+---
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices/113
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...

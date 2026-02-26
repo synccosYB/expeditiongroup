@@ -56,13 +56,17 @@ export default function RebillCenter() {
 
       const clientId = selectedExpensesList[0].rebillableClientId;
       
+      const projectIds = [...new Set(selectedExpensesList.map(e => e.rebillableProjectId).filter(Boolean))];
+      const projectId = projectIds.length === 1 ? projectIds[0] : null;
+      
       const items = selectedExpensesList.map(expense => {
         const baseAmount = parseFloat(expense.amount || "0");
         const markup = parseFloat(expense.markupPercent || "0");
         const totalAmount = baseAmount * (1 + markup / 100);
         
+        const projectLabel = expense.rebillableProject?.name ? `[${expense.rebillableProject.name}] ` : "";
         return {
-          description: `${expense.description}${expense.vendor ? ` - ${expense.vendor.name}` : ""}`,
+          description: `${projectLabel}${expense.description}${expense.vendor ? ` - ${expense.vendor.name}` : ""}`,
           quantity: "1",
           unitPrice: totalAmount.toFixed(2),
           amount: totalAmount.toFixed(2),
@@ -73,6 +77,7 @@ export default function RebillCenter() {
 
       const invoicePayload = {
         clientId,
+        projectId,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         notes: "Rebillable expenses",
         items,
