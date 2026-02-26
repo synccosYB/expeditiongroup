@@ -1,0 +1,80 @@
+BUG-0064
+When I enter a partial payment and later cancel that payment in the register, the payment gets deleted, but the invoice balance does not update accordingly in the bills section
+Bug
+In Progress
+High
+Resolve
+Status
+In Progress
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Task Description:
+When I enter a partial payment and later cancel that payment in the register, the payment gets deleted, but the invoice balance does not update accordingly.
+
+In this case:
+
+Total Mega bill: $4,558.12
+
+Payments made: $3,521.14 + $87.00
+
+Remaining balance showed: $949.98
+
+After canceling the $87.00 payment, the remaining balance should update to $1,036.98, but it is still showing $949.98.
+
+Please review and correct the invoice balance so it reflects the accurate remaining amount.
+
+AI Analysis
+
+**UI State & Visible Errors:**
+- The "Bills" screen lists several vendors and their bill statuses.
+- For "MegaPay USA Inc." (the lower entry, #193530), the total bill is $4,558.12 and it displays **Balance: $949.98**.
+- The payment of $87.00 made earlier is listed as a separate bill above.
+- No UI error notifications are visible; the issue relates to an incorrect balance calculation.
+
+**Analysis:**
+
+1. **What part of the app is affected:**
+   - The "Bills" section, specifically the calculation and display of the remaining balance on partially paid invoices after a payment cancellation.
+
+2. **Root cause analysis:**
+   - When a partial payment is cancelled, the payment record is deleted as expected. However, the invoice balance does **not** update, continuing to reflect the original reduced amount (as if the payment was still active).
+   - Evidence: After cancelling the $87.00 payment, the balance should recalculate to $1,036.98 but stays at $949.98 (i.e., $87 lower than it should).
+   - This suggests the front-end is not re-calculating or re-fetching the invoice balance based on current payment data, or the backend is failing to update the balance field.
+   - Likely causes:
+     - The payment removal event does not properly trigger a recalculation/update of the invoice balance.
+     - There might be a caching issue or missing event/listener.
+     - The bills section could be using a stale version of payment data, not reflecting the latest payment status.
+     - Alternatively, the backend is not properly updating the invoice balance field upon payment deletion, so the front end continues to display outdated information.
+
+3. **Recommended fix or next steps:**
+   - **Backend:** Ensure that when a payment is cancelled/deleted, the associated invoice's balance is recalculated in the database. Removing a payment should update the sum of all active payments and adjust the invoice balance.
+   - **Frontend:** After payment cancellation, re-fetch or refresh the bill data to reflect the current balance.
+   - **Dev QA:** Test payment creation and deletion flows to verify that the invoice balance is consistent in all views.
+   - **Optional:** Add a confirmation/refresh mechanism to force data sync whenever payment records change.
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bills
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

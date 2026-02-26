@@ -7,7 +7,7 @@ import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql } from "drizzle-orm";
-import { clients, projects, intakeApplications } from "@shared/schema";
+import { clients, projects, intakeApplications, billPayments, bills } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -83,6 +83,17 @@ export async function registerRoutes(
   db.execute(sql`UPDATE invoices SET invoice_number = 'INV-2026-0069' WHERE invoice_number = 'INV-1772133028576'`)
     .then(() => console.log('[Data Fix] Corrected malformed invoice number INV-1772133028576 -> INV-2026-0069'))
     .catch((err: any) => console.log('[Data Fix] Invoice number fix skipped:', err?.message));
+
+  db.execute(sql`
+    DELETE FROM bill_payments WHERE id = 4 AND bill_id = 2 AND amount = '87.00' AND bank_transaction_id = 4
+    AND NOT EXISTS (SELECT 1 FROM bank_transactions WHERE id = 4)
+  `).then(async () => {
+    await db.execute(sql`
+      UPDATE bills SET amount_paid = '3521.14', amount_due = '1036.98', status = 'partial'
+      WHERE id = 2 AND amount_paid = '3608.14' AND amount_due = '949.98'
+    `);
+    console.log('[Data Fix] Corrected bill #2 balance after orphaned payment cleanup');
+  }).catch((err: any) => console.log('[Data Fix] Bill balance fix skipped:', err?.message));
 
   const synkdexProxy = async (req: Request, res: any) => {
     try {
@@ -4795,7 +4806,40 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const success = await storage.deleteBankTransaction(parseInt(req.params.id));
+
+      const transactionId = parseInt(req.params.id);
+
+      const associatedBillPayments = await db
+        .select()
+        .from(billPayments)
+        .where(eq(billPayments.bankTransactionId, transactionId));
+
+      for (const payment of associatedBillPayments) {
+        const bill = await storage.getBill(payment.billId);
+        if (bill) {
+          const paymentAmount = parseFloat(payment.amount);
+          const previousPaid = parseFloat(bill.amountPaid || "0");
+          const newPaid = Math.max(0, previousPaid - paymentAmount);
+          const total = parseFloat(bill.total || "0");
+
+          let newStatus: "pending" | "partial" | "paid" = "pending";
+          if (newPaid >= total) {
+            newStatus = "paid";
+          } else if (newPaid > 0) {
+            newStatus = "partial";
+          }
+
+          await storage.updateBill(payment.billId, {
+            amountPaid: newPaid.toFixed(2),
+            amountDue: (total - newPaid).toFixed(2),
+            status: newStatus,
+          });
+        }
+
+        await storage.deleteBillPayment(payment.id);
+      }
+
+      const success = await storage.deleteBankTransaction(transactionId);
       if (!success) {
         return res.status(404).json({ message: "Bank transaction not found" });
       }
