@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
+import { parseLocalDate, formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { Progress } from "@/components/ui/progress";
 
 const PAYMENT_TYPES = [
@@ -348,7 +349,7 @@ export default function Expenses() {
   const createMutation = useMutation({
     mutationFn: async (data: ExpenseFormData) => {
       const payload = {
-        expenseDate: new Date(data.expenseDate),
+        expenseDate: parseLocalDate(data.expenseDate),
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
         bankAccountId: data.bankAccountId ? parseInt(data.bankAccountId) : null,
@@ -396,7 +397,7 @@ export default function Expenses() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: ExpenseFormData }) => {
       const payload = {
-        expenseDate: new Date(data.expenseDate),
+        expenseDate: parseLocalDate(data.expenseDate),
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
         bankAccountId: data.bankAccountId ? parseInt(data.bankAccountId) : null,
@@ -476,7 +477,7 @@ export default function Expenses() {
     if (expense) {
       setEditingExpense(expense);
       form.reset({
-        expenseDate: expense.expenseDate ? new Date(expense.expenseDate).toISOString().split("T")[0] : "",
+        expenseDate: expense.expenseDate ? formatDateForInput(expense.expenseDate) : "",
         vendorId: expense.vendorId?.toString() || "",
         accountId: expense.accountId?.toString() || "",
         bankAccountId: expense.bankAccountId?.toString() || "",
@@ -1023,7 +1024,7 @@ export default function Expenses() {
                       <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {expense.expenseDate ? format(new Date(expense.expenseDate), "MMM d, yyyy") : "No date"}
+                          {expense.expenseDate ? format(parseLocalDateFromISO(expense.expenseDate) || new Date(), "MMM d, yyyy") : "No date"}
                         </span>
                         {expense.vendor && (
                           <span>{expense.vendor.name}</span>
