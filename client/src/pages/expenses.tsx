@@ -1070,7 +1070,7 @@ export default function Expenses() {
                         </DropdownMenuItem>
                         {expense.bankAccountId && (
                           <DropdownMenuItem 
-                            onClick={() => setLocation(`/bank-register?accountId=${expense.bankAccountId}`)} 
+                            onClick={() => setLocation(`/bank-register/${expense.bankAccountId}`)} 
                             data-testid={`button-view-transaction-${expense.id}`}
                           >
                             <Landmark className="h-4 w-4 mr-2" />
