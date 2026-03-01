@@ -1379,7 +1379,14 @@ export const insertClientSchema = createInsertSchema(clients).omit({ id: true, c
 const dateCoercion = z.preprocess((val) => {
   if (val === null || val === undefined || val === '') return null;
   if (val instanceof Date) return val;
-  if (typeof val === 'string') return new Date(val);
+  if (typeof val === 'string') {
+    const dateOnlyMatch = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, y, m, d] = dateOnlyMatch.map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    return new Date(val);
+  }
   return val;
 }, z.date().nullable().optional());
 
@@ -1425,7 +1432,8 @@ export const insertTaskReminderSchema = createInsertSchema(taskReminders).omit({
     return val;
   }, z.date()),
 });
-export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true, updatedAt: true, paidAt: true }).extend({
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, updatedAt: true, paidAt: true }).extend({
+  createdAt: dateCoercion,
   dueDate: dateCoercion,
   hourlyRate: z.string().nullable().optional(),
 });

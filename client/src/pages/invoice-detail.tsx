@@ -47,7 +47,7 @@ import {
   FileText,
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
-import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
+import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
@@ -562,7 +562,8 @@ function EditInvoiceDialog({
   const [recipientEmail, setRecipientEmail] = useState(invoice.recipientEmail || "");
   const [recipientAddress, setRecipientAddress] = useState(invoice.recipientAddress || "");
   const [notes, setNotes] = useState(invoice.notes || "");
-  const [dueDate, setDueDate] = useState(invoice.dueDate ? invoice.dueDate.split("T")[0] : "");
+  const [invoiceDate, setInvoiceDate] = useState(invoice.createdAt ? formatDateForInput(invoice.createdAt) : "");
+  const [dueDate, setDueDate] = useState(invoice.dueDate ? formatDateForInput(invoice.dueDate) : "");
   const [lineItems, setLineItems] = useState<LineItem[]>(
     invoice.items && invoice.items.length > 0
       ? invoice.items.map((i) => ({
@@ -607,6 +608,7 @@ function EditInvoiceDialog({
         recipientEmail: recipientEmail || null,
         recipientAddress: recipientAddress || null,
         notes: notes || null,
+        createdAt: invoiceDate || null,
         dueDate: dueDate || null,
         subtotal: grandTotal.toFixed(2),
         total: grandTotal.toFixed(2),
@@ -678,15 +680,27 @@ function EditInvoiceDialog({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-due-date">Due Date</Label>
-            <Input
-              id="edit-due-date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              data-testid="input-edit-due-date"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-invoice-date">Invoice Date</Label>
+              <Input
+                id="edit-invoice-date"
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                data-testid="input-edit-invoice-date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-due-date">Due Date</Label>
+              <Input
+                id="edit-due-date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                data-testid="input-edit-due-date"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">

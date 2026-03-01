@@ -53,6 +53,7 @@ export function InvoiceGenerationDialog({
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<Set<number>>(new Set());
   const [customItems, setCustomItems] = useState<CustomLineItem[]>([]);
   const [notes, setNotes] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(
     format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
   );
@@ -213,6 +214,7 @@ export function InvoiceGenerationDialog({
       subtotal: grandTotal.toFixed(2),
       total: grandTotal.toFixed(2),
       notes: notes || null,
+      createdAt: invoiceDate || null,
       dueDate: dueDate || null,
       items: lineItems,
     });
@@ -243,6 +245,18 @@ export function InvoiceGenerationDialog({
               <Label>Invoice Number</Label>
               <Input value={nextNumber?.invoiceNumber || "Loading..."} disabled data-testid="input-invoice-number" />
             </div>
+            <div>
+              <Label>Invoice Date</Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                data-testid="input-invoice-date"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Due Date</Label>
               <Input

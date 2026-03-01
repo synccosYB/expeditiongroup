@@ -3323,6 +3323,7 @@ export async function registerRoutes(
       const updateSchema = z.object({
         status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
         notes: z.string().nullable().optional(),
+        createdAt: z.string().nullable().optional(),
         dueDate: z.string().nullable().optional(),
         paidAt: z.string().nullable().optional(),
         isVisibleToClient: z.boolean().optional(),
@@ -3351,7 +3352,14 @@ export async function registerRoutes(
       
       const { items, ...invoiceFields } = parsed;
       const updateData: any = { ...invoiceFields };
-      if (invoiceFields.dueDate) updateData.dueDate = new Date(invoiceFields.dueDate);
+      if (invoiceFields.createdAt) {
+        const [y, m, d] = invoiceFields.createdAt.split('-').map(Number);
+        updateData.createdAt = new Date(y, m - 1, d, 12, 0, 0);
+      }
+      if (invoiceFields.dueDate) {
+        const [y, m, d] = invoiceFields.dueDate.split('-').map(Number);
+        updateData.dueDate = new Date(y, m - 1, d, 12, 0, 0);
+      }
       if (invoiceFields.dueDate === null) updateData.dueDate = null;
       if (invoiceFields.paidAt) updateData.paidAt = new Date(invoiceFields.paidAt);
       

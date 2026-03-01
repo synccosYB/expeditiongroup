@@ -27,6 +27,8 @@ import type { Expense, Vendor, Client, Project } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { Label } from "@/components/ui/label";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type ExpenseWithRelations = Expense & {
   vendor?: Vendor;
@@ -40,6 +42,8 @@ export default function RebillCenter() {
   const [selectedExpenses, setSelectedExpenses] = useState<Set<number>>(new Set());
   const [filterClient, setFilterClient] = useState<string>("all");
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
+  const [rebillInvoiceDate, setRebillInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [rebillDueDate, setRebillDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
 
   const { data: expenses, isLoading } = useQuery<ExpenseWithRelations[]>({
     queryKey: ["/api/expenses/rebillable"],
@@ -78,7 +82,8 @@ export default function RebillCenter() {
       const invoicePayload = {
         clientId,
         projectId,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: rebillInvoiceDate || null,
+        dueDate: rebillDueDate || null,
         notes: "Rebillable expenses",
         items,
         subtotal: totalAmount.toFixed(2),
@@ -311,7 +316,7 @@ export default function RebillCenter() {
                             <div className="flex items-center gap-3 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {expense.expenseDate ? format(new Date(expense.expenseDate), "MMM d, yyyy") : "No date"}
+                                {expense.expenseDate ? format(parseLocalDateFromISO(expense.expenseDate) || new Date(), "MMM d, yyyy") : "No date"}
                               </span>
                               {expense.vendor && (
                                 <span>{expense.vendor.name}</span>
@@ -370,6 +375,29 @@ export default function RebillCenter() {
                   </p>
                 </div>
               ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="rebill-invoice-date">Invoice Date</Label>
+                <Input
+                  id="rebill-invoice-date"
+                  type="date"
+                  value={rebillInvoiceDate}
+                  onChange={(e) => setRebillInvoiceDate(e.target.value)}
+                  data-testid="input-rebill-invoice-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rebill-due-date">Due Date</Label>
+                <Input
+                  id="rebill-due-date"
+                  type="date"
+                  value={rebillDueDate}
+                  onChange={(e) => setRebillDueDate(e.target.value)}
+                  data-testid="input-rebill-due-date"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
