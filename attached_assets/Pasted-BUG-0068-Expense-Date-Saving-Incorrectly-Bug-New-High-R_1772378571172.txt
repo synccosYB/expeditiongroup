@@ -1,0 +1,50 @@
+BUG-0068
+Expense Date Saving Incorrectly
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When entering a date in Expenses and saving it, the date shown in the portal appears one day earlier than the date entered. The saved date does not match the selected date.
+
+AI Analysis
+
+1) What part of the app is affected:
+- The Expenses module, specifically the feature for entering and displaying the expense date.
+
+2) Root cause analysis:
+- Since the saved date appears one day earlier than the user-selected date, this is likely due to an issue with date handling in the frontend or backend code. The most common cause for this behavior is mishandling of time zone conversions. For example, saving a date as a full DateTime object at midnight UTC (e.g., 2024-06-20T00:00:00Z), and then rendering it in a time zone behind UTC (e.g., UTC-5) will cause it to display as the prior calendar day (2024-06-19 in the above example).
+- Another possible cause is inconsistent date formatting or parsing between the client, server, and database.
+
+3) Recommended fix or next steps:
+- Review how date information is captured on the frontend. If using a date picker, confirm that you're capturing only the date portion, not a datetime with an implicit or explicit timezone.
+- When sending the date to the backend, ensure it's sent as an ISO 8601 date string (e.g., "YYYY-MM-DD") instead of a datetime or localized string.
+- On the backend, ensure that date values are stored and retrieved in a format agnostic of time zones (ideally as DATE types, not DATETIME).
+- When displaying the date in the portal, render the date portion as received/stored and avoid applying timezone transformations unless time of day is relevant.
+- End-to-end, ensure all components treat "date" as a calendar date, not a point in timestamp time.
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+https://expeditiongroupny.com/clients/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
