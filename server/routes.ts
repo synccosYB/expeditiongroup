@@ -95,6 +95,10 @@ export async function registerRoutes(
     console.log('[Data Fix] Corrected bill #2 balance after orphaned payment cleanup');
   }).catch((err: any) => console.log('[Data Fix] Bill balance fix skipped:', err?.message));
 
+  db.execute(sql`UPDATE invoices SET is_visible_to_client = true WHERE is_visible_to_client = false`)
+    .then(() => console.log('[Data Fix] Set all existing invoices to visible for clients'))
+    .catch((err: any) => console.log('[Data Fix] Invoice visibility fix skipped:', err?.message));
+
   const synkdexProxy = async (req: Request, res: any) => {
     try {
       const targetUrl = `${SYNKDEX_URL}${req.path}`;

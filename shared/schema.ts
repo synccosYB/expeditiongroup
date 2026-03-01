@@ -363,7 +363,7 @@ export const invoices = pgTable("invoices", {
   notes: text("notes"),
   dueDate: timestamp("due_date"),
   paidAt: timestamp("paid_at"),
-  isVisibleToClient: boolean("is_visible_to_client").default(false),
+  isVisibleToClient: boolean("is_visible_to_client").default(true),
   recipientName: varchar("recipient_name", { length: 255 }),
   recipientEmail: varchar("recipient_email", { length: 255 }),
   recipientAddress: text("recipient_address"),
