@@ -1,0 +1,53 @@
+BUG-0067
+Widget Scroll Issue
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+When using the widget, and checking my report does not scroll properly. The right-side scrollbar does not move when clicking or dragging, preventing scrolling down the page.
+
+AI Analysis
+
+1. Affected part of the app:  
+The widget's report viewing interface, specifically the scroll functionality on the right side of the widget panel.
+
+2. Root cause analysis:  
+Based on the description, the scroll bar on the right side does not respond to user interactions such as clicking or dragging. This suggests a few possible causes:
+- The report content may be inside a container with incorrect or missing CSS overflow properties (`overflow: hidden` or `overflow: visible` instead of `overflow: auto` or `scroll`).
+- The scrollbar may be visually present but is disabled or blocked due to a transparent/overlapping element.
+- A JS event handler might be preventing default scroll behaviors, or dragging/click events on the scrollbar are being intercepted.
+- The report content panel may not actually exceed the visible area, thus not necessitating scroll, but the expectation is it should.
+
+3. Recommended fix or next steps:
+- Inspect the CSS for the container holding report content, specifically the overflow property.
+- Verify that no overlay or covering element is capturing pointer events, disabling interaction with the scrollbar.
+- Check for JavaScript that disables or overrides scroll behavior (listeners on wheel, scroll, or pointer events, especially those that use `preventDefault`).
+- Confirm that the report content is genuinely overflowing and requiring scroll—if the content fits, this could be a UX expectation issue.
+- Use browser dev tools to test by temporarily adjusting DOM/CSS and see if the scroll becomes functional.
+
+```json
+{"severity": "medium", "category": "ui"}
+```
+
+https://expeditiongroupny.com/clients/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
