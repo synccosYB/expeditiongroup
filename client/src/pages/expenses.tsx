@@ -342,6 +342,7 @@ export default function Expenses() {
   const receiptUrl = form.watch("receiptUrl");
 
   const isRebillable = form.watch("isRebillable");
+  const rebillableClientId = form.watch("rebillableClientId");
   const paymentType = form.watch("paymentType");
 
   const createMutation = useMutation({
@@ -856,7 +857,7 @@ export default function Expenses() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Bill to Client</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
+                              <Select onValueChange={(val) => { field.onChange(val); form.setValue("rebillableProjectId", ""); }} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger data-testid="select-rebill-client">
                                     <SelectValue placeholder="Select client" />
@@ -877,26 +878,31 @@ export default function Expenses() {
                         <FormField
                           control={form.control}
                           name="rebillableProjectId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Project</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-rebill-project">
-                                    <SelectValue placeholder="Select project" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {projects?.map((project) => (
-                                    <SelectItem key={project.id} value={project.id.toString()}>
-                                      {project.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                          render={({ field }) => {
+                            const clientProjects = rebillableClientId
+                              ? projects?.filter(p => p.clientId?.toString() === rebillableClientId)
+                              : projects;
+                            return (
+                              <FormItem>
+                                <FormLabel>Project</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-rebill-project">
+                                      <SelectValue placeholder="Select project" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {clientProjects?.map((project) => (
+                                      <SelectItem key={project.id} value={project.id.toString()}>
+                                        {project.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
                       </div>
                       <FormField
