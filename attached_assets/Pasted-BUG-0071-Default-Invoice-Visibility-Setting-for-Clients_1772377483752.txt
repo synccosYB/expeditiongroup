@@ -1,0 +1,49 @@
+BUG-0071
+Default Invoice Visibility Setting for Clients
+Bug
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+All invoices should be automatically set to “Visible to Client” by default. Users should not have to manually select permission for each invoice.
+
+If needed, there should be an option to hide an invoice by going to Client > Invoices and selecting “Hide” from the three-dot menu.
+
+Currently, the system is set up the opposite way, requiring manual permission each time.
+
+AI Analysis
+
+1. Affected Part of the App:
+The issue affects the invoicing module, specifically the default visibility setting of invoices for clients. It also relates to user workflow for managing invoice visibility within the "Client > Invoices" section.
+
+2. Root Cause Analysis:
+Based on the description, the root cause is likely a misconfigured default property in the invoice creation logic. Currently, new invoices are created with "Visible to Client" set to false or similar, requiring users to manually alter permissions for each invoice. This is contrary to expected behavior, which should automatically allow clients to see invoices unless the user manually selects "Hide".
+
+3. Recommended Fix / Next Steps:
+Update the invoice creation logic to set the "Visible to Client" flag to true by default. Ensure the option to hide invoices remains accessible via the three-dot menu in "Client > Invoices". Test to confirm that new invoices are visible to clients by default and that the manual "Hide" functionality works as intended.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/bank-register?accountId=1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
