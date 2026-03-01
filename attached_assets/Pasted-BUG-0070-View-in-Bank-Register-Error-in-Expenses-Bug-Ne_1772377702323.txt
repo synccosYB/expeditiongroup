@@ -1,0 +1,54 @@
+BUG-0070
+View in Bank Register” Error in Expenses
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+In the Expenses section, each expense has three dots on the left side. When clicking the three dots and selecting “View in Bank Register,” the system generates an error message instead of opening the bank register entry.
+
+AI Analysis
+
+1. Affected Part of the App:  
+The issue affects the Expenses section, specifically the context menu (three dots menu) action labeled “View in Bank Register.”
+
+2. Root Cause Analysis:  
+Based on the description, when the “View in Bank Register” option is selected, the app attempts to navigate to or retrieve the related bank register entry but fails and displays an error message. The root cause may include:
+- The link or handler for “View in Bank Register” is broken or referencing an invalid/missing bank register entry.
+- There may be missing or incorrect mapping between the Expense record and the respective entry in the Bank Register.
+- There could be back-end data issues (e.g., orphaned expenses without corresponding bank register entries).
+- The UI code may lack proper error handling if the lookup fails.
+
+3. Recommended Fix or Next Steps:  
+- Review the code handling the “View in Bank Register” action for correct record mapping.
+- Ensure expenses are properly linked to corresponding bank register entries in the database.
+- Add error handling and user-friendly messages if an entry is missing.
+- Check logs and (if possible) collect error details from the console or network tab to narrow down the exact failure.
+- Optionally, add disabled state for the menu option if a link does not exist.
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/bank-register?accountId=1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
