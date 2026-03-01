@@ -419,17 +419,28 @@
   z-index: 200000 !important;
 }
 
-/* SynkDex overlay: disable pointer-events on backdrop only, allow full interaction inside modal */
+/* SynkDex widget: ensure full interactivity inside the widget container */
+#synkdex-widget,
+#synkdex-widget * {
+  pointer-events: auto !important;
+}
+
+/* SynkDex overlay: disable pointer-events on backdrop only, allow full interaction inside content */
 .sdx-overlay {
   pointer-events: none !important;
 }
+.sdx-overlay > *,
 .sdx-overlay .sdx-modal,
+.sdx-overlay .sdx-body,
+.sdx-overlay #sdx-form-container,
 .sdx-overlay .sdx-widget-btn,
 .sdx-overlay [role="dialog"],
 .sdx-overlay [role="button"] {
   pointer-events: auto !important;
 }
 .sdx-overlay .sdx-modal *,
+.sdx-overlay .sdx-body *,
+.sdx-overlay #sdx-form-container *,
 .sdx-overlay [role="dialog"] * {
   pointer-events: auto !important;
 }
