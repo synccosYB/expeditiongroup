@@ -29,7 +29,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList } from "lucide-react";
+import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList, Search, Filter, X } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -83,6 +83,13 @@ export default function BankRegister() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithRelations | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<TransactionWithRelations | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterAmountMin, setFilterAmountMin] = useState("");
+  const [filterAmountMax, setFilterAmountMax] = useState("");
 
   const { data: bankAccount, isLoading: accountLoading } = useQuery<BankAccount>({
     queryKey: ["/api/bank-accounts", accountId],
@@ -309,6 +316,47 @@ export default function BankRegister() {
   };
 
   const transactionsWithBalance = calculateRunningBalance();
+
+  const hasActiveFilters = searchQuery || filterType !== "all" || filterDateFrom || filterDateTo || filterAmountMin || filterAmountMax;
+
+  const filteredTransactions = transactionsWithBalance.filter(t => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        (t.payee || "").toLowerCase().includes(q) ||
+        (t.description || "").toLowerCase().includes(q) ||
+        (t.reference || "").toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+    }
+    if (filterType !== "all" && t.transactionType !== filterType) return false;
+    if (filterDateFrom && t.transactionDate) {
+      const txDate = new Date(t.transactionDate).toISOString().split("T")[0];
+      if (txDate < filterDateFrom) return false;
+    }
+    if (filterDateTo && t.transactionDate) {
+      const txDate = new Date(t.transactionDate).toISOString().split("T")[0];
+      if (txDate > filterDateTo) return false;
+    }
+    if (filterAmountMin) {
+      const amt = parseFloat(t.amount || "0");
+      if (amt < parseFloat(filterAmountMin)) return false;
+    }
+    if (filterAmountMax) {
+      const amt = parseFloat(t.amount || "0");
+      if (amt > parseFloat(filterAmountMax)) return false;
+    }
+    return true;
+  });
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setFilterType("all");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterAmountMin("");
+    setFilterAmountMax("");
+  };
+
   const activeVendors = vendors?.filter(v => v.isActive);
   const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
   const revenueAccounts = accounts?.filter(a => a.accountType === "revenue" && a.isActive);
@@ -638,6 +686,109 @@ export default function BankRegister() {
       </div>
       </div>
 
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search payee, memo, check #..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-register-search"
+          />
+        </div>
+        <Button
+          variant={showFilters ? "secondary" : "outline"}
+          size="sm"
+          onClick={() => setShowFilters(!showFilters)}
+          data-testid="button-toggle-filters"
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          Filters
+          {hasActiveFilters && (
+            <Badge variant="default" className="ml-2 h-5 px-1.5 text-xs">
+              On
+            </Badge>
+          )}
+        </Button>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="button-clear-filters">
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
+        {hasActiveFilters && transactionsWithBalance.length > 0 && (
+          <span className="text-sm text-muted-foreground" data-testid="text-filter-count">
+            Showing {filteredTransactions.length} of {transactionsWithBalance.length}
+          </span>
+        )}
+      </div>
+
+      {showFilters && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Type</label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger data-testid="select-filter-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="deposit">Deposit</SelectItem>
+                    <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                    <SelectItem value="transfer">Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">From Date</label>
+                <Input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  data-testid="input-filter-date-from"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">To Date</label>
+                <Input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  data-testid="input-filter-date-to"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Min $</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={filterAmountMin}
+                    onChange={(e) => setFilterAmountMin(e.target.value)}
+                    data-testid="input-filter-amount-min"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Max $</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={filterAmountMax}
+                    onChange={(e) => setFilterAmountMax(e.target.value)}
+                    data-testid="input-filter-amount-max"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {!transactionsWithBalance || transactionsWithBalance.length === 0 ? (
@@ -646,6 +797,14 @@ export default function BankRegister() {
                 icon={ClipboardList}
                 title="No transactions yet"
                 description="Add your first transaction to start tracking"
+              />
+            </div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Search}
+                title="No matching transactions"
+                description="Try adjusting your search or filters"
               />
             </div>
           ) : (
@@ -667,7 +826,7 @@ export default function BankRegister() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {transactionsWithBalance.map((transaction) => (
+                  {filteredTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
                       className="hover:bg-muted/30"
