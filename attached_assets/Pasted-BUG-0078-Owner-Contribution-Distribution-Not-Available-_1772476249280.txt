@@ -1,0 +1,71 @@
+BUG-0078
+Owner Contribution/Distribution Not Available in Register Entry
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When going to My Account > Register and adding a transaction, the Owner Contribution and Owner Distribution accounts do not appear in the account dropdown list.
+
+As a result, I am unable to properly record when I personally deposit money into the business (Owner Contribution) or withdraw money from the business (Owner Distribution). The system is not displaying these chart of account options when entering a new transaction.
+
+AI Analysis
+
+### Analysis of the Bug Report:
+
+1. **Affected Area:**
+   - The issue lies in the **My Account > Register > Add Transaction** section of the application.
+   - Specifically, the dropdown for selecting accounts when adding a new transaction does not include "Owner Contribution" or "Owner Distribution" accounts from the chart of accounts.
+
+2. **Root Cause Analysis:**
+   - From the provided details and screenshot:
+     - The Owner Contribution and Owner Distribution accounts are likely not being fetched or filtered correctly when populating the dropdown list in the transaction entry interface.
+     - This could happen because:
+       - These specific account types are excluded by mistake, either due to a misconfigured query or a frontend filter in the dropdown population logic.
+       - There may be a categorization issue where Owner Contribution/Distribution accounts are set up incorrectly in the underlying chart of accounts, making them unavailable for filtering or fetching.
+       - A permissions issue may exist where these accounts are not accessible to the user role associated with the logged-in user.
+
+3. **Recommended Fix or Next Steps:**
+   - **Backend Validation:**
+     - Verify that "Owner Contribution" and "Owner Distribution" accounts exist and are correctly categorized in the chart of accounts database table.
+     - Check the API endpoint or query responsible for fetching the accounts to ensure that these types of accounts are included.
+   - **Frontend Validation:**
+     - Ensure the dropdown logic does not apply over-restrictive filters that exclude these account types.
+   - **Role/Permission Check:**
+     - Confirm that the logged-in user has appropriate permissions to access all account types, including Owner Contribution and Owner Distribution.
+   - **User Communication:**
+     - If this behavior is intentional and these accounts are not supposed to appear in this view, provide tooltips or user guidance to prevent confusion.
+
+---
+
+### JSON Summary
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-register/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

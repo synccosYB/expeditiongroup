@@ -594,7 +594,7 @@ export default function BankRegister() {
                       name="accountId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Expense Category</FormLabel>
+                          <FormLabel>Category</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -607,6 +607,16 @@ export default function BankRegister() {
                                   {account.code} - {account.name}
                                 </SelectItem>
                               ))}
+                              {equityAccounts && equityAccounts.length > 0 && (
+                                <>
+                                  <SelectItem value="_equity_separator" disabled>── Equity ──</SelectItem>
+                                  {equityAccounts.map((account) => (
+                                    <SelectItem key={account.id} value={account.id.toString()}>
+                                      {account.code} - {account.name}
+                                    </SelectItem>
+                                  ))}
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -621,7 +631,7 @@ export default function BankRegister() {
                     name="accountId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Revenue Category</FormLabel>
+                        <FormLabel>Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -634,6 +644,16 @@ export default function BankRegister() {
                                 {account.code} - {account.name}
                               </SelectItem>
                             ))}
+                            {equityAccounts && equityAccounts.length > 0 && (
+                              <>
+                                <SelectItem value="_equity_separator" disabled>── Equity ──</SelectItem>
+                                {equityAccounts.map((account) => (
+                                  <SelectItem key={account.id} value={account.id.toString()}>
+                                    {account.code} - {account.name}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
