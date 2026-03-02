@@ -419,19 +419,23 @@
   z-index: 200000 !important;
 }
 
-/* SynkDex widget: ensure full interactivity inside the widget container */
+/* SynkDex widget: ensure full interactivity and scrolling inside the widget */
 #synkdex-widget {
   pointer-events: auto !important;
   position: relative;
   z-index: 2147483647;
 }
-#synkdex-widget * {
+#synkdex-widget *,
+#synkdex-widget *::before,
+#synkdex-widget *::after {
   pointer-events: auto !important;
+  touch-action: auto !important;
 }
 
-/* SynkDex overlay: disable pointer-events on backdrop only, allow full interaction inside content */
+/* SynkDex overlay: sits below the widget, backdrop disabled, content interactive */
 .sdx-overlay {
   pointer-events: none !important;
+  z-index: 2147483646 !important;
 }
 .sdx-overlay > * {
   pointer-events: auto !important;
@@ -449,12 +453,30 @@
 .sdx-overlay #sdx-form-container *,
 .sdx-overlay [role="dialog"] * {
   pointer-events: auto !important;
+  touch-action: auto !important;
 }
 .sdx-overlay iframe,
 #synkdex-widget iframe {
   pointer-events: auto !important;
   overflow: auto !important;
   -webkit-overflow-scrolling: touch !important;
+}
+
+/* Ensure scrollable containers within the widget allow native scrolling */
+#synkdex-widget [style*="overflow"],
+#synkdex-widget [style*="scroll"],
+.sdx-overlay [style*="overflow"],
+.sdx-overlay [style*="scroll"],
+.sdx-modal [style*="overflow"],
+.sdx-modal [style*="scroll"] {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain;
+}
+#synkdex-widget div,
+.sdx-overlay .sdx-modal div,
+.sdx-overlay .sdx-body div {
+  touch-action: auto !important;
 }
 
 /* Hide widget button when a dialog overlay is active */
