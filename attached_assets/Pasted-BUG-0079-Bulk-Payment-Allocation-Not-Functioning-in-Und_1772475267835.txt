@@ -1,0 +1,75 @@
+BUG-0079
+Bulk Payment Allocation Not Functioning in Undeposited Funds/Receive payment
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+The bulk payment allocation feature is not working properly. When going to Undeposited Funds > Record Payment and selecting a client, multiple open invoices appear, but there is no option to check off invoices or allocate specific amounts to each invoice.
+
+The system does not allow entering how much of the total payment should be applied to each individual invoice, preventing proper allocation of a lump-sum payment across multiple invoices.
+
+AI Analysis
+
+### Analysis of Bug Report
+
+#### Affected Area of the App:
+The "Undeposited Funds" section, specifically under the "Receive Payment" workflow.
+
+#### UI State Observations:
+From the screenshot:
+1. The screen shows a list of payments under "Payments Pending Deposit."
+2. There is no visible option for allocating a payment across multiple invoices. The interface does not provide checkboxes or any mechanism for selecting multiple invoices per payment.
+3. The "Receive Payment" button is visible to initiate recording a payment, but the core functionality of allocating bulk payments and entering amounts to specific invoices isn't apparent.
+
+#### Root Cause Analysis:
+1. **Feature Implementation Gap**: The absence of UI interactivity (checkboxes, input fields, or allocation mechanism) suggests that bulk payment allocation logic has not been implemented.
+2. **Possible Regression**: If this functionality was operational earlier, the issue could be a result of a regression due to a recent update or configuration change.
+3. **Inconsistent Data Binding**: If the backend is capable of storing allocated payments but the UI doesn't reflect this capability, missing UI elements may point to incomplete binding of front-end functionality to back-end services.
+
+#### Recommended Fix/Next Steps:
+1. **UI Implementation**:
+   - Add interactive elements enabling allocation (e.g., checkboxes for invoice selection and fields to specify allocable amounts).
+   - Use a user-friendly design for handling bulk payment allocation, with clear reflectivity of amounts applied to invoices.
+
+2. **Backend Review**:
+   - Ensure the backend supports storing allocations across multiple invoices.
+   - Confirm that UI events correctly trigger these backend operations (e.g., API calls).
+
+3. **Testing**:
+   - Test scenarios for bulk allocations, including partial allocation and oversubscription.
+
+4. **Feature Configuration Audit**:
+   - If this is a regression, confirm whether a setting or permission restricts the bulk allocation feature.
+
+5. **Communication**:
+   - Update related documentation or client guidance outlining how to use this feature once fixed.
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/undeposited-funds
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
