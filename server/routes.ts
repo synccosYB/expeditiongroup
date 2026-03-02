@@ -80,6 +80,41 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  db.execute(sql`ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS linked_transaction_id INTEGER`)
+    .then(() => {
+      console.log('[Data Fix] Ensured linked_transaction_id column exists');
+      return db.execute(sql`
+        WITH transfer_txns AS (
+          SELECT bt.id, bt.bank_account_id, bt.transfer_to_bank_account_id, bt.amount, bt.transaction_date
+          FROM bank_transactions bt
+          WHERE bt.transaction_type = 'transfer'
+            AND bt.transfer_to_bank_account_id IS NOT NULL
+            AND bt.linked_transaction_id IS NULL
+        ),
+        matching_counterparts AS (
+          SELECT DISTINCT ON (t.id) t.id AS transfer_id, c.id AS counterpart_id
+          FROM transfer_txns t
+          JOIN bank_transactions c ON c.bank_account_id = t.transfer_to_bank_account_id
+            AND c.transaction_type = 'deposit'
+            AND c.amount = t.amount
+            AND DATE(c.transaction_date) = DATE(t.transaction_date)
+            AND c.linked_transaction_id IS NULL
+          ORDER BY t.id, c.id
+        )
+        UPDATE bank_transactions SET linked_transaction_id = (
+          SELECT CASE
+            WHEN bank_transactions.id = mc.transfer_id THEN mc.counterpart_id
+            WHEN bank_transactions.id = mc.counterpart_id THEN mc.transfer_id
+          END
+          FROM matching_counterparts mc
+          WHERE bank_transactions.id = mc.transfer_id OR bank_transactions.id = mc.counterpart_id
+        )
+        WHERE id IN (SELECT transfer_id FROM matching_counterparts UNION SELECT counterpart_id FROM matching_counterparts)
+      `);
+    })
+    .then(() => console.log('[Data Fix] Linked existing transfer counterpart transactions'))
+    .catch((err: any) => console.log('[Data Fix] Transfer linking skipped:', err?.message));
+
   db.execute(sql`UPDATE invoices SET invoice_number = 'INV-2026-0069' WHERE invoice_number = 'INV-1772133028576'`)
     .then(() => console.log('[Data Fix] Corrected malformed invoice number INV-1772133028576 -> INV-2026-0069'))
     .catch((err: any) => console.log('[Data Fix] Invoice number fix skipped:', err?.message));
@@ -4811,11 +4846,13 @@ export async function registerRoutes(
           transactionDate: parsed.transactionDate,
           transactionType: "deposit",
           amount: parsed.amount,
-          payee: parsed.payee || `Transfer from ${sourceBankAccount?.name || 'account'}`,
-          description: parsed.description || `Transfer from ${sourceBankAccount?.name || 'account'}`,
+          payee: sourceBankAccount?.name || parsed.payee || "Transfer",
+          description: `Transfer from ${sourceBankAccount?.name || 'account'}`,
           reference: parsed.reference,
+          linkedTransactionId: transaction.id,
         });
-        await storage.createBankTransaction(counterpart);
+        const counterpartTx = await storage.createBankTransaction(counterpart);
+        await storage.updateBankTransaction(transaction.id, { linkedTransactionId: counterpartTx.id } as any);
       }
 
       res.status(201).json(transaction);
@@ -4835,10 +4872,22 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateBankTransactionSchema.parse(req.body);
+      const existingTx = await storage.getBankTransaction(parseInt(req.params.id));
       const transaction = await storage.updateBankTransaction(parseInt(req.params.id), parsed);
       if (!transaction) {
         return res.status(404).json({ message: "Bank transaction not found" });
       }
+
+      if (existingTx?.linkedTransactionId) {
+        const counterpartUpdates: Record<string, any> = {};
+        if (parsed.amount !== undefined) counterpartUpdates.amount = parsed.amount;
+        if (parsed.transactionDate !== undefined) counterpartUpdates.transactionDate = parsed.transactionDate;
+        if (parsed.reference !== undefined) counterpartUpdates.reference = parsed.reference;
+        if (Object.keys(counterpartUpdates).length > 0) {
+          await storage.updateBankTransaction(existingTx.linkedTransactionId, counterpartUpdates);
+        }
+      }
+
       res.json(transaction);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -4886,6 +4935,11 @@ export async function registerRoutes(
         }
 
         await storage.deleteBillPayment(payment.id);
+      }
+
+      const txToDelete = await storage.getBankTransaction(transactionId);
+      if (txToDelete?.linkedTransactionId) {
+        await storage.deleteBankTransaction(txToDelete.linkedTransactionId);
       }
 
       const success = await storage.deleteBankTransaction(transactionId);

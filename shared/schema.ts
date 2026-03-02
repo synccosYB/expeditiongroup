@@ -714,6 +714,7 @@ export const bankTransactions = pgTable("bank_transactions", {
   isReconciled: boolean("is_reconciled").default(false),
   reconciliationId: integer("reconciliation_id"),
   transferToBankAccountId: integer("transfer_to_bank_account_id").references(() => bankAccounts.id),
+  linkedTransactionId: integer("linked_transaction_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
