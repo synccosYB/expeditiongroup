@@ -1,0 +1,70 @@
+BUG-0077
+Transfer Posting to Incorrect Credit Card Registers
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Two credit card payments were made today from the NECB account (recorded in the system as “Transfers”):
+
+$313.64 from NECB to TD
+
+$1,300 from NECB to AMEX
+
+Both transactions are incorrectly appearing in both the TD and AMEX registers. Each transfer should only appear in its respective credit card register (TD payment in TD register, AMEX payment in AMEX register). The transactions are not posting separately and correctly according to the selected account.
+
+AI Analysis
+
+### **Analysis**
+
+#### 1. Affected Area of the Application:
+The issue is occurring in the transaction posting logic of the **Banking/Transaction Management module** within the system. Specifically, the problem impacts how transfer transactions from a bank account (in this case, NECB) are being routed and displayed in the respective **credit card registers** (TD and AMEX).
+
+#### 2. Root Cause:
+Here’s what could be causing the problem:
+   - **Transaction Linking Logic:** The transfer transactions are being linked incorrectly to both the TD and AMEX credit card registers, instead of being tied to their respective single credit card.
+   - **Duplicate Posting Bug:** Both transactions are appearing in the registers of both credit cards. It’s possible a **misconfigured mapping or code duplication** results in each transfer being recorded for both destination accounts simultaneously.
+   - **UI/Database Sync Issue:** The database may not be setting the proper target account IDs for these transactions, causing them to be flagged as belonging to multiple registers incorrectly.
+
+#### 3. Screenshot Observations:
+From the screenshot:
+   - The NECB register displays two transactions labeled as "Transfer" ($313.64 and $1300).
+   - The transactions are correctly debited from NECB but are incorrectly appearing in **both TD and AMEX credit card registers**, as described in the report.
+
+#### 4. Recommended Fix:
+   - Check and validate the **transaction mapping logic** in the system. Ensure that each transfer is properly tied to only one target account (specifically, the selected account in the transfer configuration).
+   - Inspect the database **journaling process or transfer posting API** to ensure account-specific validations are in place to avoid dual postings.
+   - Write appropriate unit and integration tests to simulate multi-credit-card transfers and verify correct posting behavior.
+   - If issues exist in resolving UI states with the database, ensure register filters for transactions are pulling data only for their designated account.
+
+---
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-register/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
