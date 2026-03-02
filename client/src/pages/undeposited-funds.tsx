@@ -71,6 +71,15 @@ const paymentFormSchema = z.object({
 
 type PaymentFormData = z.infer<typeof paymentFormSchema>;
 
+type InvoiceAllocation = {
+  invoiceId: number;
+  invoiceNumber: string;
+  total: number;
+  totalPaid: number;
+  remainingBalance: number;
+  allocatedAmount: string;
+};
+
 type PaymentWithRelations = Payment & {
   client: Client;
   invoice?: Invoice;
@@ -91,6 +100,8 @@ export default function UndepositedFunds() {
   const [selectedPayments, setSelectedPayments] = useState<number[]>([]);
   const [depositBankAccountId, setDepositBankAccountId] = useState<string>("");
   const [depositDate, setDepositDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [useBulkAllocation, setUseBulkAllocation] = useState(false);
+  const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
 
   const { data: payments, isLoading: paymentsLoading } = useQuery<PaymentWithRelations[]>({
     queryKey: ["/api/payments/undeposited"],
@@ -130,7 +141,25 @@ export default function UndepositedFunds() {
   });
 
   const handlePaymentSubmit = (data: PaymentFormData) => {
-    createPaymentMutation.mutate(data);
+    if (useBulkAllocation) {
+      const activeAllocations = allocations.filter(a => parseFloat(a.allocatedAmount || "0") > 0);
+      if (activeAllocations.length === 0) {
+        toast({ title: "Please allocate amounts to at least one invoice", variant: "destructive" });
+        return;
+      }
+      const totalAllocated = activeAllocations.reduce((sum, a) => sum + parseFloat(a.allocatedAmount || "0"), 0);
+      if (Math.abs(totalAllocated - parseFloat(data.amount)) > 0.01) {
+        toast({ 
+          title: "Allocation mismatch", 
+          description: `Total allocated (${formatCurrency(totalAllocated)}) doesn't match payment amount (${formatCurrency(data.amount)})`,
+          variant: "destructive" 
+        });
+        return;
+      }
+      bulkPaymentMutation.mutate({ formData: data, allocations: activeAllocations });
+    } else {
+      createPaymentMutation.mutate(data);
+    }
   };
 
   const handlePaymentSubmitError = (errors: any) => {
@@ -143,6 +172,15 @@ export default function UndepositedFunds() {
       description: errorMessages || "Check all required fields",
       variant: "destructive" 
     });
+  };
+
+  const invalidatePaymentQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/payments/next-number"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/invoice-balances"] });
   };
 
   const createPaymentMutation = useMutation({
@@ -161,12 +199,7 @@ export default function UndepositedFunds() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments/undeposited-total"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/payments/next-number"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoice-balances"] });
+      invalidatePaymentQueries();
       toast({ title: "Payment recorded successfully" });
       setIsPaymentDialogOpen(false);
       form.reset();
@@ -175,6 +208,40 @@ export default function UndepositedFunds() {
       console.error("Payment creation error:", error);
       toast({ 
         title: "Failed to record payment", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const bulkPaymentMutation = useMutation({
+    mutationFn: async ({ formData, allocations }: { formData: PaymentFormData; allocations: InvoiceAllocation[] }) => {
+      const response = await apiRequest("POST", "/api/payments/bulk", {
+        paymentDate: new Date(formData.paymentDate).toISOString(),
+        clientId: parseInt(formData.clientId),
+        totalAmount: formData.amount,
+        paymentMethod: formData.paymentMethod,
+        reference: formData.reference || null,
+        memo: formData.memo || null,
+        allocations: allocations.map(a => ({
+          invoiceId: a.invoiceId,
+          amount: a.allocatedAmount,
+        })),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      invalidatePaymentQueries();
+      toast({ title: "Bulk payment recorded successfully" });
+      setIsPaymentDialogOpen(false);
+      setUseBulkAllocation(false);
+      setAllocations([]);
+      form.reset();
+    },
+    onError: (error: any) => {
+      console.error("Bulk payment creation error:", error);
+      toast({ 
+        title: "Failed to record bulk payment", 
         description: error?.message || "Please try again",
         variant: "destructive" 
       });
@@ -306,7 +373,7 @@ export default function UndepositedFunds() {
                 Receive Payment
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className={useBulkAllocation ? "max-w-2xl" : "max-w-md"}>
               <DialogHeader>
                 <DialogTitle>Receive Payment</DialogTitle>
               </DialogHeader>
@@ -358,7 +425,39 @@ export default function UndepositedFunds() {
                     )}
                   />
 
-                  {selectedClientId && (
+                  {selectedClientId && clientInvoices && clientInvoices.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="bulk-allocation"
+                        checked={useBulkAllocation}
+                        onCheckedChange={(checked) => {
+                          setUseBulkAllocation(!!checked);
+                          if (checked && clientInvoices) {
+                            setAllocations(clientInvoices.map(inv => {
+                              const balance = invoiceBalances?.[inv.id.toString()];
+                              return {
+                                invoiceId: inv.id,
+                                invoiceNumber: inv.invoiceNumber,
+                                total: balance ? balance.total : parseFloat(inv.total),
+                                totalPaid: balance ? balance.totalPaid : 0,
+                                remainingBalance: balance ? balance.remainingBalance : parseFloat(inv.total),
+                                allocatedAmount: "",
+                              };
+                            }));
+                            form.setValue("invoiceId", "none");
+                          } else {
+                            setAllocations([]);
+                          }
+                        }}
+                        data-testid="checkbox-bulk-allocation"
+                      />
+                      <label htmlFor="bulk-allocation" className="text-sm cursor-pointer">
+                        Allocate across multiple invoices
+                      </label>
+                    </div>
+                  )}
+
+                  {selectedClientId && !useBulkAllocation && (
                     <FormField
                       control={form.control}
                       name="invoiceId"
@@ -440,6 +539,85 @@ export default function UndepositedFunds() {
                     )}
                   />
 
+                  {useBulkAllocation && allocations.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Invoice Allocations</label>
+                      <div className="border rounded-md overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-muted/50">
+                              <th className="text-left p-2 font-medium">Invoice</th>
+                              <th className="text-right p-2 font-medium">Balance Due</th>
+                              <th className="text-right p-2 font-medium w-32">Allocate</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allocations.map((alloc, idx) => (
+                              <tr key={alloc.invoiceId} className="border-t">
+                                <td className="p-2">
+                                  <div>{alloc.invoiceNumber}</div>
+                                  {alloc.totalPaid > 0 && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {formatCurrency(alloc.totalPaid)} paid of {formatCurrency(alloc.total)}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right font-medium">
+                                  {formatCurrency(alloc.remainingBalance)}
+                                </td>
+                                <td className="p-2">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    className="text-right h-8"
+                                    value={alloc.allocatedAmount}
+                                    onChange={(e) => {
+                                      const newAllocations = [...allocations];
+                                      newAllocations[idx] = { ...alloc, allocatedAmount: e.target.value };
+                                      setAllocations(newAllocations);
+                                      const totalAllocated = newAllocations.reduce((sum, a) => sum + parseFloat(a.allocatedAmount || "0"), 0);
+                                      form.setValue("amount", totalAllocated.toFixed(2));
+                                    }}
+                                    data-testid={`input-allocation-${alloc.invoiceId}`}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t bg-muted/30">
+                              <td className="p-2 font-medium">Total Allocated</td>
+                              <td className="p-2 text-right font-medium">
+                                {formatCurrency(allocations.reduce((sum, a) => sum + a.remainingBalance, 0))}
+                              </td>
+                              <td className="p-2 text-right font-medium">
+                                {formatCurrency(allocations.reduce((sum, a) => sum + parseFloat(a.allocatedAmount || "0"), 0))}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newAllocations = allocations.map(a => ({
+                            ...a,
+                            allocatedAmount: a.remainingBalance.toFixed(2),
+                          }));
+                          setAllocations(newAllocations);
+                          const total = newAllocations.reduce((sum, a) => sum + parseFloat(a.allocatedAmount || "0"), 0);
+                          form.setValue("amount", total.toFixed(2));
+                        }}
+                        data-testid="button-auto-fill-allocations"
+                      >
+                        Auto-fill all balances
+                      </Button>
+                    </div>
+                  )}
+
                   <FormField
                     control={form.control}
                     name="paymentMethod"
@@ -494,11 +672,11 @@ export default function UndepositedFunds() {
                   />
 
                   <div className="flex justify-end gap-2 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => { setIsPaymentDialogOpen(false); setUseBulkAllocation(false); setAllocations([]); }}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={createPaymentMutation.isPending} data-testid="button-save-payment">
-                      {createPaymentMutation.isPending ? "Saving..." : "Save Payment"}
+                    <Button type="submit" disabled={createPaymentMutation.isPending || bulkPaymentMutation.isPending} data-testid="button-save-payment">
+                      {(createPaymentMutation.isPending || bulkPaymentMutation.isPending) ? "Saving..." : "Save Payment"}
                     </Button>
                   </div>
                 </form>

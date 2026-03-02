@@ -29,7 +29,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList, Search, Filter, X } from "lucide-react";
+import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList, Search, Filter, X, UserCheck, UserMinus } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -58,7 +58,7 @@ import { format } from "date-fns";
 
 const transactionFormSchema = z.object({
   transactionDate: z.string().min(1, "Date is required"),
-  transactionType: z.enum(["deposit", "withdrawal", "transfer"]),
+  transactionType: z.enum(["deposit", "withdrawal", "transfer", "owner_contribution", "owner_distribution"]),
   amount: z.string().min(1, "Amount is required"),
   payee: z.string().optional(),
   description: z.string().optional(),
@@ -132,13 +132,19 @@ export default function BankRegister() {
 
   const createMutation = useMutation({
     mutationFn: async (data: TransactionFormData) => {
+      const dbTransactionType = data.transactionType === "owner_contribution" ? "deposit"
+        : data.transactionType === "owner_distribution" ? "withdrawal"
+        : data.transactionType;
+      const autoMemo = data.transactionType === "owner_contribution" ? "Owner's Contribution"
+        : data.transactionType === "owner_distribution" ? "Owner's Distribution"
+        : undefined;
       const payload = {
         bankAccountId: accountId,
         transactionDate: new Date(data.transactionDate),
-        transactionType: data.transactionType,
+        transactionType: dbTransactionType,
         amount: data.amount,
-        payee: data.payee,
-        description: data.description,
+        payee: data.payee || (autoMemo ? autoMemo : undefined),
+        description: data.description || autoMemo,
         reference: data.reference,
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
@@ -175,12 +181,18 @@ export default function BankRegister() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: TransactionFormData }) => {
+      const dbTransactionType = data.transactionType === "owner_contribution" ? "deposit"
+        : data.transactionType === "owner_distribution" ? "withdrawal"
+        : data.transactionType;
+      const autoMemo = data.transactionType === "owner_contribution" ? "Owner's Contribution"
+        : data.transactionType === "owner_distribution" ? "Owner's Distribution"
+        : undefined;
       const payload = {
         transactionDate: new Date(data.transactionDate),
-        transactionType: data.transactionType,
+        transactionType: dbTransactionType,
         amount: data.amount,
-        payee: data.payee,
-        description: data.description,
+        payee: data.payee || (autoMemo ? autoMemo : undefined),
+        description: data.description || autoMemo,
         reference: data.reference,
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
@@ -283,7 +295,13 @@ export default function BankRegister() {
     }).format(num);
   };
 
-  const getTransactionIcon = (type: string) => {
+  const getTransactionIcon = (type: string, description?: string | null) => {
+    if (description === "Owner's Contribution") {
+      return <UserCheck className="h-4 w-4 text-emerald-600" />;
+    }
+    if (description === "Owner's Distribution") {
+      return <UserMinus className="h-4 w-4 text-orange-600" />;
+    }
     switch (type) {
       case "deposit":
         return <ArrowDownLeft className="h-4 w-4 text-green-600" />;
@@ -360,6 +378,7 @@ export default function BankRegister() {
   const activeVendors = vendors?.filter(v => v.isActive);
   const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
   const revenueAccounts = accounts?.filter(a => a.accountType === "revenue" && a.isActive);
+  const equityAccounts = accounts?.filter(a => a.accountType === "equity" && a.isActive);
   const otherBankAccounts = bankAccounts?.filter(b => b.id !== accountId && b.isActive);
 
   const isLoading = accountLoading || transactionsLoading;
@@ -480,6 +499,8 @@ export default function BankRegister() {
                             <SelectItem value="deposit">Deposit</SelectItem>
                             <SelectItem value="withdrawal">Withdrawal</SelectItem>
                             <SelectItem value="transfer">Transfer</SelectItem>
+                            <SelectItem value="owner_contribution">Owner's Contribution</SelectItem>
+                            <SelectItem value="owner_distribution">Owner's Distribution</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -637,6 +658,32 @@ export default function BankRegister() {
                             {otherBankAccounts?.map((account) => (
                               <SelectItem key={account.id} value={account.id.toString()}>
                                 {account.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {(transactionType === "owner_contribution" || transactionType === "owner_distribution") && (
+                  <FormField
+                    control={form.control}
+                    name="accountId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Equity Account</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-equity-account">
+                              <SelectValue placeholder="Select equity account" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {equityAccounts?.map((account) => (
+                              <SelectItem key={account.id} value={account.id.toString()}>
+                                {account.code} - {account.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -843,8 +890,12 @@ export default function BankRegister() {
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-1">
-                          {getTransactionIcon(transaction.transactionType)}
-                          <span className="text-sm capitalize">{transaction.transactionType}</span>
+                          {getTransactionIcon(transaction.transactionType, transaction.description)}
+                          <span className="text-sm capitalize">
+                            {transaction.description === "Owner's Contribution" ? "Owner's Contribution"
+                              : transaction.description === "Owner's Distribution" ? "Owner's Distribution"
+                              : transaction.transactionType}
+                          </span>
                         </div>
                       </td>
                       <td className="p-3 text-sm text-muted-foreground">

@@ -99,6 +99,18 @@ export async function registerRoutes(
     .then(() => console.log('[Data Fix] Set all existing invoices to visible for clients'))
     .catch((err: any) => console.log('[Data Fix] Invoice visibility fix skipped:', err?.message));
 
+  db.execute(sql`
+    INSERT INTO accounts (code, name, description, account_type, account_subtype, is_active)
+    SELECT * FROM (VALUES
+      ('3000', 'Owner''s Equity', 'Owner''s equity account', 'equity'::account_type, 'owner_equity'::account_subtype, true),
+      ('3100', 'Owner''s Contribution', 'Capital contributions by owner', 'equity'::account_type, 'owner_equity'::account_subtype, true),
+      ('3200', 'Owner''s Distribution', 'Distributions to owner', 'equity'::account_type, 'owner_equity'::account_subtype, true),
+      ('3300', 'Retained Earnings', 'Accumulated retained earnings', 'equity'::account_type, 'retained_earnings'::account_subtype, true)
+    ) AS v(code, name, description, account_type, account_subtype, is_active)
+    WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE account_type = 'equity')
+  `).then(() => console.log('[Data Fix] Seeded equity accounts'))
+    .catch((err: any) => console.log('[Data Fix] Equity accounts seed skipped:', err?.message));
+
   const synkdexProxy = async (req: Request, res: any) => {
     try {
       const targetUrl = `${SYNKDEX_URL}${req.path}`;
@@ -4780,7 +4792,32 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertBankTransactionSchema.parse({ ...req.body, bankAccountId: parseInt(req.params.id) });
+
+      if (parsed.transactionType === "transfer") {
+        if (!parsed.transferToBankAccountId) {
+          return res.status(400).json({ message: "Transfer destination account is required" });
+        }
+        if (parsed.transferToBankAccountId === parseInt(req.params.id)) {
+          return res.status(400).json({ message: "Cannot transfer to the same account" });
+        }
+      }
+
       const transaction = await storage.createBankTransaction(parsed);
+
+      if (parsed.transactionType === "transfer" && parsed.transferToBankAccountId) {
+        const sourceBankAccount = await storage.getBankAccount(parseInt(req.params.id));
+        const counterpart = insertBankTransactionSchema.parse({
+          bankAccountId: parsed.transferToBankAccountId,
+          transactionDate: parsed.transactionDate,
+          transactionType: "deposit",
+          amount: parsed.amount,
+          payee: parsed.payee || `Transfer from ${sourceBankAccount?.name || 'account'}`,
+          description: parsed.description || `Transfer from ${sourceBankAccount?.name || 'account'}`,
+          reference: parsed.reference,
+        });
+        await storage.createBankTransaction(counterpart);
+      }
+
       res.status(201).json(transaction);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -5996,6 +6033,77 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/payments/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { paymentDate, clientId, totalAmount, paymentMethod, reference, memo, allocations } = req.body;
+      if (!allocations || !Array.isArray(allocations) || allocations.length === 0) {
+        return res.status(400).json({ message: "At least one invoice allocation is required" });
+      }
+
+      for (const alloc of allocations) {
+        const amount = parseFloat(alloc.amount);
+        if (isNaN(amount) || amount <= 0) {
+          return res.status(400).json({ message: `Invalid allocation amount for invoice ${alloc.invoiceId}` });
+        }
+        const invoice = await storage.getInvoice(alloc.invoiceId);
+        if (!invoice) {
+          return res.status(400).json({ message: `Invoice ${alloc.invoiceId} not found` });
+        }
+        const existingPayments = await storage.getPaymentsByInvoiceId(alloc.invoiceId);
+        const alreadyPaid = existingPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+        const remaining = parseFloat(invoice.total) - alreadyPaid;
+        if (amount > remaining + 0.01) {
+          return res.status(400).json({ message: `Allocation of $${amount.toFixed(2)} exceeds remaining balance of $${remaining.toFixed(2)} for invoice ${invoice.invoiceNumber}` });
+        }
+      }
+
+      const allocTotal = allocations.reduce((sum: number, a: any) => sum + parseFloat(a.amount), 0);
+      if (totalAmount && Math.abs(allocTotal - parseFloat(totalAmount)) > 0.01) {
+        return res.status(400).json({ message: `Allocation total ($${allocTotal.toFixed(2)}) does not match payment amount ($${parseFloat(totalAmount).toFixed(2)})` });
+      }
+
+      const createdPayments = [];
+      for (const alloc of allocations) {
+        const paymentNumber = await storage.getNextPaymentNumber();
+        const parsed = insertPaymentSchema.parse({
+          paymentNumber,
+          paymentDate: new Date(paymentDate),
+          clientId,
+          invoiceId: alloc.invoiceId,
+          amount: alloc.amount,
+          paymentMethod,
+          reference: reference || null,
+          memo: memo || `Bulk payment - ${allocations.length} invoices`,
+          createdByUserId: req.session.userId,
+        });
+        const payment = await storage.createPayment(parsed);
+        createdPayments.push(payment);
+
+        const invoicePayments = await storage.getPaymentsByInvoiceId(alloc.invoiceId);
+        const invoice = await storage.getInvoice(alloc.invoiceId);
+        if (invoice) {
+          const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+          const invoiceTotal = parseFloat(invoice.total);
+          if (totalPaid >= invoiceTotal) {
+            await storage.updateInvoice(alloc.invoiceId, { status: 'paid' });
+          }
+        }
+      }
+      sendWebhook("payment.received", { payments: createdPayments, bulk: true }, { id: req.session.userId!, email: user?.email });
+      res.status(201).json(createdPayments);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error creating bulk payment:", error);
+      res.status(500).json({ message: "Failed to create bulk payment" });
+    }
+  });
+
   app.post("/api/payments", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -6005,7 +6113,6 @@ export async function registerRoutes(
       const parsed = insertPaymentSchema.parse({ ...req.body, createdByUserId: req.session.userId });
       const payment = await storage.createPayment(parsed);
       
-      // If payment is for an invoice, update invoice status
       if (parsed.invoiceId) {
         const invoicePayments = await storage.getPaymentsByInvoiceId(parsed.invoiceId);
         const invoice = await storage.getInvoice(parsed.invoiceId);

@@ -420,7 +420,11 @@
 }
 
 /* SynkDex widget: ensure full interactivity inside the widget container */
-#synkdex-widget,
+#synkdex-widget {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2147483647;
+}
 #synkdex-widget * {
   pointer-events: auto !important;
 }
@@ -429,7 +433,9 @@
 .sdx-overlay {
   pointer-events: none !important;
 }
-.sdx-overlay > *,
+.sdx-overlay > * {
+  pointer-events: auto !important;
+}
 .sdx-overlay .sdx-modal,
 .sdx-overlay .sdx-body,
 .sdx-overlay #sdx-form-container,
@@ -443,6 +449,12 @@
 .sdx-overlay #sdx-form-container *,
 .sdx-overlay [role="dialog"] * {
   pointer-events: auto !important;
+}
+.sdx-overlay iframe,
+#synkdex-widget iframe {
+  pointer-events: auto !important;
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 /* Hide widget button when a dialog overlay is active */
