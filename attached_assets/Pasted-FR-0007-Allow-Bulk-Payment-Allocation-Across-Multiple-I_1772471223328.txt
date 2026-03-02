@@ -1,0 +1,83 @@
+FR-0007
+Allow Bulk Payment Allocation Across Multiple Invoices
+Feature Request
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Add the ability to enter one lump-sum payment and allocate it across multiple open invoices, similar to QuickBooks Desktop.
+
+Users should be able to:
+
+Select multiple open invoices
+
+Enter one total payment amount
+
+Decide how much to apply toward each invoice
+
+Automatically apply any remaining balance as a credit on the account
+
+Currently, the system only allows payment toward one invoice at a time and does not support allocating a larger payment across multiple invoices.
+
+AI Analysis
+
+### Analysis of Bug Report: Bulk Payment Allocation Across Multiple Invoices
+
+#### 1. **App Area Impacted**
+   - The functionality for receiving and allocating payments in the "Undeposited Funds" section of the application.
+
+#### 2. **Screenshot Observation**
+   - The interface displays a "Payments Pending Deposit" section where invoices are listed individually.
+   - Payments are currently applied to individual invoices as seen in the "Applied to INV..." details next to each payment.
+   - There is no visible option for selecting multiple invoices or allocating a lump-sum payment across multiple invoices.
+   - The "Receive Payment" button likely initiates a single payment allocation process.
+
+#### 3. **Root Cause Analysis**
+   - **Missing Functionality:**
+     The system lacks a mechanism for allocating a single payment across multiple invoices. This could stem from:
+     - A design limitation where the payment modal currently restricts allocation to one invoice.
+     - Lack of support for credit balances or "remaining balance" auto-application.
+
+#### 4. **Recommended Fix or Next Steps**
+   - **Design Enhancement:**
+     - Update the "Receive Payment" flow to enable the following:
+       - Selection of multiple invoices during payment entry (e.g., a checkbox list in the modal).
+       - A field for entering the total payment amount with invoice-specific allocation inputs (e.g., editable allocation amounts per invoice).
+       - Automatic creation of an account credit for the remaining balance, if applicable.
+   - **Back-End Update:**
+     - Modify payment allocation logic to process and save allocations involving multiple invoices.
+     - Implement logic for handling remaining balance as an account credit.
+   - **UI/UX Testing:**
+     - Ensure ease of use for bulk payment allocation and validate edge cases like partial allocation, zero remaining balance, and full payment.
+   - **Regression Testing:**
+     - Confirm that existing "single invoice" payment workflows are not negatively impacted.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/undeposited-funds
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
