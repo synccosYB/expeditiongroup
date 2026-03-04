@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -298,6 +299,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
               {event.type === "task" ? "Task Details" : "Reminder Details"}
             </DialogTitle>
           </div>
+          <DialogDescription className="sr-only">{event.type === "task" ? "View task details" : "View reminder details"}</DialogDescription>
         </DialogHeader>
 
         {event.type === "task" && task && (

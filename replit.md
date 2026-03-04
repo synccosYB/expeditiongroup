@@ -51,6 +51,7 @@ Preferred communication style: Simple, everyday language.
 - **Reminders System**: Schedules task reminders with status tracking (read/unread, pending, sent, done, postponed, cancelled, failed).
 - **Daily Activity Logs**: Generates daily activity summaries from application data (time entries, tasks completed, documents, audit logs).
 - **Expense Receipts**: Allows attaching receipt images to expenses. Receipts are stored in object storage and served through a secure backend proxy that validates user authorization.
+- **Bill & Expense Duplication**: Both bills and expenses can be duplicated from their row dropdown menus, opening a pre-filled creation form with the original data (excluding auto-generated fields like IDs, bill numbers, receipts). Date defaults to today.
 - **Expense Payment Types**: Expenses can be categorized by payment type (Expense, Pay Bill, Check, Transfer, Other). When payment type is "Pay Bill", the expense is linked to a specific vendor bill, automatically updating the bill's amountPaid, amountDue, and status (pending/partial/paid). Bill balances are correctly maintained when expenses are created, edited, or deleted.
 - **Payment Tracking (Undeposited Funds)**: QuickBooks-style payment workflow. When payments are received from customers (PMT-YYYY-NNNN format), they go to "Undeposited Funds" as a holding account. Users can select multiple payments and deposit them together into a bank account. Payments support various methods (cash, check, credit card, debit card, bank transfer). When a payment is created for an invoice, the system automatically updates invoice status to "paid" if total payments meet the invoice total. Deposited payments cannot be deleted. Deleting a deposit reverses the bank balance and returns payments to undeposited funds. **Bulk Payment Allocation**: When a client has multiple unpaid invoices, users can check "Allocate across multiple invoices" to distribute a single payment across multiple invoices with individual amounts per invoice. Backend creates separate payment records for each allocation via POST /api/payments/bulk.
 - **Owner's Equity Transactions**: Bank register supports Owner's Contribution (deposit) and Owner's Distribution (withdrawal) transaction types with equity account category selection. Equity accounts (3000-3300) are seeded automatically: Owner's Equity, Owner's Contribution, Owner's Distribution, Retained Earnings.
@@ -61,6 +62,8 @@ Preferred communication style: Simple, everyday language.
 - **Typography**: Inter (UI), JetBrains Mono (timestamps).
 - **Layout**: Fixed-width sidebar (w-64), responsive main content.
 - **Mobile Responsiveness**: Fully responsive with specific optimizations for dialogs, tabs, forms, grids, and buttons.
+- **Dialog Accessibility**: All dialogs include `DialogDescription` (visually hidden via `sr-only`) for screen reader accessibility and to prevent Radix UI console warnings.
+- **Focus Stability**: Nested Tooltip/DropdownMenuTrigger patterns removed from TaskHierarchyItem to prevent focus-fighting and scroll jumps. Project detail query uses `placeholderData` to maintain scroll position during data refetches.
 - **Progressive Web App (PWA)**: Installable PWA with manifest, service worker for offline caching, app shortcuts, and themed branding.
 
 ### Date Handling

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -323,6 +324,7 @@ function ReminderDialog({
             <Bell className="h-5 w-5" />
             Task Reminders
           </DialogTitle>
+          <DialogDescription className="sr-only">Manage reminders for this task</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -593,6 +595,7 @@ function EditNoteDialog({
       <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Note</DialogTitle>
+          <DialogDescription className="sr-only">Edit the content of this note</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -831,16 +834,11 @@ function TaskHierarchyItem({
             <TooltipContent>Manage reminders</TooltipContent>
           </Tooltip>
           <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent>More options</TooltipContent>
-            </Tooltip>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" data-testid={`button-task-menu-${task.id}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(task)}>
                 <Pencil className="h-4 w-4 mr-2" />
@@ -965,6 +963,7 @@ function IntakeLinkSection({ projectId }: { projectId: number }) {
               <Link2 className="h-5 w-5" />
               Link Intake to Project
             </DialogTitle>
+            <DialogDescription className="sr-only">Link an existing intake application to this project</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -1068,8 +1067,9 @@ export default function ProjectDetail() {
   const [editingTimeLog, setEditingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
   const [deletingTimeLog, setDeletingTimeLog] = useState<(TimeLog & { user: User }) | null>(null);
 
-  const { data: project, isLoading } = useQuery<ProjectWithRelations>({
+  const { data: project, isLoading, isPlaceholderData } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
+    placeholderData: (prev) => prev,
   });
 
   const { data: associates } = useQuery<Associate[]>({
@@ -2117,6 +2117,7 @@ export default function ProjectDetail() {
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingTask ? "Edit Task" : "Add New Task"}</DialogTitle>
+                  <DialogDescription className="sr-only">{editingTask ? "Edit task details" : "Create a new task for this project"}</DialogDescription>
                 </DialogHeader>
                 <Form {...taskForm}>
                   <form onSubmit={taskForm.handleSubmit(onTaskSubmit)} className="space-y-4">
@@ -2511,6 +2512,7 @@ export default function ProjectDetail() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create Checklist</DialogTitle>
+                  <DialogDescription className="sr-only">Create a new checklist for this project</DialogDescription>
                 </DialogHeader>
                 <Form {...checklistForm}>
                   <form onSubmit={checklistForm.handleSubmit((data) => createChecklistMutation.mutate(data))} className="space-y-4">
@@ -2685,6 +2687,7 @@ export default function ProjectDetail() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Associate to Project</DialogTitle>
+                  <DialogDescription className="sr-only">Link an associate to this project</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -3616,6 +3619,7 @@ export default function ProjectDetail() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Move Document</DialogTitle>
+            <DialogDescription className="sr-only">Move this document to a different folder</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -3670,6 +3674,7 @@ export default function ProjectDetail() {
         <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Add Note</DialogTitle>
+            <DialogDescription className="sr-only">Add a note to this project</DialogDescription>
           </DialogHeader>
           <Form {...noteForm}>
             <form onSubmit={noteForm.handleSubmit((data) => createNoteMutation.mutate(data))} className="space-y-4">
@@ -3803,6 +3808,7 @@ export default function ProjectDetail() {
         }}>
           <DialogHeader>
             <DialogTitle>{editingTimeLog ? "Edit Time Log" : "Log Time"}</DialogTitle>
+            <DialogDescription className="sr-only">{editingTimeLog ? "Edit time log entry" : "Log time spent on this project"}</DialogDescription>
           </DialogHeader>
           <Form {...timeLogForm}>
             <form onSubmit={timeLogForm.handleSubmit((data) => {

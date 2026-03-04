@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -338,6 +339,7 @@ function TaskDetailDialog({
               <ClipboardList className="h-5 w-5 text-chart-4" />
               <DialogTitle className="text-xl" data-testid="text-detail-dialog-title">Task Details</DialogTitle>
             </div>
+            <DialogDescription className="sr-only">View and manage task details</DialogDescription>
           </div>
           <div className="flex items-center justify-between pt-2">
             <span className="text-sm text-muted-foreground" data-testid="text-task-position">
@@ -1239,6 +1241,7 @@ export default function Tasks() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Log Time for Task</DialogTitle>
+            <DialogDescription className="sr-only">Log time spent on this task</DialogDescription>
           </DialogHeader>
           {selectedTaskForTimeLog && (
             <div className="mb-4 p-3 bg-muted rounded-lg">

@@ -16,6 +16,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -559,6 +560,7 @@ function EditTimeLogDialog({
       <DialogContent className="max-w-md" data-testid="dialog-edit-time-log">
         <DialogHeader>
           <DialogTitle>Edit Time Log</DialogTitle>
+          <DialogDescription className="sr-only">Edit time log entry details</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
