@@ -1,0 +1,74 @@
+BUG-0081
+System-Wide Mouse Function Bug
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Across the entire system, the mouse is not functioning properly. When clicking into options such as Tasks, Notes, Add Notes, Add Folder, checkboxes, or Time Logs, the screen jumps away and loses focus. I am unable to properly enter text or navigate using the mouse, which is significantly disrupting workflow. This appears to be a system-wide bug.
+
+AI Analysis
+
+### Bug Analysis:
+
+#### 1. **Part of the application affected**
+   - Mouse interactions across the system are malfunctioning. Specifically, the screen "jumps" and loses focus when interacting with:
+     - Tasks
+     - Notes
+     - Add Notes
+     - Add Folder
+     - Checkboxes
+     - Time Logs
+   - This issue disrupts text input and navigation.
+
+#### 2. **Root Cause Analysis** (based on provided screenshot and console errors):
+   - **Console Errors**:
+     1. `Warning: Missing "key" prop for element in iterator. Check the render method of "SubNavigator"`.
+        - This commonly occurs when rendering lists without providing a unique `key` to each list element. This can disrupt proper rendering and interaction handling.
+     2. `Warning: Missing "description" prop on button`.
+        - Accessibility attributes (such as descriptions or `aria-label`) are missing, leading to potential focus issues when navigating using input devices such as a mouse or keyboard.
+     3. `Uncaught TypeError: Cannot read property 'onRef' of undefined`.
+        - This indicates a reference management or state binding issue, likely tied to a component's lifecycle or event handlers for mouse interactions. This is a probable root cause for erratic jumps during interaction.
+   - **Likely Culprit**:
+     - Faulty event handling or state updates attached to mouse events.
+     - Potential lack of proper focus or `ref` management in dynamically generated UI elements.
+
+#### 3. **Recommended Fix or Next Steps**:
+   - **Immediate Fix**:
+     1. Review instances where lists are rendered in the "SubNavigator" component and ensure all items have a unique `key` prop.
+     2. Audit any event handlers working with the mouse (e.g., `onClick`, `onRef`, and related lifecycle methods). Fix undefined references and validate that every UI component handling the mouse properly retains focus.
+     3. Add any missing `description` or `aria-label` properties for interactive elements.
+   - **Long-Term Fix**:
+     - Test the system for focus management issues across all mouse-interactable components. This can be done using screen readers or automated accessibility testing tools.
+     - Evaluate state management or binding in components (e.g., React state hooks or Redux integration, if applicable) to identify sporadic rendering issues.
+
+---
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/31
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
