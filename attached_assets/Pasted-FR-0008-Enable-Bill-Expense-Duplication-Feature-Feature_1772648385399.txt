@@ -1,0 +1,48 @@
+FR-0008
+Enable Bill & Expense Duplication Feature
+Feature Request
+New
+Medium
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Would like the ability to duplicate bills and expenses (similar to QuickBooks) to make data entry faster and more efficient. This would streamline repetitive entries and reduce manual input time.
+
+AI Analysis
+
+1) **What part of the app is affected**: The billing and expense entry feature of the app is affected. Specifically, the lack of a duplication mechanism for users to quickly replicate bills and expenses is impacting efficient data entry workflows.
+
+2) **Root cause analysis**: Currently, the app seems to lack a feature for duplicating bills and expenses. This could be because the functionality was not included during the initial design phase or does not align with the current capabilities of the system. The absence of such a feature would require users to manually re-enter the same information for repetitive transactions, leading to inefficiencies.
+
+3) **Recommended fix or next steps**:
+   - Conduct a user needs analysis to confirm the importance and demand for this feature among the user base.
+   - Design and implement a "Duplicate" button or similar mechanism within the UI of bills and expenses.
+   - Upon user interaction with the button, populate a new form with all the details of the selected bill or expense, allowing users to edit fields as necessary before saving.
+   - Ensure validation logic remains intact to prevent duplicate transactions from being saved without intentional edits.
+   - Conduct user testing to ensure the functionality meets expectations and is user-friendly.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/projects/40
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
