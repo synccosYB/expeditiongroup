@@ -590,7 +590,7 @@ function EditNoteDialog({
 
   return (
     <Dialog open={!!note} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Note</DialogTitle>
         </DialogHeader>
@@ -2066,7 +2066,7 @@ export default function ProjectDetail() {
         </Card>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} activationMode="manual">
         <TabsList className="w-full sm:w-auto flex-nowrap">
           <TabsTrigger value="tasks" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-tasks">
             <ClipboardList className="h-4 w-4 hidden sm:block" />
@@ -3667,7 +3667,7 @@ export default function ProjectDetail() {
 
       {/* Note Dialog - standalone to prevent tab switching */}
       <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-        <DialogContent>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Add Note</DialogTitle>
           </DialogHeader>
