@@ -148,6 +148,7 @@ export function SimpleFileUploader({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload File</DialogTitle>
+            <DialogDescription className="sr-only">Select and upload a file</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">

@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -639,6 +640,7 @@ export default function ClientProjectDetail() {
             <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle data-testid="text-viewer-title">{viewingDocument?.fileName}</DialogTitle>
+                <DialogDescription className="sr-only">Preview document</DialogDescription>
               </DialogHeader>
               <div className="py-2">
                 {viewingDocument && previewType === "pdf" && (

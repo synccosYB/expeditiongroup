@@ -443,6 +443,7 @@ export default function Projects() {
               <DialogTitle>
                 {editingProject ? "Edit Project" : "Add New Project"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingProject ? "Edit project details" : "Create a new project"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

@@ -233,6 +233,7 @@ export default function ActivityLogs() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Activity Log</DialogTitle>
+            <DialogDescription className="sr-only">Edit activity log entry details</DialogDescription>
           </DialogHeader>
           {editingLog && (
             <form

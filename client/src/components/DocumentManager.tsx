@@ -615,6 +615,7 @@ export function DocumentManager({
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle data-testid="text-viewer-title">{viewingDocument?.fileName}</DialogTitle>
+            <DialogDescription className="sr-only">Preview document</DialogDescription>
           </DialogHeader>
           <div className="py-2">
             {viewingDocument && previewType === "pdf" && (
@@ -663,6 +664,7 @@ export function DocumentManager({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription className="sr-only">Upload a new document</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {!isUploadComplete ? (
@@ -818,6 +820,7 @@ export function DocumentManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription className="sr-only">Create a new folder for documents</DialogDescription>
           </DialogHeader>
           <Input
             placeholder="Folder name"
@@ -850,6 +853,7 @@ export function DocumentManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename Folder</DialogTitle>
+            <DialogDescription className="sr-only">Rename this folder</DialogDescription>
           </DialogHeader>
           <Input
             placeholder="Folder name"
@@ -934,6 +938,7 @@ export function DocumentManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Move Document</DialogTitle>
+            <DialogDescription className="sr-only">Move this document to a different folder</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <label className="text-sm font-medium">Target Folder</label>

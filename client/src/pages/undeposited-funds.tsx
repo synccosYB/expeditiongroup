@@ -376,6 +376,7 @@ export default function UndepositedFunds() {
             <DialogContent className={useBulkAllocation ? "max-w-2xl" : "max-w-md"}>
               <DialogHeader>
                 <DialogTitle>Receive Payment</DialogTitle>
+                <DialogDescription className="sr-only">Record a received payment</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handlePaymentSubmit, handlePaymentSubmitError)} className="space-y-4">
@@ -797,6 +798,7 @@ export default function UndepositedFunds() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Make Deposit</DialogTitle>
+            <DialogDescription className="sr-only">Create a new deposit from selected payments</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

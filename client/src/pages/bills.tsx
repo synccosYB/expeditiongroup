@@ -695,6 +695,7 @@ export default function Bills() {
               <DialogTitle>
                 {editingBill ? "Edit Bill" : "Add New Bill"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingBill ? "Edit bill details" : "Add a new bill"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -1068,6 +1069,7 @@ export default function Bills() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription className="sr-only">Record a payment for this bill</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1195,6 +1197,7 @@ export default function Bills() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Payment History</DialogTitle>
+            <DialogDescription className="sr-only">View payment history for this bill</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1268,6 +1271,7 @@ export default function Bills() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Payment</DialogTitle>
+            <DialogDescription className="sr-only">Edit payment details</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

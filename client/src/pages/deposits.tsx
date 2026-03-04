@@ -182,6 +182,7 @@ export default function Deposits() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Deposit Details</DialogTitle>
+            <DialogDescription className="sr-only">View deposit details</DialogDescription>
           </DialogHeader>
           {viewDeposit && (
             <div className="space-y-4">

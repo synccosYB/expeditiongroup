@@ -272,6 +272,7 @@ export default function Vendors() {
               <DialogTitle>
                 {editingVendor ? "Edit Vendor" : "Add New Vendor"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingVendor ? "Edit vendor details" : "Add a new vendor"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

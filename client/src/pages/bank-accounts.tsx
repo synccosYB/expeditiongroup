@@ -269,6 +269,7 @@ export default function BankAccounts() {
               <DialogTitle>
                 {editingAccount ? "Edit Bank Account" : "Add Bank Account"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingAccount ? "Edit bank account details" : "Add a new bank account"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

@@ -374,6 +374,7 @@ export default function Clients() {
               <DialogTitle>
                 {editingClient ? "Edit Client" : "Add New Client"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingClient ? "Edit client details" : "Add a new client"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

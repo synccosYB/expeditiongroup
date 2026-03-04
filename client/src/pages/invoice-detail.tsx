@@ -641,6 +641,7 @@ function EditInvoiceDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Invoice {invoice.invoiceNumber}</DialogTitle>
+          <DialogDescription className="sr-only">Edit invoice details</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

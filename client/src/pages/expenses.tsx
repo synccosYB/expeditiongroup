@@ -636,6 +636,7 @@ export default function Expenses() {
               <DialogTitle>
                 {editingExpense ? "Edit Expense" : "Add New Expense"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingExpense ? "Edit expense details" : "Add a new expense"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

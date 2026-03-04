@@ -250,6 +250,7 @@ export default function SalesContacts() {
           <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingContact ? "Edit Contact" : "New Contact"}</DialogTitle>
+              <DialogDescription className="sr-only">{editingContact ? "Edit contact details" : "Create a new contact"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

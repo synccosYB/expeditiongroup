@@ -462,6 +462,7 @@ export default function BankRegister() {
                 <DialogTitle>
                   {editingTransaction ? "Edit Transaction" : "Add Transaction"}
                 </DialogTitle>
+                <DialogDescription className="sr-only">{editingTransaction ? "Edit transaction details" : "Add a new transaction"}</DialogDescription>
               </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

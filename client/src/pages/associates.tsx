@@ -267,6 +267,7 @@ export default function Associates() {
               <DialogTitle>
                 {editingAssociate ? "Edit Associate" : "Add New Associate"}
               </DialogTitle>
+              <DialogDescription className="sr-only">{editingAssociate ? "Edit associate details" : "Add a new associate"}</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
