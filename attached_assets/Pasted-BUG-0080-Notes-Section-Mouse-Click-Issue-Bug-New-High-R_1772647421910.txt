@@ -1,0 +1,72 @@
+BUG-0080
+Notes Section Mouse Click Issue
+Bug
+New
+High
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When I go into Notes and begin typing, if I try to use the mouse to click into another section within the note, the entire note window jumps away/loses focus. I’m then forced to use the Tab key and Enter instead of the mouse. This is disrupting workflow and causing delays.
+
+AI Analysis
+
+### Bug Analysis
+
+1. **Affected Part of the App:**
+   - The "Notes" section inside the "Projects" module appears to be malfunctioning during mouse interaction.
+
+2. **Issue Description:**
+   - Based on your description, when you click into the "Notes" section or try to navigate to another part of the input field, the entire notes window unexpectedly loses focus or becomes unresponsive, forcing you to navigate using keyboard shortcuts (Tab and Enter). This disrupts workflow.
+
+3. **Screenshot Analysis:**
+   - The screenshot provides a view of the "Projects" module, showing multiple tasks under "Tasks." Although the notes section isn't explicitly visible in the image, the UI components (multiple task cards and input/editable areas) align with the described functionality. It appears the bug stems from interaction with editable text/input areas.
+
+4. **Root Cause:**
+   - **UI Event Handling Conflicts:** 
+     - Likely, the mouse click triggers an unintended event handler, such as one tied to a parent container. This might force the focus shift or cause the window to close/jump away.
+     - Improper focus management on input fields or DOM elements may result in focus being incorrectly removed upon clicking.
+   - **JavaScript Logic Errors:**
+     - A missing or incorrect `preventDefault()` or `stopPropagation()` in the mouse click logic could be causing this unexpected behavior.
+   - **CSS/Styling Issues:**
+     - Certain CSS rules (e.g., `z-index`, overflow, or click area misalignment) could contribute to accidental focus loss if they interact with other elements.
+
+5. **Recommended Fix/Next Steps:**
+   - **Code Fix:**
+     - Debug the click event listener attached to the "Notes" section and ensure that focus isn't redirected or lost erroneously. Verify the implementation of `preventDefault()` to stop undesired default behaviors.
+     - Check the event bubbling logic and apply `stopPropagation()` where necessary to prevent the parent container from being clicked unintentionally.
+     - Audit focus-management logic in JavaScript to confirm that editable input areas retain focus during interactions.
+   - **CSS/Aesthetic Audit:**
+     - Inspect layout rules affecting editable areas for any issues, particularly related to `overflow`, `z-index`, or `clickable areas`.
+   - **Testing:**
+     - Simulate interactions at different screen sizes and scenarios to ensure this issue isn’t specific to viewport changes or hidden elements.
+
+---
+
+```json
+{"severity": "high", "category": "ui"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/40
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
