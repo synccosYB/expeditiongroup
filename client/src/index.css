@@ -419,11 +419,11 @@
   z-index: 200000 !important;
 }
 
-/* SynkDex widget: ensure full interactivity and scrolling inside the widget */
+/* SynkDex widget button: sits above most content but below dialogs */
 #synkdex-widget {
   pointer-events: auto !important;
   position: relative;
-  z-index: 2147483647;
+  z-index: 99999;
 }
 #synkdex-widget *,
 #synkdex-widget *::before,
@@ -432,13 +432,10 @@
   touch-action: auto !important;
 }
 
-/* SynkDex overlay: sits below the widget, backdrop disabled, content interactive */
+/* SynkDex overlay: backdrop is fully click-through, only specific interactive elements receive events */
 .sdx-overlay {
   pointer-events: none !important;
-  z-index: 2147483646 !important;
-}
-.sdx-overlay > * {
-  pointer-events: auto !important;
+  z-index: 99998 !important;
 }
 .sdx-overlay .sdx-modal,
 .sdx-overlay .sdx-body,

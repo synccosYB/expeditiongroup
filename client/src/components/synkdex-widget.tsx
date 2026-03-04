@@ -93,6 +93,24 @@ function removeSynkdex() {
   window.__synkdexWidgetLoaded = false;
 }
 
+function sanitizeOverlayPointerEvents(el: Element) {
+  if (el.classList.contains("sdx-overlay")) {
+    const children = el.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as HTMLElement;
+      if (
+        !child.classList.contains("sdx-modal") &&
+        !child.classList.contains("sdx-body") &&
+        !child.classList.contains("sdx-widget-btn") &&
+        child.id !== "sdx-form-container" &&
+        !child.getAttribute("role")
+      ) {
+        child.style.pointerEvents = "none";
+      }
+    }
+  }
+}
+
 export function SynkdexWidget() {
   const { user, isAdmin } = useAuth();
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -140,7 +158,32 @@ export function SynkdexWidget() {
 
     document.body.appendChild(s);
 
+    const sanitizeAll = () => {
+      document.querySelectorAll(".sdx-overlay").forEach(sanitizeOverlayPointerEvents);
+    };
+
+    sanitizeAll();
+
+    const observer = new MutationObserver((mutations) => {
+      let needsSanitize = false;
+      for (const mutation of mutations) {
+        for (let i = 0; i < mutation.addedNodes.length; i++) {
+          const node = mutation.addedNodes[i];
+          if (node instanceof HTMLElement) {
+            if (node.classList.contains("sdx-overlay") || node.querySelector(".sdx-overlay")) {
+              needsSanitize = true;
+              break;
+            }
+          }
+        }
+        if (needsSanitize) break;
+      }
+      if (needsSanitize) sanitizeAll();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     return () => {
+      observer.disconnect();
       removeSynkdex();
       removeFetchInterceptor();
       removeXHRInterceptor();
