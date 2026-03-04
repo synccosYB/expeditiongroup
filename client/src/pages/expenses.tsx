@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink, Landmark, FileText } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Receipt, DollarSign, Calendar, Upload, Image, Loader2, X, ExternalLink, Landmark, FileText, Copy } from "lucide-react";
 import { useLocation } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
@@ -497,6 +497,28 @@ export default function Expenses() {
       setEditingExpense(null);
       form.reset();
     }
+    setIsDialogOpen(true);
+  };
+
+  const handleDuplicate = (expense: ExpenseWithRelations) => {
+    setEditingExpense(null);
+    form.reset({
+      expenseDate: new Date().toISOString().split("T")[0],
+      vendorId: expense.vendorId?.toString() || "",
+      accountId: expense.accountId?.toString() || "",
+      bankAccountId: expense.bankAccountId?.toString() || "",
+      amount: expense.amount || "",
+      description: expense.description || "",
+      reference: "",
+      paymentType: expense.paymentType || "expense",
+      billId: expense.billId?.toString() || "",
+      isRebillable: expense.isRebillable ?? false,
+      rebillableClientId: expense.rebillableClientId?.toString() || "",
+      rebillableProjectId: expense.rebillableProjectId?.toString() || "",
+      markupPercent: expense.markupPercent || "0",
+      notes: expense.notes || "",
+      receiptUrl: "",
+    });
     setIsDialogOpen(true);
   };
 
@@ -1074,6 +1096,10 @@ export default function Expenses() {
                         <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(expense)} data-testid={`button-duplicate-expense-${expense.id}`}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
                         </DropdownMenuItem>
                         {expense.bankAccountId && (
                           <DropdownMenuItem 

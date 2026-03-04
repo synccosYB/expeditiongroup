@@ -29,7 +29,7 @@ import {
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye, Copy } from "lucide-react";
 import { Link } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
@@ -597,6 +597,25 @@ export default function Bills() {
     setIsDialogOpen(true);
   };
 
+  const handleDuplicate = (bill: BillWithRelations) => {
+    setEditingBill(null);
+    form.reset({
+      vendorId: bill.vendorId?.toString() || "",
+      billNumber: "",
+      billDate: new Date().toISOString().split("T")[0],
+      dueDate: bill.dueDate ? new Date(bill.dueDate).toISOString().split("T")[0] : "",
+      notes: bill.notes || "",
+      documentUrl: "",
+      items: bill.items?.map(item => ({
+        description: item.description || "",
+        quantity: item.quantity || "1",
+        unitPrice: item.unitPrice || "",
+        accountId: item.accountId?.toString() || "",
+      })) || [{ description: "", quantity: "1", unitPrice: "", accountId: "" }],
+    });
+    setIsDialogOpen(true);
+  };
+
   const onSubmit = (data: BillFormData) => {
     if (editingBill) {
       updateMutation.mutate({ id: editingBill.id, data });
@@ -997,6 +1016,10 @@ export default function Bills() {
                         <DropdownMenuItem onClick={() => handleOpenDialog(bill)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(bill)} data-testid={`button-duplicate-bill-${bill.id}`}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
