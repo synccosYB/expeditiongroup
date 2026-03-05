@@ -1,0 +1,152 @@
+Remediation Plan: Click Issues & Render Performance
+Issue 1 — hover-elevate CSS Stacking Fix
+Effort: Low | Risk: Low | Impact: High (app-wide)
+
+Root Cause
+The ::after pseudo-element on .hover-elevate is declared at z-index: 999. Even with pointer-events: none, this layer sits visually above interactive children (buttons, dropdowns, checkboxes, links), causing browser-dependent rendering artifacts and inconsistent hit-testing — especially on Safari and some Android WebViews where pointer-events: none on pseudo-elements is less reliable.
+
+Fix
+Remove the pseudo-element stacking approach entirely. Achieve the same hover-elevation visual using box-shadow transitions on the element itself — no stacking context required.
+
+css
+/* BEFORE */
+.hover-elevate {
+  position: relative;
+}
+.hover-elevate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hover-elevate:hover::after {
+  opacity: 1;
+}
+
+/* AFTER */
+.hover-elevate {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.hover-elevate:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  transform: translateY(-1px); /* optional lift */
+}
+Affected Areas
+All card components across: Tasks, Projects, Clients, Invoices, Expenses, Bills, and any other surface using .hover-elevate.
+
+Testing Checklist
+ Buttons inside cards are clickable on first tap (mobile)
+ Dropdowns inside cards open correctly
+ Checkboxes inside cards respond to click
+ Hover animation still plays correctly on desktop
+ Test on Safari iOS and Chrome Android
+Issue 2 — Memoization & Render Performance
+2a. expenses.tsx and bills.tsx — Filter/Sort Memoization
+Effort: Low | Risk: Low | Impact: Medium
+
+Root Cause
+Filtering and sorting are computed inline during render. Any state change (dropdown open, search keystroke) triggers a full recalculation over the entire dataset.
+
+Fix
+Wrap derived data in useMemo, keyed to only the values it actually depends on.
+
+typescript
+// BEFORE
+const filtered = expenses
+  .filter(e => e.status === statusFilter)
+  .sort((a, b) => /* ... */);
+
+// AFTER
+const filtered = useMemo(() => (
+  expenses
+    .filter(e => e.status === statusFilter)
+    .sort((a, b) => /* ... */)
+), [expenses, statusFilter, sortConfig]);
+Apply the same pattern to bills.tsx. If filter/sort logic is duplicated between the two files, extract it into a shared useFilteredList(items, filters, sortConfig) hook.
+
+2b. invoice-detail.tsx — Line Item Key Stability
+Effort: Low | Risk: Medium | Impact: High
+
+Root Cause
+Using array index as the React key for editable line items causes React to reuse DOM nodes incorrectly when items are reordered, inserted, or deleted. This manifests as focus loss mid-typing and ghost values appearing in the wrong fields.
+
+Fix
+Every line item needs a stable, unique identity. If line items don't already have an id, assign one at creation time.
+
+typescript
+// BEFORE
+{lineItems.map((item, index) => (
+  <LineItemRow key={index} item={item} />
+))}
+
+// AFTER
+{lineItems.map((item) => (
+  <LineItemRow key={item.id} item={item} />
+))}
+
+// When creating a new line item:
+import { nanoid } from 'nanoid'; // or crypto.randomUUID()
+
+const addLineItem = () => {
+  append({ id: nanoid(), description: '', quantity: 1, rate: 0 });
+};
+Note: If react-hook-form's useFieldArray is in use, it provides stable internal IDs via the id field on each field object — use those directly as keys instead of the array index.
+
+2c. tasks.tsx — Cascading Re-renders from Form State
+Effort: Medium | Risk: Medium | Impact: Medium
+
+Root Cause
+Form resets and watch() calls are triggering re-renders on the entire Tasks page. watch() without field targeting subscribes to every form field change.
+
+Fix
+Scope watch() calls — replace broad watch() with watch('specificField') or use useWatch({ name: 'specificField' }) to limit subscription scope.
+Stabilize reset calls — ensure reset() is only called inside effects or event handlers, never during render.
+Memoize task list — wrap filtered/sorted task arrays in useMemo.
+typescript
+// BEFORE
+const formValues = watch(); // subscribes to everything
+
+// AFTER
+const status = useWatch({ name: 'status', control }); // targeted
+const priority = useWatch({ name: 'priority', control });
+2d. project-detail.tsx — Component Decomposition
+Effort: High | Risk: Medium-High | Impact: High
+
+Root Cause
+A 4,000-line component with 37 queries/mutations means a single state change — opening a modal, hovering a button — can re-render the entire page. There is no isolation between unrelated UI sections.
+
+Fix Strategy: Vertical Slice Decomposition
+Break project-detail.tsx into independently-rendered sections. Each section owns its own queries/mutations and re-renders in isolation.
+
+ProjectDetailPage (shell, minimal state)
+├── ProjectHeader          ← name, status, dates (1–2 queries)
+├── ProjectMembersPanel    ← team/assignments (1 query)
+├── ProjectTasksSection    ← task list + filters (memoized)
+├── ProjectBudgetPanel     ← financials (1–2 queries)
+├── ProjectTimelinePanel   ← timeline/milestones
+└── ProjectActivityFeed    ← comments/history
+Implementation approach:
+
+Move each section's queries/mutations into the child component
+Use React.memo() on pure display components
+Memoize callbacks passed as props with useCallback
+For shared data (e.g., project ID, user permissions), use React Context rather than prop-drilling through the shell
+Suggested order of extraction (lowest-to-highest risk):
+
+ProjectActivityFeed — usually read-only, safe to isolate first
+ProjectBudgetPanel — self-contained data
+ProjectMembersPanel — self-contained data
+ProjectTasksSection — likely the most complex, tackle last
+Suggested Rollout Order
+Priority	Item	Est. Effort	Risk
+1	hover-elevate CSS fix	1–2 hours	Low
+2	expenses.tsx / bills.tsx memoization	2–4 hours	Low
+3	invoice-detail.tsx key stability	2–3 hours	Medium
+4	tasks.tsx watch/reset scoping	3–5 hours	Medium
+5	project-detail.tsx decomposition	3–5 days	Medium-High
+Start with items 1–3 in a single PR — they're low-risk, high-return, and can be reviewed and deployed together. Items 4 and 5 warrant their own PRs with focused QA passes.
+

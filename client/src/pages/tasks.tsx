@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1079,7 +1079,7 @@ export default function Tasks() {
     });
   };
 
-  const filteredTasks = tasks?.filter(Boolean).filter((task) => {
+  const filteredTasks = useMemo(() => tasks?.filter(Boolean).filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.project?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1097,10 +1097,10 @@ export default function Tasks() {
     const matchesPriority = priorityFilter === "all" || task.priority === priorityFilter;
     const matchesLocation = locationFilter === "all" || task.locationType === locationFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesLocation;
-  });
+  }), [tasks, searchQuery, statusFilter, priorityFilter, locationFilter]);
 
-  const taskHierarchy = filteredTasks ? buildTaskHierarchy(filteredTasks) : [];
-  const flatTaskList = flattenTasks(taskHierarchy);
+  const taskHierarchy = useMemo(() => filteredTasks ? buildTaskHierarchy(filteredTasks) : [], [filteredTasks]);
+  const flatTaskList = useMemo(() => flattenTasks(taskHierarchy), [taskHierarchy]);
 
   const handleOpenTaskDetail = (task: TaskWithSubtasks) => {
     const index = flatTaskList.findIndex(t => t.id === task.id);

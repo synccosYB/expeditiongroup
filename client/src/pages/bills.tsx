@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -624,10 +624,10 @@ export default function Bills() {
     }
   };
 
-  const filteredBills = bills?.filter(Boolean).filter((bill) =>
+  const filteredBills = useMemo(() => bills?.filter(Boolean).filter((bill) =>
     bill.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bill.billNumber?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [bills, searchQuery]);
 
   const formatCurrency = (value: string | null) => {
     const num = parseFloat(value || "0");
@@ -658,9 +658,9 @@ export default function Bills() {
     return total - paid;
   };
 
-  const activeVendors = vendors?.filter(v => v.isActive);
-  const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
-  const activeBankAccounts = bankAccounts?.filter(a => a.isActive);
+  const activeVendors = useMemo(() => vendors?.filter(v => v.isActive), [vendors]);
+  const expenseAccounts = useMemo(() => accounts?.filter(a => a.accountType === "expense" && a.isActive), [accounts]);
+  const activeBankAccounts = useMemo(() => bankAccounts?.filter(a => a.isActive), [bankAccounts]);
 
   if (isLoading) {
     return (

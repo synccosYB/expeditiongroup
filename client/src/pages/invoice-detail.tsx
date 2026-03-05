@@ -60,6 +60,7 @@ interface InvoiceWithRelations extends Invoice {
 }
 
 interface LineItem {
+  _key: string;
   description: string;
   quantity: string;
   unitPrice: string;
@@ -567,16 +568,17 @@ function EditInvoiceDialog({
   const [lineItems, setLineItems] = useState<LineItem[]>(
     invoice.items && invoice.items.length > 0
       ? invoice.items.map((i) => ({
+          _key: i.id?.toString() || crypto.randomUUID(),
           description: i.description || "",
           quantity: i.quantity?.toString() || "1",
           unitPrice: i.unitPrice || "0",
           amount: i.amount || "0",
         }))
-      : [{ description: "", quantity: "1", unitPrice: "0", amount: "0" }]
+      : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0" }]
   );
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { description: "", quantity: "1", unitPrice: "0", amount: "0" }]);
+    setLineItems([...lineItems, { _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0" }]);
   };
 
   const removeLineItem = (index: number) => {
@@ -714,7 +716,7 @@ function EditInvoiceDialog({
             </div>
             <div className="space-y-3">
               {lineItems.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                <div key={item._key} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5 space-y-1">
                     {index === 0 && <Label className="text-xs text-muted-foreground">Description</Label>}
                     <Input

@@ -64,6 +64,9 @@ Preferred communication style: Simple, everyday language.
 - **Mobile Responsiveness**: Fully responsive with specific optimizations for dialogs, tabs, forms, grids, and buttons.
 - **Dialog Accessibility**: All dialogs include `DialogDescription` (visually hidden via `sr-only`) for screen reader accessibility and to prevent Radix UI console warnings.
 - **Focus Stability**: Nested Tooltip/DropdownMenuTrigger patterns removed from TaskHierarchyItem to prevent focus-fighting and scroll jumps. Project detail query uses `placeholderData` to maintain scroll position during data refetches.
+- **Hover-Elevate CSS**: The `::after` pseudo-element uses `z-index: -1` (behind card content, above card background) to prevent blocking clicks on interactive elements inside cards. Parent elements use `position: relative; z-index: 0` to establish stacking context.
+- **SynkDex Widget**: Z-index lowered to 99999/99998 to stay below dialog overlays (100001/100002) and Radix poppers (200001). MutationObserver cleans orphaned overlay children.
+- **Render Optimization**: `useMemo` wraps filter/sort computations in expenses.tsx, bills.tsx, and tasks.tsx. Invoice line items use stable `_key` (crypto.randomUUID) as React keys instead of array index.
 - **Progressive Web App (PWA)**: Installable PWA with manifest, service worker for offline caching, app shortcuts, and themed branding.
 
 ### Date Handling

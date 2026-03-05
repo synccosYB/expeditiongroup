@@ -530,11 +530,11 @@ export default function Expenses() {
     }
   };
 
-  const filteredExpenses = expenses?.filter(Boolean).filter((expense) =>
+  const filteredExpenses = useMemo(() => expenses?.filter(Boolean).filter((expense) =>
     expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     expense.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     expense.reference?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ), [expenses, searchQuery]);
 
   const formatCurrency = (value: string | null) => {
     const num = parseFloat(value || "0");
@@ -559,10 +559,10 @@ export default function Expenses() {
     return type?.label || "Expense";
   };
 
-  const expenseAccounts = accounts?.filter(a => a.accountType === "expense" && a.isActive);
-  const activeVendors = vendors?.filter(v => v.isActive);
-  const activeClients = clients?.filter(c => c.status === "active");
-  const activeBankAccounts = bankAccounts?.filter(b => b.isActive);
+  const expenseAccounts = useMemo(() => accounts?.filter(a => a.accountType === "expense" && a.isActive), [accounts]);
+  const activeVendors = useMemo(() => vendors?.filter(v => v.isActive), [vendors]);
+  const activeClients = useMemo(() => clients?.filter(c => c.status === "active"), [clients]);
+  const activeBankAccounts = useMemo(() => bankAccounts?.filter(b => b.isActive), [bankAccounts]);
 
   // Build hierarchical account list with parent accounts first, then children indented
   const hierarchicalAccounts = useMemo(() => {

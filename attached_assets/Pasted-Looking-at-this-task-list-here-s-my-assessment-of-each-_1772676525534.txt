@@ -1,0 +1,11 @@
+Looking at this task list, here's my assessment of each item:
+
+**T001 — hover-elevate CSS fix** ✅ Correct and well-specified. The key insight — using `z-index: -1` instead of `z-index: 999` on the `::after` so it sits behind content but above the card background — is the right approach, and citing `toggle-elevate::before` as an existing precedent in the same codebase is a good sign whoever wrote this actually read the CSS. The note about checking whether `position: relative` / `z-index: 0` on the parent are still needed is appropriately cautious.
+
+**T002 & T003 — expenses/bills memoization** ✅ Correct. Wrapping inline-computed derived arrays in `useMemo` with proper dependency arrays is exactly right. The specific line number callouts suggest this came from actual file inspection rather than generic advice, which is a good sign. One thing to verify: make sure the `searchQuery` dependency in each case captures *all* the filter state, not just the search string — if there are status filters or date range filters also applied inline, those need to be in the dependency array too.
+
+**T004 — invoice-detail key stability** ✅ Correct. Index-as-key on editable lists is a well-known React footgun and the fix is right. One nuance worth checking: if `react-hook-form`'s `useFieldArray` is in use here, it already provides a stable `id` on each field object — you'd use that directly rather than adding `nanoid`. Worth confirming before adding a new dependency.
+
+**T005 — tasks.tsx watch() scoping** ⚠️ This one is oddly written. It says "these are actually fine" and then says "review and confirm." That makes it a task whose main outcome might be "no changes needed," which is fine, but it should really be framed as an audit task rather than a fix task. If the broad `watch()` calls don't exist, the actual remaining work here is just the memoization of the task list — that's the real deliverable and it's buried at the end.
+
+**Overall:** The task list is solid. T001–T004 are well-scoped, accurate, and actionable. T005 is slightly underspecified but not wrong. The line-number specificity across all tasks suggests the underlying investigation was done against real code, which makes these much more trustworthy than generic recommendations.
