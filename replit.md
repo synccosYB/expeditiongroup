@@ -68,6 +68,7 @@ Preferred communication style: Simple, everyday language.
 - **SynkDex Widget**: Z-index lowered to 99999/99998 to stay below dialog overlays (100001/100002) and Radix poppers (200001). MutationObserver cleans orphaned overlay children.
 - **Render Optimization**: `useMemo` wraps filter/sort computations in expenses.tsx, bills.tsx, and tasks.tsx. Invoice line items use stable `_key` (crypto.randomUUID) as React keys instead of array index.
 - **Dropdown Menu Actions**: All `DropdownMenuItem` components use `onSelect` (not `onClick`) for action handlers. This is the correct Radix UI pattern — `onSelect` fires reliably before the menu unmounts, preventing actions from being swallowed during re-renders on heavy pages.
+- **DialogDescription Import**: Every file using `<DialogDescription>` must import it from `@/components/ui/dialog`. Missing this import causes blank page crashes. Fixed across all pages and DocumentManager.tsx.
 - **Progressive Web App (PWA)**: Installable PWA with manifest, service worker for offline caching, app shortcuts, and themed branding.
 
 ### Date Handling
