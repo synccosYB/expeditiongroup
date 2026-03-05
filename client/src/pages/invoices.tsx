@@ -297,13 +297,13 @@ export default function Invoices() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/invoices/${invoice.id}`)} data-testid={`menu-view-${invoice.id}`}>
+                          <DropdownMenuItem onSelect={() => navigate(`/invoices/${invoice.id}`)} data-testid={`menu-view-${invoice.id}`}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => setDeleteId(invoice.id)}
+                            onSelect={() => setDeleteId(invoice.id)}
                             data-testid={`menu-delete-${invoice.id}`}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />

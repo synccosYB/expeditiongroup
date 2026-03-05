@@ -1000,7 +1000,7 @@ export default function Bills() {
                           </Link>
                         </DropdownMenuItem>
                         {bill.status !== "paid" && (
-                          <DropdownMenuItem onClick={() => {
+                          <DropdownMenuItem onSelect={() => {
                             setPayingBill(bill);
                             setPaymentAmount(calculateBalance(bill).toFixed(2));
                           }}>
@@ -1009,22 +1009,22 @@ export default function Bills() {
                           </DropdownMenuItem>
                         )}
                         {bill.payments && bill.payments.length > 0 && (
-                          <DropdownMenuItem onClick={() => setViewingPaymentsBill(bill)}>
+                          <DropdownMenuItem onSelect={() => setViewingPaymentsBill(bill)}>
                             <FileText className="h-4 w-4 mr-2" />
                             View Payments ({bill.payments.length})
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => handleOpenDialog(bill)}>
+                        <DropdownMenuItem onSelect={() => handleOpenDialog(bill)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(bill)} data-testid={`button-duplicate-bill-${bill.id}`}>
+                        <DropdownMenuItem onSelect={() => handleDuplicate(bill)} data-testid={`button-duplicate-bill-${bill.id}`}>
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => setDeletingBill(bill)}
+                          onSelect={() => setDeletingBill(bill)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

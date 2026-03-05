@@ -237,7 +237,7 @@ export default function InvoiceDetail() {
                 {availableStatusTransitions.map((t) => (
                   <DropdownMenuItem
                     key={t.status}
-                    onClick={() => statusMutation.mutate(t.status)}
+                    onSelect={() => statusMutation.mutate(t.status)}
                     data-testid={`button-status-${t.status}`}
                   >
                     <t.icon className="h-4 w-4 mr-2" />

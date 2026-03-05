@@ -802,13 +802,13 @@ export default function ChartOfAccounts() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleOpenDialog(account)}>
+                                <DropdownMenuItem onSelect={() => handleOpenDialog(account)}>
                                   <Pencil className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
                                 {depth === 0 && !account.parentAccountId && (
                                   <DropdownMenuItem 
-                                    onClick={() => handleAddSubAccount(account)}
+                                    onSelect={() => handleAddSubAccount(account)}
                                     data-testid={`button-add-subaccount-${account.id}`}
                                   >
                                     <Plus className="h-4 w-4 mr-2" />
@@ -817,7 +817,7 @@ export default function ChartOfAccounts() {
                                 )}
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => setDeletingAccount(account)}
+                                  onSelect={() => setDeletingAccount(account)}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete

@@ -564,13 +564,13 @@ export default function Vendors() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenDialog(vendor)}>
+                        <DropdownMenuItem onSelect={() => handleOpenDialog(vendor)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => setDeletingVendor(vendor)}
+                          onSelect={() => setDeletingVendor(vendor)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

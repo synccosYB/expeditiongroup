@@ -528,13 +528,13 @@ export default function BankAccounts() {
                             View Register
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenDialog(account)}>
+                        <DropdownMenuItem onSelect={() => handleOpenDialog(account)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => setDeletingAccount(account)}
+                          onSelect={() => setDeletingAccount(account)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

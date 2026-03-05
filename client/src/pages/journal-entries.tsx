@@ -335,13 +335,13 @@ export default function JournalEntries() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewingEntry(entry)}>
+                            <DropdownMenuItem onSelect={() => setViewingEntry(entry)}>
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
                             {entry.status === "draft" && (
                               <DropdownMenuItem
-                                onClick={() => updateMutation.mutate({ id: entry.id, data: { status: "posted" } })}
+                                onSelect={() => updateMutation.mutate({ id: entry.id, data: { status: "posted" } })}
                                 data-testid={`button-post-entry-${entry.id}`}
                               >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -350,7 +350,7 @@ export default function JournalEntries() {
                             )}
                             {entry.status === "posted" && (
                               <DropdownMenuItem
-                                onClick={() => updateMutation.mutate({ id: entry.id, data: { status: "void" } })}
+                                onSelect={() => updateMutation.mutate({ id: entry.id, data: { status: "void" } })}
                                 data-testid={`button-void-entry-${entry.id}`}
                               >
                                 <Ban className="h-4 w-4 mr-2" />
@@ -359,7 +359,7 @@ export default function JournalEntries() {
                             )}
                             {entry.status === "draft" && (
                               <DropdownMenuItem
-                                onClick={() => setDeletingEntry(entry)}
+                                onSelect={() => setDeletingEntry(entry)}
                                 className="text-destructive"
                                 data-testid={`button-delete-entry-${entry.id}`}
                               >

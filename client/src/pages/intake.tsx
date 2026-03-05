@@ -194,7 +194,7 @@ export default function Intake() {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setDeletingApp(app)}
+                              onSelect={() => setDeletingApp(app)}
                               className="text-destructive"
                               data-testid={`button-delete-${app.id}`}
                             >

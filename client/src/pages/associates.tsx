@@ -465,13 +465,13 @@ export default function Associates() {
                         View Details
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleOpenDialog(associate)}>
+                    <DropdownMenuItem onSelect={() => handleOpenDialog(associate)}>
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => setDeletingAssociate(associate)}
+                      onSelect={() => setDeletingAssociate(associate)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete

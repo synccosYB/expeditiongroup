@@ -191,14 +191,14 @@ export default function ActivityLogs() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => setEditingLog(log)}
+                        onSelect={() => setEditingLog(log)}
                         data-testid={`button-edit-${log.id}`}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setDeletingLog(log)}
+                        onSelect={() => setDeletingLog(log)}
                         className="text-destructive"
                         data-testid={`button-delete-${log.id}`}
                       >

@@ -840,19 +840,19 @@ function TaskHierarchyItem({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(task)}>
+              <DropdownMenuItem onSelect={() => onEdit(task)}>
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAddTimeLog(task)} data-testid={`button-add-time-log-${task.id}`}>
+              <DropdownMenuItem onSelect={() => onAddTimeLog(task)} data-testid={`button-add-time-log-${task.id}`}>
                 <Clock className="h-4 w-4 mr-2" />
                 Add Time Log
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAddNote(task)} data-testid={`button-add-note-${task.id}`}>
+              <DropdownMenuItem onSelect={() => onAddNote(task)} data-testid={`button-add-note-${task.id}`}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Add Note
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(task)}>
+              <DropdownMenuItem className="text-destructive" onSelect={() => onDelete(task)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -2781,7 +2781,7 @@ export default function ProjectDetail() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => removeProjectAssociateMutation.mutate(pa.associateId)}
+                          onSelect={() => removeProjectAssociateMutation.mutate(pa.associateId)}
                           data-testid={`button-remove-associate-${pa.id}`}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -2873,13 +2873,13 @@ export default function ProjectDetail() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditingNote(note)} data-testid={`button-edit-note-${note.id}`}>
+                            <DropdownMenuItem onSelect={() => setEditingNote(note)} data-testid={`button-edit-note-${note.id}`}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive" 
-                              onClick={() => setDeletingNote(note)}
+                              onSelect={() => setDeletingNote(note)}
                               data-testid={`button-delete-note-${note.id}`}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />

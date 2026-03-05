@@ -554,12 +554,12 @@ export default function SalesContacts() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(contact)}>
+                          <DropdownMenuItem onSelect={() => handleEdit(contact)}>
                             <Pencil className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
                           {contact.stage === "proposal" && !contact.proposalId && (
-                            <DropdownMenuItem onClick={() => navigate(`/proposals/new?contactId=${contact.id}`)}>
+                            <DropdownMenuItem onSelect={() => navigate(`/proposals/new?contactId=${contact.id}`)}>
                               <FileText className="h-4 w-4 mr-2" />
                               Create Proposal
                             </DropdownMenuItem>
@@ -567,7 +567,7 @@ export default function SalesContacts() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => setDeleteId(contact.id)}
+                            onSelect={() => setDeleteId(contact.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete

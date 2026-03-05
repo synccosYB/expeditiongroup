@@ -465,7 +465,7 @@ export function DocumentManager({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
               <DropdownMenuItem
-                onClick={() => {
+                onSelect={() => {
                   const folder = folders.find((f) => f.id === selectedFolderId);
                   if (folder) {
                     setEditingFolder(folder);
@@ -479,7 +479,7 @@ export function DocumentManager({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => {
+                onSelect={() => {
                   const folder = folders.find((f) => f.id === selectedFolderId);
                   if (folder) setDeletingFolder(folder);
                 }}
@@ -552,7 +552,7 @@ export function DocumentManager({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => {
+                        onSelect={() => {
                           setMovingDocument(doc);
                           setMoveTargetFolderId(doc.folderId?.toString() || "__none__");
                         }}
@@ -563,7 +563,7 @@ export function DocumentManager({
                       </DropdownMenuItem>
                       {showVisibilitySelector && (
                         <DropdownMenuItem
-                          onClick={() =>
+                          onSelect={() =>
                             toggleVisibilityMutation.mutate({
                               docId: doc.id,
                               isVisibleToClient: !doc.isVisibleToClient,
@@ -586,7 +586,7 @@ export function DocumentManager({
                       )}
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => setDeletingDocument(doc)}
+                        onSelect={() => setDeletingDocument(doc)}
                         data-testid={`button-delete-document-${doc.id}`}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />

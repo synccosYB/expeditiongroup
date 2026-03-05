@@ -127,31 +127,31 @@ function DraggableContactCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onNavigate("/sales-contacts")}>
+              <DropdownMenuItem onSelect={() => onNavigate("/sales-contacts")}>
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
               {!["won", "lost"].includes(contact.stage) && (
-                <DropdownMenuItem onClick={onMoveToNext}>
+                <DropdownMenuItem onSelect={onMoveToNext}>
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Move to Next Stage
                 </DropdownMenuItem>
               )}
               {contact.stage === "proposal" && !contact.proposalId && (
-                <DropdownMenuItem onClick={() => onNavigate(`/proposals/new?contactId=${contact.id}`)}>
+                <DropdownMenuItem onSelect={() => onNavigate(`/proposals/new?contactId=${contact.id}`)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Create Proposal
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onMarkWon} className="text-green-600">
+              <DropdownMenuItem onSelect={onMarkWon} className="text-green-600">
                 Mark as Won
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onMarkLost} className="text-red-600">
+              <DropdownMenuItem onSelect={onMarkLost} className="text-red-600">
                 Mark as Lost
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+              <DropdownMenuItem className="text-destructive" onSelect={onDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -526,13 +526,13 @@ export default function SalesPipeline() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/proposals/${proposal.id}`); }}>
+                              <DropdownMenuItem onSelect={() => navigate(`/proposals/${proposal.id}`)}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
-                                onClick={(e) => { e.stopPropagation(); setDeleteProposalId(proposal.id); }}
+                                onSelect={() => setDeleteProposalId(proposal.id)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete

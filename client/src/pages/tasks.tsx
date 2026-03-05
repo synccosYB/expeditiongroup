@@ -899,7 +899,7 @@ function TaskHierarchyItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onLogTime(task)}>
+                <DropdownMenuItem onSelect={() => onLogTime(task)}>
                   <Clock className="h-4 w-4 mr-2" />
                   Log Time
                 </DropdownMenuItem>

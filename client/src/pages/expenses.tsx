@@ -1094,17 +1094,17 @@ export default function Expenses() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenDialog(expense)}>
+                        <DropdownMenuItem onSelect={() => handleOpenDialog(expense)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicate(expense)} data-testid={`button-duplicate-expense-${expense.id}`}>
+                        <DropdownMenuItem onSelect={() => handleDuplicate(expense)} data-testid={`button-duplicate-expense-${expense.id}`}>
                           <Copy className="h-4 w-4 mr-2" />
                           Duplicate
                         </DropdownMenuItem>
                         {expense.bankAccountId && (
                           <DropdownMenuItem 
-                            onClick={() => setLocation(`/bank-register/${expense.bankAccountId}`)} 
+                            onSelect={() => setLocation(`/bank-register/${expense.bankAccountId}`)} 
                             data-testid={`button-view-transaction-${expense.id}`}
                           >
                             <Landmark className="h-4 w-4 mr-2" />
@@ -1112,14 +1112,14 @@ export default function Expenses() {
                           </DropdownMenuItem>
                         )}
                         {expense.receiptUrl && (
-                          <DropdownMenuItem onClick={() => window.open(`/api/expenses/receipt/${expense.id}`, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
+                          <DropdownMenuItem onSelect={() => window.open(`/api/expenses/receipt/${expense.id}`, "_blank")} data-testid={`button-view-receipt-${expense.id}`}>
                             <Image className="h-4 w-4 mr-2" />
                             View Receipt
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => setDeletingExpense(expense)}
+                          onSelect={() => setDeletingExpense(expense)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

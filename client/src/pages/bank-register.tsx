@@ -949,13 +949,13 @@ export default function BankRegister() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenDialog(transaction)}>
+                            <DropdownMenuItem onSelect={() => handleOpenDialog(transaction)}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => setDeletingTransaction(transaction)}
+                              onSelect={() => setDeletingTransaction(transaction)}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete

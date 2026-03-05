@@ -786,21 +786,21 @@ export default function Projects() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenDialog(project)}>
+                      <DropdownMenuItem onSelect={() => handleOpenDialog(project)}>
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
                       {project.status === "archived" ? (
                         <DropdownMenuItem
                           className="text-destructive"
-                          onClick={() => handleDeleteClick(project)}
+                          onSelect={() => handleDeleteClick(project)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Permanently Delete
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem
-                          onClick={() => handleDeleteClick(project)}
+                          onSelect={() => handleDeleteClick(project)}
                         >
                           <Archive className="h-4 w-4 mr-2" />
                           Archive / Delete

@@ -694,20 +694,20 @@ export default function Clients() {
                       </Link>
                     </DropdownMenuItem>
                     {client.status !== "archived" && (
-                      <DropdownMenuItem onClick={() => handleOpenDialog(client)}>
+                      <DropdownMenuItem onSelect={() => handleOpenDialog(client)}>
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
                     )}
                     {client.status !== "archived" && (
-                      <DropdownMenuItem onClick={() => setArchivingClient(client)}>
+                      <DropdownMenuItem onSelect={() => setArchivingClient(client)}>
                         <Archive className="h-4 w-4 mr-2" />
                         Archive
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => handleDeleteClick(client)}
+                      onSelect={() => handleDeleteClick(client)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       {client.status === "archived" ? "Permanently Delete" : "Delete"}

@@ -496,7 +496,7 @@ export default function ClientDetail() {
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => updateInvoiceVisibilityMutation.mutate({ 
+                                    onSelect={() => updateInvoiceVisibilityMutation.mutate({ 
                                       id: invoice.id, 
                                       isVisibleToClient: !invoice.isVisibleToClient 
                                     })}
@@ -516,7 +516,7 @@ export default function ClientDetail() {
                                   </DropdownMenuItem>
                                   {invoice.status === "draft" && (
                                     <DropdownMenuItem
-                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" })}
+                                      onSelect={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "sent" })}
                                     >
                                       <Send className="h-4 w-4 mr-2" />
                                       Mark as Sent
@@ -524,7 +524,7 @@ export default function ClientDetail() {
                                   )}
                                   {invoice.status === "sent" && (
                                     <DropdownMenuItem
-                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" })}
+                                      onSelect={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "paid" })}
                                     >
                                       <CheckCircle className="h-4 w-4 mr-2" />
                                       Mark as Paid
@@ -532,7 +532,7 @@ export default function ClientDetail() {
                                   )}
                                   {invoice.status !== "cancelled" && invoice.status !== "paid" && (
                                     <DropdownMenuItem
-                                      onClick={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "cancelled" })}
+                                      onSelect={() => updateInvoiceStatusMutation.mutate({ id: invoice.id, status: "cancelled" })}
                                       className="text-destructive"
                                     >
                                       <XCircle className="h-4 w-4 mr-2" />
