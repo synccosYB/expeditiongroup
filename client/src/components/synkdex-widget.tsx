@@ -111,6 +111,141 @@ function sanitizeOverlayPointerEvents(el: Element) {
   }
 }
 
+function isOverlayVisible(): boolean {
+  const overlays = document.querySelectorAll(".sdx-overlay");
+  for (let i = 0; i < overlays.length; i++) {
+    const el = overlays[i] as HTMLElement;
+    if (
+      el.style.display !== "none" &&
+      el.style.visibility !== "hidden" &&
+      el.style.opacity !== "0" &&
+      el.offsetParent !== null
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function dismissWidgetOverlay() {
+  const overlays = document.querySelectorAll(".sdx-overlay");
+  overlays.forEach((overlay) => {
+    const el = overlay as HTMLElement;
+    el.style.display = "none";
+    el.style.visibility = "hidden";
+    el.style.pointerEvents = "none";
+    el.style.opacity = "0";
+    el.style.zIndex = "-1";
+  });
+
+  const modals = document.querySelectorAll(".sdx-modal");
+  modals.forEach((modal) => {
+    const el = modal as HTMLElement;
+    el.style.display = "none";
+  });
+
+  document.body.style.overflow = "";
+  document.body.style.pointerEvents = "";
+  document.documentElement.style.overflow = "";
+}
+
+function isCloseButton(target: HTMLElement): boolean {
+  let el: HTMLElement | null = target;
+  while (el) {
+    if (
+      el.classList.contains("sdx-close") ||
+      el.classList.contains("sdx-close-btn") ||
+      el.getAttribute("aria-label")?.toLowerCase().includes("close") ||
+      el.getAttribute("data-action") === "close" ||
+      el.getAttribute("title")?.toLowerCase().includes("close")
+    ) {
+      return true;
+    }
+
+    if (el.tagName === "BUTTON" || el.tagName === "A" || el.getAttribute("role") === "button") {
+      const text = el.textContent?.trim();
+      if (text === "×" || text === "✕" || text === "X" || text === "x" || text === "✖") {
+        return true;
+      }
+    }
+
+    if (el.classList.contains("sdx-overlay") || el.classList.contains("sdx-widget-btn")) {
+      break;
+    }
+    el = el.parentElement;
+  }
+  return false;
+}
+
+function isBackdropClick(target: HTMLElement): boolean {
+  return target.classList.contains("sdx-overlay");
+}
+
+function installCloseInterceptor(): (() => void) {
+  const clickHandler = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target) return;
+
+    const inWidget = target.closest(".sdx-overlay") || target.closest(".sdx-modal");
+    if (!inWidget) return;
+
+    if (isCloseButton(target) || isBackdropClick(target)) {
+      setTimeout(() => {
+        if (isOverlayVisible()) {
+          dismissWidgetOverlay();
+        }
+      }, 150);
+
+      setTimeout(() => {
+        if (isOverlayVisible()) {
+          dismissWidgetOverlay();
+        }
+      }, 500);
+    }
+  };
+
+  document.addEventListener("click", clickHandler, true);
+
+  const escHandler = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && isOverlayVisible()) {
+      setTimeout(() => {
+        if (isOverlayVisible()) {
+          dismissWidgetOverlay();
+        }
+      }, 150);
+    }
+  };
+
+  document.addEventListener("keydown", escHandler, true);
+
+  const stuckCheckInterval = setInterval(() => {
+    const overlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
+    if (!overlay) return;
+
+    const isVisible =
+      overlay.style.display !== "none" &&
+      overlay.style.visibility !== "hidden" &&
+      overlay.style.opacity !== "0";
+
+    if (!isVisible) return;
+
+    const bodyBlocked =
+      document.body.style.overflow === "hidden" ||
+      document.body.style.pointerEvents === "none";
+
+    const hasModal = overlay.querySelector(".sdx-modal, .sdx-body, #sdx-form-container, [role='dialog']");
+    if (bodyBlocked && !hasModal) {
+      dismissWidgetOverlay();
+    }
+  }, 2000);
+
+  return () => {
+    document.removeEventListener("click", clickHandler, true);
+    document.removeEventListener("keydown", escHandler, true);
+    clearInterval(stuckCheckInterval);
+  };
+}
+
 export function SynkdexWidget() {
   const { user, isAdmin } = useAuth();
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -164,6 +299,8 @@ export function SynkdexWidget() {
 
     sanitizeAll();
 
+    const removeCloseInterceptor = installCloseInterceptor();
+
     const observer = new MutationObserver((mutations) => {
       let needsSanitize = false;
       for (const mutation of mutations) {
@@ -177,6 +314,27 @@ export function SynkdexWidget() {
           }
         }
         if (needsSanitize) break;
+
+        for (let i = 0; i < mutation.removedNodes.length; i++) {
+          const node = mutation.removedNodes[i];
+          if (node instanceof HTMLElement) {
+            if (
+              node.classList.contains("sdx-modal") ||
+              node.classList.contains("sdx-body") ||
+              node.id === "sdx-form-container"
+            ) {
+              setTimeout(() => {
+                if (isOverlayVisible()) {
+                  const overlay = document.querySelector(".sdx-overlay");
+                  const hasContent = overlay?.querySelector(".sdx-modal, .sdx-body, #sdx-form-container, [role='dialog']");
+                  if (!hasContent) {
+                    dismissWidgetOverlay();
+                  }
+                }
+              }, 300);
+            }
+          }
+        }
       }
       if (needsSanitize) sanitizeAll();
     });
@@ -184,6 +342,7 @@ export function SynkdexWidget() {
 
     return () => {
       observer.disconnect();
+      removeCloseInterceptor();
       removeSynkdex();
       removeFetchInterceptor();
       removeXHRInterceptor();
