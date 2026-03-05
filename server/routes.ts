@@ -6520,5 +6520,44 @@ export async function registerRoutes(
     console.error("Error backfilling payments:", error);
   }
 
+  app.post("/api/ai/improve-text", isAuthenticated, async (req: Request, res) => {
+    try {
+      const schema = z.object({ text: z.string().min(1).max(10000) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Text is required (max 10,000 characters)" });
+      }
+      const { text } = parsed.data;
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional editor. Fix spelling and grammar errors in the provided text. Improve sentence structure and clarity while preserving the original meaning, tone, and intent. Keep the text concise and professional. Do not add new information or change the meaning. Return only the corrected text with no explanations, no quotes, and no extra formatting.",
+          },
+          {
+            role: "user",
+            content: text,
+          },
+        ],
+        max_tokens: 2048,
+        temperature: 0.3,
+      });
+
+      const improved = response.choices[0]?.message?.content?.trim() || text;
+      res.json({ improved });
+    } catch (error: any) {
+      console.error("AI text improvement error:", error);
+      res.status(500).json({ error: "Failed to improve text" });
+    }
+  });
+
   return httpServer;
 }

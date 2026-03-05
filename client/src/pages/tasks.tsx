@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { AIImproveButton } from "@/components/ai-improve-button";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -407,7 +408,14 @@ function TaskDetailDialog({
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Description</FormLabel>
+                          <AIImproveButton
+                            getText={() => field.value || ""}
+                            onImproved={(text) => taskForm.setValue("description", text, { shouldDirty: true })}
+                            context="task-description"
+                          />
+                        </div>
                         <FormControl>
                           <Textarea {...field} data-testid="input-detail-task-description" />
                         </FormControl>
@@ -602,7 +610,14 @@ function TaskDetailDialog({
           <TabsContent value="notes" className="space-y-4 pt-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Internal Notes</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Internal Notes</label>
+                  <AIImproveButton
+                    getText={() => notesValue}
+                    onImproved={(text) => setNotesValue(text)}
+                    context="task-internal-notes"
+                  />
+                </div>
                 <Textarea
                   value={notesValue}
                   onChange={(e) => setNotesValue(e.target.value)}
@@ -686,7 +701,14 @@ function TaskDetailDialog({
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes (optional)</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Notes (optional)</FormLabel>
+                          <AIImproveButton
+                            getText={() => field.value || ""}
+                            onImproved={(text) => detailTimeLogForm.setValue("notes", text, { shouldDirty: true })}
+                            context="task-time-notes"
+                          />
+                        </div>
                         <FormControl>
                           <Textarea {...field} placeholder="What did you work on?" data-testid="input-detail-time-notes" />
                         </FormControl>

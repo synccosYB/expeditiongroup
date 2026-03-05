@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { AIImproveButton } from "@/components/ai-improve-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -528,7 +529,14 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
             <TabsContent value="notes" className="space-y-4 pt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium leading-none">Internal Notes</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium leading-none">Internal Notes</label>
+                    <AIImproveButton
+                      getText={() => notesText}
+                      onImproved={(text) => setNotesText(text)}
+                      context="calendar-notes"
+                    />
+                  </div>
                   <Textarea
                     value={notesText}
                     onChange={(e) => setNotesText(e.target.value)}
@@ -661,7 +669,14 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notes (optional)</FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Notes (optional)</FormLabel>
+                            <AIImproveButton
+                              getText={() => field.value || ""}
+                              onImproved={(text) => timeLogForm.setValue("notes", text, { shouldDirty: true })}
+                              context="calendar-time-notes"
+                            />
+                          </div>
                           <FormControl>
                             <Textarea {...field} placeholder="What did you work on?" data-testid="input-time-notes" />
                           </FormControl>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AIImproveButton } from "@/components/ai-improve-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -599,9 +600,16 @@ function EditNoteDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="edit-note-content" className="text-sm font-medium">
-              Content
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="edit-note-content" className="text-sm font-medium">
+                Content
+              </label>
+              <AIImproveButton
+                getText={() => content}
+                onImproved={(text) => setContent(text)}
+                context="edit-note"
+              />
+            </div>
             <Textarea
               id="edit-note-content"
               value={content}
@@ -3763,7 +3771,14 @@ export default function ProjectDetail() {
                 name="content"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Note *</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Note *</FormLabel>
+                      <AIImproveButton
+                        getText={() => field.value || ""}
+                        onImproved={(text) => noteForm.setValue("content", text, { shouldDirty: true })}
+                        context="project-note"
+                      />
+                    </div>
                     <FormControl>
                       <Textarea placeholder="Enter your note..." className="min-h-32 resize-none" {...field} data-testid="textarea-note-content" />
                     </FormControl>
@@ -3836,7 +3851,14 @@ export default function ProjectDetail() {
                 name="taskDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description *</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Description *</FormLabel>
+                      <AIImproveButton
+                        getText={() => field.value || ""}
+                        onImproved={(text) => timeLogForm.setValue("taskDescription", text, { shouldDirty: true })}
+                        context="project-timelog"
+                      />
+                    </div>
                     <FormControl>
                       <Textarea placeholder="What did you work on?" className="resize-none" {...field} data-testid="textarea-time-log-description" />
                     </FormControl>

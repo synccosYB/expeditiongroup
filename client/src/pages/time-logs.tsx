@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AIImproveButton } from "@/components/ai-improve-button";
 import {
   Select,
   SelectContent,
@@ -627,7 +628,14 @@ function EditTimeLogDialog({
           {isLegacy && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="edit-description">Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <AIImproveButton
+                    getText={() => description}
+                    onImproved={(text) => setDescription(text)}
+                    context="timelog-description"
+                  />
+                </div>
                 <Textarea
                   id="edit-description"
                   value={description}
@@ -652,7 +660,14 @@ function EditTimeLogDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="edit-notes">Notes</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="edit-notes">Notes</Label>
+              <AIImproveButton
+                getText={() => notes}
+                onImproved={(text) => setNotes(text)}
+                context="timelog-notes"
+              />
+            </div>
             <Textarea
               id="edit-notes"
               value={notes}
