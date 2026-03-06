@@ -254,18 +254,6 @@ function installCloseInterceptor(): (() => void) {
     }
 
     if (bodyBlocked && hasModal) {
-      const iframe = overlay.querySelector("iframe");
-      if (iframe) {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!iframeDoc) {
-            dismissWidgetOverlay();
-          }
-        } catch {
-          // cross-origin iframe, can't inspect
-        }
-      }
-
       const successEl = overlay.querySelector(
         ".sdx-success, .sdx-thank-you, .sdx-complete, [class*='success'], [class*='thank']"
       );
