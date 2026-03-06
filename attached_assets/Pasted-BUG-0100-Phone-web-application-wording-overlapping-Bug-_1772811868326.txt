@@ -1,0 +1,80 @@
+BUG-0100
+Phone web application wording overlapping
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+**Steps to Reproduce:**
+1. Open the bookkeeping platform web application on a mobile device or in a web browser with a mobile viewport size.
+2. Navigate through various pages of the platform.
+
+**Expected Behavior:**
+Text and content should display cleanly, without overlapping on all pages and sections of the platform. Users should be able to read the information clearly across the interface.
+
+**Actual Behavior:**
+Words and text elements overlap throughout the entire platform, making it difficult or impossible to read. This affects multiple pages and sections of the application.
+
+**Additional Context:**
+- The issue occurs specifically on phone-sized screens (mobile viewport).
+- It appears to be a widespread problem, impacting general usability and readability of the platform.
+- Potentially related to CSS or responsive design handling.
+
+AI Analysis
+
+### 1) **Affected Part of the App:**
+The application's User Interface (UI) on mobile devices or smaller screen sizes. The issue is evident across various pages, suggesting it impacts shared or global layout styles.
+
+---
+
+### 2) **Root Cause Analysis:**
+Based on the description, the issue is likely caused by improper handling of responsive design in the platform's CSS or layout framework. Possible root causes include:
+- **Missing or misconfigured media queries**: The CSS may not adapt text sizes or element spacing properly for small screen sizes.
+- **Fixed element dimensions**: Text containers or other UI elements might have fixed widths/heights, causing text to overflow and overlap on smaller screens.
+- **Improper use of flexbox/grid layouts**: Elements may not be resizing or aligning correctly within a responsive grid or flexbox structure.
+- **Style overrides or regressions**: A recent update may have introduced untested changes affecting global styles.
+
+---
+
+### 3) **Recommended Fix or Next Steps:**
+1. **Audit CSS Rules**: Review the CSS to ensure that media queries are implemented correctly and account for common breakpoints (e.g., 480px, 768px) to adjust layout and text styles for smaller screens.
+2. **Inspect Text Wrapping and Spacing**:
+   - Ensure `word-wrap`, `overflow`, and `line-height` are appropriately configured within text elements to prevent unintended overlapping.
+   - Adjust padding, margin, and spacing in elements for smaller viewports.
+3. **Responsive Layout Review**: Check if container elements use appropriate percentages, flexbox properties (like `flex-wrap`), or grid templates that adapt to mobile screens.
+4. **Test Across Breakpoints**:
+   - Use developer tools or mobile emulators to identify specific pages and components where the issue arises.
+   - Include tests for both portrait and landscape orientations.
+5. **Regression Testing**: If this issue stemmed from a recent update, roll back to a prior version of the styles to identify where changes were introduced.
+
+---
+
+### JSON Summary:
+```json
+{"severity": "high", "category": "ui"}
+```
+
+https://www.expeditiongroupny.com/bank-accounts
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Mobile/15E148 Safari/604.1
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...

@@ -198,7 +198,8 @@ export default function BankAccountDetail() {
 
           <div className="mb-8">
             <h3 className="text-lg font-semibold mb-4 print:text-base">Account Statement</h3>
-            <table className="w-full text-sm" data-testid="table-transactions">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="table-transactions">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 font-medium">Date</th>
@@ -238,6 +239,7 @@ export default function BankAccountDetail() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="flex justify-end">

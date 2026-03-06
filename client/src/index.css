@@ -405,6 +405,54 @@
   }
 }
 
+/* Mobile responsive fixes - prevent text overlap on small screens */
+@media (max-width: 767px) {
+  .relative.w-full.overflow-auto > table,
+  .overflow-x-auto > table {
+    min-width: 600px;
+  }
+
+  table th,
+  table td {
+    padding: 8px 6px;
+    font-size: 0.8125rem;
+  }
+
+  table td {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+    word-break: break-word;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+    line-height: 1.3 !important;
+    word-break: break-word;
+  }
+
+  h3 {
+    font-size: 1.1rem !important;
+    line-height: 1.3 !important;
+    word-break: break-word;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+
+  p, span, label, a {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
 /* Hide scrollbar utility for horizontal scrolling tabs */
 .scrollbar-hide {
   -ms-overflow-style: none;
