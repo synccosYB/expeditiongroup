@@ -118,6 +118,9 @@ export default function ClientInvoiceDetail() {
   };
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = invoice?.invoiceNumber || "Invoice";
+
     const htmlEl = document.documentElement;
     const wasDark = htmlEl.classList.contains("dark");
     if (wasDark) {
@@ -138,6 +141,7 @@ export default function ClientInvoiceDetail() {
       if (widgetBtn) widgetBtn.style.removeProperty("display");
       if (widgetOverlay) widgetOverlay.style.removeProperty("display");
       if (widgetRoot) widgetRoot.style.removeProperty("display");
+      document.title = originalTitle;
     };
 
     window.addEventListener("afterprint", restore, { once: true });

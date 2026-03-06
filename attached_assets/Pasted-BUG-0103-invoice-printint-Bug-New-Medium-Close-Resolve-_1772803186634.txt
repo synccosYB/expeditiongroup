@@ -1,0 +1,79 @@
+BUG-0103
+invoice printint
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+**Steps to Reproduce:**
+1. Generate an invoice in the system.
+2. Attempt to print the invoice.
+3. Observe the behavior related to saving the invoice with its unique number.
+
+**Expected Behavior:**
+When an invoice is printed, the system should automatically save the invoice with its unique invoice number, and the saved file should be readily accessible in the designated folder.
+
+**Actual Behavior:**
+The system does not automatically save the invoice with its unique invoice number after printing. Instead, users are required to manually enter the invoice number in the folder for saving.
+
+**Additional Context:**
+This functionality used to work but has recently stopped. The manual step to input the invoice number for saving adds unnecessary effort and increases the risk of errors.
+
+AI Analysis
+
+### Analysis
+
+1. **App Section Affected**:
+   - Invoices Module, particularly during the printing and saving process.
+
+2. **Root Cause Analysis**:
+   - Based on the behavior described, the issue seems to stem from the automation logic that handles post-printing invoice saving. A few potential causes could include:
+     - A regression in the backend or frontend triggered by recent updates that removed or bypassed the automatic saving functionality.
+     - Misconfigured file-saving path or naming convention logic, potentially leading to unexpected errors.
+     - A missing callback function or event handler for the "Print" button that used to invoke the saving mechanism.
+
+   - The screenshot reveals the "Print" button is still present, and the invoice details (including the unique invoice number, e.g., `INV-2026-0076`, and associated data) are generating correctly. This indicates the issue may not be with data generation or display but specifically with the integration of the save functionality post-printing.
+
+3. **Recommended Fix**:
+   - Investigate the backend or frontend logic responsible for the post-printing save functionality:
+     - Confirm that the callback for automatic saving is properly triggered after hitting "Print".
+     - Verify if the invoice number auto-filling mechanism is intact, as it may be broken or ineffective when saving to designated folders.
+     - Test the file-saving workflow, especially focusing on the folder path configuration, to ensure no errors are preventing the auto-save.
+   - If a recent system update removed or disabled this automation, revert the change or reintroduce the feature.
+   - Conduct end-to-end tests to validate that printing triggers saving actions in various scenarios.
+
+---
+
+### JSON Summary
+```json
+{
+  "severity": "medium",
+  "category": "functionality"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices/123
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
