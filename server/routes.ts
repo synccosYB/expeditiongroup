@@ -3461,7 +3461,9 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const deleted = await storage.deleteInvoice(parseInt(req.params.id));
+      const invoiceId = parseInt(req.params.id);
+      await storage.resetExpensesForInvoice(invoiceId);
+      const deleted = await storage.deleteInvoice(invoiceId);
       if (!deleted) {
         return res.status(404).json({ message: "Invoice not found" });
       }

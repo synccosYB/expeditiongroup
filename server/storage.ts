@@ -398,6 +398,7 @@ export interface IStorage {
   updateExpense(id: number, expense: Partial<InsertExpense>): Promise<Expense | undefined>;
   deleteExpense(id: number): Promise<boolean>;
   markExpensesAsRebilled(expenseIds: number[], invoiceId: number): Promise<boolean>;
+  resetExpensesForInvoice(invoiceId: number): Promise<boolean>;
 
   // Bookkeeping - Bills
   getBills(): Promise<(Bill & { vendor: Vendor; items: BillItem[] })[]>;
@@ -2471,6 +2472,14 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(expenses.id, expenseIds));
     
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async resetExpensesForInvoice(invoiceId: number): Promise<boolean> {
+    const result = await db
+      .update(expenses)
+      .set({ isRebilled: false, rebilledInvoiceId: null, rebilledAt: null, updatedAt: new Date() })
+      .where(eq(expenses.rebilledInvoiceId, invoiceId));
+    return (result.rowCount ?? 0) >= 0;
   }
 
   // Bookkeeping - Bills

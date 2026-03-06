@@ -59,52 +59,68 @@ export default function RebillCenter() {
       if (selectedExpensesList.length === 0) return;
 
       const clientId = selectedExpensesList[0].rebillableClientId;
-      
-      const projectIds = [...new Set(selectedExpensesList.map(e => e.rebillableProjectId).filter(Boolean))];
-      const projectId = projectIds.length === 1 ? projectIds[0] : null;
-      
-      const items = selectedExpensesList.map(expense => {
-        const baseAmount = parseFloat(expense.amount || "0");
-        const markup = parseFloat(expense.markupPercent || "0");
-        const totalAmount = baseAmount * (1 + markup / 100);
-        
-        const projectLabel = expense.rebillableProject?.name ? `[${expense.rebillableProject.name}] ` : "";
-        return {
-          description: `${projectLabel}${expense.description}${expense.vendor ? ` - ${expense.vendor.name}` : ""}`,
-          quantity: "1",
-          unitPrice: totalAmount.toFixed(2),
-          amount: totalAmount.toFixed(2),
+
+      const groupedByProject = selectedExpensesList.reduce((groups, expense) => {
+        const projectId = expense.rebillableProjectId || 0;
+        if (!groups[projectId]) {
+          groups[projectId] = [];
+        }
+        groups[projectId].push(expense);
+        return groups;
+      }, {} as Record<number, ExpenseWithRelations[]>);
+
+      const createdInvoices = [];
+
+      for (const [projectIdStr, projectExpenses] of Object.entries(groupedByProject)) {
+        const projectId = parseInt(projectIdStr) || null;
+
+        const items = projectExpenses.map(expense => {
+          const baseAmount = parseFloat(expense.amount || "0");
+          const markup = parseFloat(expense.markupPercent || "0");
+          const totalAmount = baseAmount * (1 + markup / 100);
+          
+          const projectLabel = expense.rebillableProject?.name ? `[${expense.rebillableProject.name}] ` : "";
+          return {
+            description: `${projectLabel}${expense.description}${expense.vendor ? ` - ${expense.vendor.name}` : ""}`,
+            quantity: "1",
+            unitPrice: totalAmount.toFixed(2),
+            amount: totalAmount.toFixed(2),
+          };
+        });
+
+        const totalAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+
+        const invoicePayload = {
+          clientId,
+          projectId,
+          createdAt: rebillInvoiceDate || null,
+          dueDate: rebillDueDate || null,
+          notes: "Rebillable expenses",
+          items,
+          subtotal: totalAmount.toFixed(2),
+          total: totalAmount.toFixed(2),
         };
-      });
 
-      const totalAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+        const response = await apiRequest("POST", "/api/invoices", invoicePayload);
+        const invoiceData = await response.json();
 
-      const invoicePayload = {
-        clientId,
-        projectId,
-        createdAt: rebillInvoiceDate || null,
-        dueDate: rebillDueDate || null,
-        notes: "Rebillable expenses",
-        items,
-        subtotal: totalAmount.toFixed(2),
-        total: totalAmount.toFixed(2),
-      };
+        const projectExpenseIds = projectExpenses.map(e => e.id);
+        await apiRequest("POST", "/api/expenses/mark-rebilled", {
+          expenseIds: projectExpenseIds,
+          invoiceId: invoiceData.id,
+        });
 
-      const response = await apiRequest("POST", "/api/invoices", invoicePayload);
-      const invoiceData = await response.json();
-      
-      await apiRequest("POST", "/api/expenses/mark-rebilled", {
-        expenseIds,
-        invoiceId: invoiceData.id,
-      });
+        createdInvoices.push(invoiceData);
+      }
 
-      return invoiceData;
+      return createdInvoices;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/rebillable"] });
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      toast({ title: "Invoice created successfully" });
+      const count = Array.isArray(data) ? data.length : 1;
+      toast({ title: count > 1 ? `${count} invoices created successfully` : "Invoice created successfully" });
       setSelectedExpenses(new Set());
       setIsCreateInvoiceOpen(false);
     },
