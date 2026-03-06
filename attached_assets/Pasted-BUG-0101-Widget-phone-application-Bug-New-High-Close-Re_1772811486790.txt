@@ -1,0 +1,75 @@
+BUG-0101
+Widget phone application
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+**Steps to Reproduce:**
+1. Open the Phone application on your device.
+2. Access the widget within the Phone application.
+3. Submit a "Back of Future" request using the widget.
+4. Attempt to navigate back or access other pages after the request is submitted.
+5. Try to capture or take action on the page using the phone application.
+
+**Expected Behavior:**
+- After submitting the "Back of Future" request, the widget should allow navigation to other pages or sections within the Phone application.
+- The application should allow capturing or interacting with the page as expected.
+
+**Actual Behavior:**
+- After submitting the "Back of Future" request, the app remains stuck on the same page and does not allow navigation to other sections.
+- The page cannot be captured or interacted with through the phone application.
+
+**Additional Context:**
+- Occurs specifically after submitting the "Back of Future" request via the widget.
+- No error messages appear, but the app stays locked on the same screen and becomes partially unresponsive.
+
+AI Analysis
+
+### Bug Analysis:
+
+1. **Part of the App Affected**:
+   The bug affects navigation and interaction within the Phone application's widget functionality. This specifically occurs after submitting a "Back of Future" request.
+
+2. **Root Cause Analysis**:
+   Given the absence of console errors or detailed logs, the issue seems to be tied to a state-lock or improper state transition after the "Back of Future" request submission. Possible causes include:
+   - The widget enters a "waiting state" after submission but fails to execute or complete the expected transition back to a neutral/ready state.
+   - Navigation handlers or state resetting logic does not fire after the request, leaving the app unresponsive or stuck.
+   - Certain post-submission processes (e.g., callback execution) might be timing out or failing silently.
+
+   Since the user also cannot interact with or capture the page afterward, this could indicate issues with input handling being temporarily blocked, such as a non-dismissable modal screen or an overlay improperly lingering.
+
+3. **Recommended Fix / Next Steps**:
+   - Investigate the state management and navigation handlers post-submission of the "Back of Future" request. Validate whether the app transitions correctly and returns to a stable, interactive state.
+   - Check the widget's "busy" or "loading" indicators. Confirm whether these are cleared and dismissed after submission.
+   - Review associated logs or set up debugging to catch potential errors in the request's callback handling or UI update logic.
+   - Test the widget under different configurations to see if the issue consistently reproduces and verify whether this issue is tied to timeout-related conditions or specific use cases.
+
+### JSON Summary:
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+https://www.expeditiongroupny.com/bank-accounts
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Mobile/15E148 Safari/604.1
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

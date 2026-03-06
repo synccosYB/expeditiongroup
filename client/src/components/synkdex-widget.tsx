@@ -118,8 +118,7 @@ function isOverlayVisible(): boolean {
     if (
       el.style.display !== "none" &&
       el.style.visibility !== "hidden" &&
-      el.style.opacity !== "0" &&
-      el.offsetParent !== null
+      el.style.opacity !== "0"
     ) {
       return true;
     }
@@ -206,6 +205,21 @@ function installCloseInterceptor(): (() => void) {
 
   document.addEventListener("click", clickHandler, true);
 
+  const touchHandler = (e: TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target) return;
+
+    if (isBackdropClick(target)) {
+      setTimeout(() => {
+        if (isOverlayVisible()) {
+          dismissWidgetOverlay();
+        }
+      }, 300);
+    }
+  };
+
+  document.addEventListener("touchend", touchHandler, true);
+
   const escHandler = (e: KeyboardEvent) => {
     if (e.key === "Escape" && isOverlayVisible()) {
       setTimeout(() => {
@@ -231,18 +245,60 @@ function installCloseInterceptor(): (() => void) {
 
     const bodyBlocked =
       document.body.style.overflow === "hidden" ||
-      document.body.style.pointerEvents === "none";
+      document.body.style.pointerEvents === "none" ||
+      document.documentElement.style.overflow === "hidden";
 
     const hasModal = overlay.querySelector(".sdx-modal, .sdx-body, #sdx-form-container, [role='dialog']");
     if (bodyBlocked && !hasModal) {
       dismissWidgetOverlay();
     }
+
+    if (bodyBlocked && hasModal) {
+      const iframe = overlay.querySelector("iframe");
+      if (iframe) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!iframeDoc) {
+            dismissWidgetOverlay();
+          }
+        } catch {
+          // cross-origin iframe, can't inspect
+        }
+      }
+
+      const successEl = overlay.querySelector(
+        ".sdx-success, .sdx-thank-you, .sdx-complete, [class*='success'], [class*='thank']"
+      );
+      if (successEl) {
+        dismissWidgetOverlay();
+      }
+    }
   }, 2000);
+
+  const touchBlockCheck = setInterval(() => {
+    const bodyBlocked =
+      document.body.style.overflow === "hidden" ||
+      document.body.style.pointerEvents === "none" ||
+      document.documentElement.style.overflow === "hidden";
+
+    if (!bodyBlocked) return;
+
+    const overlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
+    const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
+
+    if (!overlay && !widgetBtn && bodyBlocked) {
+      document.body.style.overflow = "";
+      document.body.style.pointerEvents = "";
+      document.documentElement.style.overflow = "";
+    }
+  }, 3000);
 
   return () => {
     document.removeEventListener("click", clickHandler, true);
+    document.removeEventListener("touchend", touchHandler, true);
     document.removeEventListener("keydown", escHandler, true);
     clearInterval(stuckCheckInterval);
+    clearInterval(touchBlockCheck);
   };
 }
 
@@ -310,6 +366,22 @@ export function SynkdexWidget() {
             if (node.classList.contains("sdx-overlay") || node.querySelector(".sdx-overlay")) {
               needsSanitize = true;
               break;
+            }
+            const inOverlay = node.closest(".sdx-overlay");
+            if (inOverlay) {
+              const className = node.className?.toString?.() || "";
+              const textContent = node.textContent?.toLowerCase() || "";
+              if (
+                className.includes("success") ||
+                className.includes("thank") ||
+                className.includes("complete") ||
+                (textContent.includes("thank you") && textContent.length < 200) ||
+                (textContent.includes("submitted") && textContent.length < 200)
+              ) {
+                setTimeout(() => {
+                  dismissWidgetOverlay();
+                }, 3000);
+              }
             }
           }
         }
