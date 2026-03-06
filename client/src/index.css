@@ -332,6 +332,9 @@
   .sdx-widget-btn,
   .sdx-overlay,
   #synkdex-widget,
+  [class*="sdx-"],
+  [id*="synkdex"],
+  [data-api-key],
   header {
     display: none !important;
     visibility: hidden !important;

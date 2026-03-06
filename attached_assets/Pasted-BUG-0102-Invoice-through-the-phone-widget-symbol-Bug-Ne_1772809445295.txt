@@ -1,0 +1,68 @@
+BUG-0102
+Invoice through the phone widget symbol
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+**Steps to Reproduce:**
+1. Open the app on a mobile device.
+2. Create a new invoice using the phone app.
+3. Proceed to print the invoice.
+4. Check the printed invoice for any unexpected elements.
+
+**Expected Behavior:**
+The printed invoice should display only relevant invoice details such as itemized charges, customer information, and payment details. Elements like widget symbols related to the phone app's UI should not appear on the invoice.
+
+**Actual Behavior:**
+The printed invoice includes the widget symbol from the phone app interface, which is not supposed to appear as part of the invoice.
+
+**Additional Context:**
+The widget symbol seems to be a visual artifact from the phone app interface. This could be related to how the print functionality captures and renders the content of the invoice. The issue might be specific to certain versions of the app or mobile operating systems.
+
+AI Analysis
+
+1) **What part of the app is affected:**  
+The print functionality of the invoicing feature in the mobile app is affected. Specifically, it incorrectly includes the phone widget symbol in the rendered print-out of an invoice.
+
+2) **Root cause analysis:**  
+Based on the description, the phone widget symbol appears to persist into the print rendering due to how the mobile interface content is captured for the print output. This issue is likely related to the rendering logic or CSS styles used to create the printed view of the invoice on mobile devices. The widget symbol from the UI is not excluded or hidden during the rendering of the printable document, causing it to appear on the final invoice.
+
+   A potential cause could be:
+   - The print-specific CSS (`@media print`) is not properly configured to hide non-essential elements like the widget symbol.
+   - The invoice rendering logic mistakenly includes active UI elements while capturing the document for print.
+   - The symbol may be part of a floating overlay or z-index issue that wasn’t filtered out in the process of generating the print view.
+
+3) **Recommended fix or next steps:**  
+- Audit the print-specific styles (`@media print`) to ensure that UI elements like widget icons are explicitly excluded from the print rendering. Verify that only the invoice content is rendered.
+- Review the rendering logic for generating the print view of the invoice to strip any non-essential or overlay elements.
+- Ensure this behavior is tested across different mobile operating systems and application versions to identify if it is version/OS-specific.
+- Add automated print-preview tests or manual validation steps to confirm that output contains only invoice-relevant data.
+
+```json
+{"severity": "medium", "category": "ui"}
+```
+
+https://www.expeditiongroupny.com/bank-accounts
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Mobile/15E148 Safari/604.1
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
