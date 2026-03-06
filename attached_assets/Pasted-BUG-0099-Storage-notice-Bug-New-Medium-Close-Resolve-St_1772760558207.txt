@@ -1,0 +1,49 @@
+BUG-0099
+Storage notice
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+I've received an error message that I cannot upload any attachments since I'm up to one GB please update so I can storage more
+
+AI Analysis
+
+1) **Part of the app affected**: This issue is related to the file storage and file upload functionality of the application. Specifically, it seems to be the storage limitation and handling for attachments.
+
+2) **Root cause analysis**: Based on the description, the user is unable to upload attachments because they are exceeding the allocated 1 GB storage limit. This indicates that the app has a hard storage limit, but it is unclear from the user's description whether the limit is adjustable (e.g., subscription-based or per-user level) or there is a flaw in providing an appropriate error message. The root cause may involve:
+   - A design limitation if no options exist to increase storage.
+   - Clarity issues in communicating storage limits or purchase/upgrade options to the user.
+   - Potential lack of functionality that allows users to manage their storage (e.g., clearing files).
+
+3) **Recommended fix or next steps**:
+   - If this is intentional (e.g., a free-tier limit), ensure the error message is clear and instructs users on options to increase storage (e.g., upgrading to a higher plan).
+   - Confirm that the storage calculation is accurate, and no redundant or residual files are being incorrectly counted toward the storage quota.
+   - Provide users with better file management options (e.g., deleting older attachments) if not already available.
+   - If additional storage options exist but aren't visible to the user, update the UI to better advertise/manage storage plans.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://www.expeditiongroupny.com/projects/49
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.3 Mobile/15E148 Safari/604.1
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
