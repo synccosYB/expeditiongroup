@@ -1,0 +1,70 @@
+BUG-0104
+Fix Rebilling & Client Invoice Issues
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Deleted invoices that were rebilled from an expense because they were not appearing in the client view. Observed two issues:
+
+After deleting a rebilled invoice, it does not return to the Rebill section—it should so it can be rebilled again.
+
+When creating an invoice from rebilling, each project should generate a separate bill and appear correctly in the client invoice section.
+
+AI Analysis
+
+### Analysis:
+
+1. **Affected Part of the App:**
+   - **Rebilling and Client Invoicing Functionality**: Specifically affects the section responsible for handling expense rebilling and invoice generation across projects, as well as the client view of invoices.
+
+2. **Root Cause Analysis:**
+   - **Issue 1**: "Deleted rebilled invoices do not return to the Rebill section":
+     Likely an issue in how the app handles state updates regarding rebillable expenses. When an invoice linked to a rebilled expense is deleted, the system should mark the corresponding expense as "pending for rebill" but seems to fail at this process. Potential reasons include:
+       - Poor linkage between the deleted invoice record and the rebilled expense.
+       - A missing or faulty trigger/event listener that sets the expense back to a rebillable state upon invoice deletion.
+
+   - **Issue 2**: "Separate client bills for each project not showing correctly":
+     This implies a problem in the invoice generation process, particularly with how invoices are grouped and allocated for multiple projects. The root cause could be:
+       - Incorrect logic in the rebilling algorithm that's grouping multiple projects into the same invoice.
+       - Insufficient filtering or separation conditions in the backend or API that handles invoice generation.
+       - A bug in the data model design where project associations are not clearly defined or not respected during invoice generation.
+
+3. **Recommended Fix or Next Steps:**
+   - For **Issue 1**, investigate:
+     - The database or backend logic handling the rebillable status of an expense post-invoice deletion.
+     - Confirm if there are triggers or event flows that should reset the rebillable status and whether they are being invoked correctly.
+   - For **Issue 2**, investigate:
+     - How projects are being mapped to invoices during rebilling.
+     - In the project grouping logic, ensure that separate invoices are correctly generated for distinct projects linked to the rebilled expenses.
+     - Review API responses or database schemas to ensure that project relationships and their respective invoices are accurately structured.
+
+If these logic issues are located in backend service layers, coordinate with the development team to adjust the rules for invoice handling and expense rebilling. Add test cases to verify both workflows post-fix.
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/rebill-center
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
