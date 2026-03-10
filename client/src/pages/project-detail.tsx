@@ -1055,6 +1055,8 @@ export default function ProjectDetail() {
   const [selectedAssociateId, setSelectedAssociateId] = useState<string>("");
   const [selectedAssociateRole, setSelectedAssociateRole] = useState<string>("");
   const [newChecklistItemText, setNewChecklistItemText] = useState<{ [key: number]: string }>({});
+  const [editingChecklistItem, setEditingChecklistItem] = useState<{ checklistId: number; itemId: string } | null>(null);
+  const [editingChecklistItemText, setEditingChecklistItemText] = useState("");
   const [uploadedFilePath, setUploadedFilePath] = useState<string>("");
   const [isUploadComplete, setIsUploadComplete] = useState(false);
   const [pendingUploadPath, setPendingUploadPath] = useState<string>("");
@@ -1842,6 +1844,39 @@ export default function ProjectDetail() {
     setNewChecklistItemText(prev => ({ ...prev, [checklist.id]: "" }));
   };
 
+  const startEditingChecklistItem = (checklistId: number, item: ChecklistItem) => {
+    setEditingChecklistItem({ checklistId, itemId: item.id });
+    setEditingChecklistItemText(item.text);
+  };
+
+  const saveEditingChecklistItem = (checklist: ChecklistInstance) => {
+    if (!editingChecklistItem || editingChecklistItem.checklistId !== checklist.id) return;
+    const trimmed = editingChecklistItemText.trim();
+    if (!trimmed) {
+      setEditingChecklistItem(null);
+      setEditingChecklistItemText("");
+      return;
+    }
+    const items = (checklist.items as ChecklistItem[]) || [];
+    const updatedItems = items.map(item =>
+      item.id === editingChecklistItem.itemId ? { ...item, text: trimmed } : item
+    );
+    updateChecklistMutation.mutate({ checklistId: checklist.id, items: updatedItems });
+    setEditingChecklistItem(null);
+    setEditingChecklistItemText("");
+  };
+
+  const cancelEditingChecklistItem = () => {
+    setEditingChecklistItem(null);
+    setEditingChecklistItemText("");
+  };
+
+  const deleteChecklistItem = (checklist: ChecklistInstance, itemId: string) => {
+    const items = (checklist.items as ChecklistItem[]) || [];
+    const updatedItems = items.filter(item => item.id !== itemId);
+    updateChecklistMutation.mutate({ checklistId: checklist.id, items: updatedItems });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -2617,15 +2652,68 @@ export default function ProjectDetail() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3">
+                        <div key={item.id} className="flex items-center gap-3 group">
                           <Checkbox
                             checked={item.completed}
                             onCheckedChange={() => toggleChecklistItem(checklist, item.id)}
                             data-testid={`checkbox-checklist-item-${item.id}`}
                           />
-                          <span className={`text-sm ${item.completed ? 'line-through text-muted-foreground' : ''}`}>
-                            {item.text}
-                          </span>
+                          {editingChecklistItem?.checklistId === checklist.id && editingChecklistItem?.itemId === item.id ? (
+                            <Input
+                              autoFocus
+                              value={editingChecklistItemText}
+                              onChange={(e) => setEditingChecklistItemText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveEditingChecklistItem(checklist);
+                                } else if (e.key === 'Escape') {
+                                  cancelEditingChecklistItem();
+                                }
+                              }}
+                              onBlur={() => saveEditingChecklistItem(checklist)}
+                              className="flex-1 h-7 text-sm"
+                              data-testid={`input-edit-checklist-item-${item.id}`}
+                            />
+                          ) : (
+                            <span
+                              className={`text-sm flex-1 cursor-pointer rounded px-1 -mx-1 hover:bg-muted/50 ${item.completed ? 'line-through text-muted-foreground' : ''}`}
+                              onClick={() => startEditingChecklistItem(checklist.id, item)}
+                              data-testid={`text-checklist-item-${item.id}`}
+                            >
+                              {item.text}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => startEditingChecklistItem(checklist.id, item)}
+                                  data-testid={`button-edit-checklist-item-${item.id}`}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit item</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  onClick={() => deleteChecklistItem(checklist, item.id)}
+                                  data-testid={`button-delete-checklist-item-${item.id}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete item</TooltipContent>
+                            </Tooltip>
+                          </div>
                         </div>
                       ))}
                       <div className="flex items-center gap-2 pt-2">
