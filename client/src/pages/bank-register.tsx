@@ -310,10 +310,18 @@ export default function BankRegister() {
         return <ArrowUpRight className="h-4 w-4 text-red-600" />;
       case "transfer":
         return <ArrowLeftRight className="h-4 w-4 text-blue-600" />;
+      case "payment":
+        return <ArrowUpRight className="h-4 w-4 text-red-600" />;
+      case "check":
+        return <ArrowUpRight className="h-4 w-4 text-red-600" />;
+      case "refund":
+        return <ArrowDownLeft className="h-4 w-4 text-green-600" />;
       default:
         return null;
     }
   };
+
+  const isCreditCard = bankAccount?.accountType === "credit_card";
 
   const calculateRunningBalance = () => {
     if (!transactions || !bankAccount) return [];
@@ -325,10 +333,24 @@ export default function BankRegister() {
     
     return sorted.map(t => {
       const amount = parseFloat(t.amount || "0");
-      if (t.transactionType === "deposit") {
-        balance += amount;
-      } else if (t.transactionType === "withdrawal" || t.transactionType === "transfer") {
-        balance -= amount;
+      if (t.transactionType === "deposit" || t.transactionType === "refund") {
+        if (isCreditCard) {
+          balance -= amount;
+        } else {
+          balance += amount;
+        }
+      } else if (t.transactionType === "withdrawal" || t.transactionType === "transfer" || t.transactionType === "check") {
+        if (isCreditCard) {
+          balance += amount;
+        } else {
+          balance -= amount;
+        }
+      } else if (t.transactionType === "payment") {
+        if (isCreditCard) {
+          balance += amount;
+        } else {
+          balance -= amount;
+        }
       }
       return { ...t, runningBalance: balance };
     }).reverse();
@@ -808,6 +830,9 @@ export default function BankRegister() {
                     <SelectItem value="deposit">Deposit</SelectItem>
                     <SelectItem value="withdrawal">Withdrawal</SelectItem>
                     <SelectItem value="transfer">Transfer</SelectItem>
+                    <SelectItem value="payment">Payment</SelectItem>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="refund">Refund</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -930,12 +955,12 @@ export default function BankRegister() {
                         )}
                       </td>
                       <td className="p-3 text-right text-sm">
-                        {transaction.transactionType === "withdrawal" || transaction.transactionType === "transfer"
+                        {transaction.transactionType === "withdrawal" || transaction.transactionType === "transfer" || transaction.transactionType === "payment" || transaction.transactionType === "check"
                           ? formatCurrency(transaction.amount)
                           : "-"}
                       </td>
                       <td className="p-3 text-right text-sm">
-                        {transaction.transactionType === "deposit"
+                        {transaction.transactionType === "deposit" || transaction.transactionType === "refund"
                           ? formatCurrency(transaction.amount)
                           : "-"}
                       </td>
