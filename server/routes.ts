@@ -80,6 +80,16 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
 
+  db.execute(sql`
+    ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS is_rebilled BOOLEAN DEFAULT false;
+    ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS rebilled_invoice_id INTEGER REFERENCES invoices(id);
+    ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS rebilled_at TIMESTAMP;
+  `).then(() => {
+    console.log('[Data Fix] Ensured bill_items rebill tracking columns exist');
+  }).catch((err: any) => {
+    console.error('[Data Fix] Error ensuring bill_items rebill columns:', err);
+  });
+
   db.execute(sql`ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS linked_transaction_id INTEGER`)
     .then(() => {
       console.log('[Data Fix] Ensured linked_transaction_id column exists');
@@ -3463,6 +3473,7 @@ export async function registerRoutes(
       
       const invoiceId = parseInt(req.params.id);
       await storage.resetExpensesForInvoice(invoiceId);
+      await storage.resetBillItemsForInvoice(invoiceId);
       const deleted = await storage.deleteInvoice(invoiceId);
       if (!deleted) {
         return res.status(404).json({ message: "Invoice not found" });
@@ -5354,6 +5365,38 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error marking expenses as rebilled:", error);
       res.status(500).json({ message: "Failed to mark expenses as rebilled" });
+    }
+  });
+
+  app.get("/api/bill-items/rebillable", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const items = await storage.getUnrebilledBillItems();
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching rebillable bill items:", error);
+      res.status(500).json({ message: "Failed to fetch rebillable bill items" });
+    }
+  });
+
+  app.post("/api/bill-items/mark-rebilled", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { billItemIds, invoiceId } = req.body;
+      if (!Array.isArray(billItemIds) || typeof invoiceId !== 'number') {
+        return res.status(400).json({ message: "Invalid input" });
+      }
+      const success = await storage.markBillItemsAsRebilled(billItemIds, invoiceId);
+      res.json({ success });
+    } catch (error) {
+      console.error("Error marking bill items as rebilled:", error);
+      res.status(500).json({ message: "Failed to mark bill items as rebilled" });
     }
   });
 

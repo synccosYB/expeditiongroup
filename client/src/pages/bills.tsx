@@ -30,7 +30,7 @@ import {
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye, Copy } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye, Copy, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
@@ -38,7 +38,8 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Bill, BillItem, Vendor, Account, BillPayment, BankAccount } from "@shared/schema";
+import type { Bill, BillItem, Vendor, Account, BillPayment, BankAccount, Client, Project } from "@shared/schema";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -63,6 +64,10 @@ const billItemSchema = z.object({
   quantity: z.string().default("1"),
   unitPrice: z.string().min(1, "Price is required"),
   accountId: z.string().optional(),
+  isRebillable: z.boolean().default(false),
+  rebillableClientId: z.string().optional(),
+  rebillableProjectId: z.string().optional(),
+  markupPercent: z.string().optional(),
 });
 
 const billFormSchema = z.object({
@@ -303,6 +308,14 @@ export default function Bills() {
     queryKey: ["/api/bank-accounts"],
   });
 
+  const { data: clients } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
   const form = useForm<BillFormData>({
     resolver: zodResolver(billFormSchema),
     defaultValues: {
@@ -312,11 +325,12 @@ export default function Bills() {
       dueDate: "",
       notes: "",
       documentUrl: "",
-      items: [{ description: "", quantity: "1", unitPrice: "", accountId: "" }],
+      items: [{ description: "", quantity: "1", unitPrice: "", accountId: "", isRebillable: false, rebillableClientId: "", rebillableProjectId: "", markupPercent: "0" }],
     },
   });
 
   const documentUrl = form.watch("documentUrl");
+  const watchedItems = form.watch("items");
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -331,6 +345,10 @@ export default function Bills() {
         unitPrice: item.unitPrice,
         amount: (parseFloat(item.quantity || "1") * parseFloat(item.unitPrice || "0")).toFixed(2),
         accountId: item.accountId ? parseInt(item.accountId) : null,
+        isRebillable: item.isRebillable || false,
+        rebillableClientId: item.isRebillable && item.rebillableClientId ? parseInt(item.rebillableClientId) : null,
+        rebillableProjectId: item.isRebillable && item.rebillableProjectId ? parseInt(item.rebillableProjectId) : null,
+        markupPercent: item.isRebillable ? (item.markupPercent || "0") : "0",
       }));
       
       const totalAmount = items.reduce((sum, item) => sum + parseFloat(item.amount), 0);
@@ -589,7 +607,11 @@ export default function Bills() {
           quantity: item.quantity || "1",
           unitPrice: item.unitPrice || "",
           accountId: item.accountId?.toString() || "",
-        })) || [{ description: "", quantity: "1", unitPrice: "", accountId: "" }],
+          isRebillable: item.isRebillable ?? false,
+          rebillableClientId: item.rebillableClientId?.toString() || "",
+          rebillableProjectId: item.rebillableProjectId?.toString() || "",
+          markupPercent: item.markupPercent || "0",
+        })) || [{ description: "", quantity: "1", unitPrice: "", accountId: "", isRebillable: false, rebillableClientId: "", rebillableProjectId: "", markupPercent: "0" }],
       });
     } else {
       setEditingBill(null);
@@ -612,7 +634,11 @@ export default function Bills() {
         quantity: item.quantity || "1",
         unitPrice: item.unitPrice || "",
         accountId: item.accountId?.toString() || "",
-      })) || [{ description: "", quantity: "1", unitPrice: "", accountId: "" }],
+        isRebillable: item.isRebillable ?? false,
+        rebillableClientId: item.rebillableClientId?.toString() || "",
+        rebillableProjectId: item.rebillableProjectId?.toString() || "",
+        markupPercent: item.markupPercent || "0",
+      })) || [{ description: "", quantity: "1", unitPrice: "", accountId: "", isRebillable: false, rebillableClientId: "", rebillableProjectId: "", markupPercent: "0" }],
     });
     setIsDialogOpen(true);
   };
@@ -662,6 +688,7 @@ export default function Bills() {
   const activeVendors = useMemo(() => vendors?.filter(v => v.isActive), [vendors]);
   const expenseAccounts = useMemo(() => accounts?.filter(a => a.accountType === "expense" && a.isActive), [accounts]);
   const activeBankAccounts = useMemo(() => bankAccounts?.filter(a => a.isActive), [bankAccounts]);
+  const activeClients = useMemo(() => clients?.filter(c => c.status === "active"), [clients]);
 
   if (isLoading) {
     return (
@@ -787,7 +814,7 @@ export default function Bills() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => append({ description: "", quantity: "1", unitPrice: "", accountId: "" })}
+                      onClick={() => append({ description: "", quantity: "1", unitPrice: "", accountId: "", isRebillable: false, rebillableClientId: "", rebillableProjectId: "", markupPercent: "0" })}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Add Item
@@ -880,6 +907,117 @@ export default function Bills() {
                           </Button>
                         )}
                       </div>
+                      <div className="col-span-12">
+                        <div className="flex items-center gap-3 py-1">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.isRebillable`}
+                            render={({ field }) => (
+                              <FormItem className="flex items-center gap-2 space-y-0">
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={(checked) => {
+                                      field.onChange(checked);
+                                      if (!checked) {
+                                        form.setValue(`items.${index}.rebillableClientId`, "");
+                                        form.setValue(`items.${index}.rebillableProjectId`, "");
+                                        form.setValue(`items.${index}.markupPercent`, "0");
+                                      }
+                                    }}
+                                    data-testid={`switch-bill-item-rebillable-${index}`}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-xs text-muted-foreground cursor-pointer">Rebillable</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        {watchedItems?.[index]?.isRebillable && (
+                          <div className="grid grid-cols-3 gap-2 pb-2">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.rebillableClientId`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Bill to Client</FormLabel>
+                                  <Select
+                                    onValueChange={(val) => {
+                                      field.onChange(val);
+                                      form.setValue(`items.${index}.rebillableProjectId`, "");
+                                    }}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger data-testid={`select-bill-item-client-${index}`}>
+                                        <SelectValue placeholder="Select client" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {activeClients?.map((client) => (
+                                        <SelectItem key={client.id} value={client.id.toString()}>
+                                          {client.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.rebillableProjectId`}
+                              render={({ field }) => {
+                                const selectedClientId = watchedItems?.[index]?.rebillableClientId;
+                                const clientProjects = selectedClientId
+                                  ? projects?.filter(p => p.clientId?.toString() === selectedClientId)
+                                  : projects;
+                                return (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Project (Optional)</FormLabel>
+                                    <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || ""}>
+                                      <FormControl>
+                                        <SelectTrigger data-testid={`select-bill-item-project-${index}`}>
+                                          <SelectValue placeholder="No Project / General" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="__none__" data-testid={`select-bill-item-project-none-${index}`}>No Project / General</SelectItem>
+                                        {clientProjects?.map((project) => (
+                                          <SelectItem key={project.id} value={project.id.toString()}>
+                                            {project.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.markupPercent`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Markup %</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.1"
+                                      placeholder="0"
+                                      {...field}
+                                      data-testid={`input-bill-item-markup-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -966,9 +1104,15 @@ export default function Bills() {
                       <FileText className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium">{bill.vendor?.name}</p>
                         {getStatusBadge(bill)}
+                        {bill.items?.some(item => item.isRebillable) && (
+                          <Badge variant="outline" data-testid={`badge-bill-rebillable-${bill.id}`}>
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Rebillable
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         {bill.billNumber && <span>#{bill.billNumber}</span>}

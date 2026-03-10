@@ -780,6 +780,9 @@ export const billItems = pgTable("bill_items", {
   rebillableClientId: integer("rebillable_client_id").references(() => clients.id),
   rebillableProjectId: integer("rebillable_project_id").references(() => projects.id),
   markupPercent: varchar("markup_percent", { length: 10 }),
+  isRebilled: boolean("is_rebilled").default(false),
+  rebilledInvoiceId: integer("rebilled_invoice_id").references(() => invoices.id),
+  rebilledAt: timestamp("rebilled_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

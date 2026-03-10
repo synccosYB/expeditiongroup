@@ -407,6 +407,9 @@ export interface IStorage {
   updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined>;
   deleteBill(id: number): Promise<boolean>;
   getNextBillNumber(): Promise<string>;
+  getUnrebilledBillItems(): Promise<(BillItem & { bill?: Bill; vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]>;
+  markBillItemsAsRebilled(billItemIds: number[], invoiceId: number): Promise<boolean>;
+  resetBillItemsForInvoice(invoiceId: number): Promise<boolean>;
 
   // Bookkeeping - Bill Payments
   getBillPayment(id: number): Promise<BillPayment | undefined>;
@@ -2564,6 +2567,51 @@ export class DatabaseStorage implements IStorage {
     const lastNumber = parseInt(lastBill.billNumber.split('-')[2] || '0');
     const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
     return `BILL-${currentYear}-${nextNumber}`;
+  }
+
+  async getUnrebilledBillItems(): Promise<(BillItem & { bill?: Bill; vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]> {
+    const result = await db
+      .select()
+      .from(billItems)
+      .leftJoin(bills, eq(billItems.billId, bills.id))
+      .leftJoin(vendors, eq(bills.vendorId, vendors.id))
+      .leftJoin(clients, eq(billItems.rebillableClientId, clients.id))
+      .leftJoin(projects, eq(billItems.rebillableProjectId, projects.id))
+      .where(and(
+        eq(billItems.isRebillable, true),
+        or(
+          eq(billItems.isRebilled, false),
+          isNull(billItems.isRebilled)
+        )
+      ))
+      .orderBy(desc(bills.billDate));
+
+    return result.map(r => ({
+      ...r.bill_items,
+      bill: r.bills || undefined,
+      vendor: r.vendors || undefined,
+      rebillableClient: r.clients || undefined,
+      rebillableProject: r.projects || undefined,
+    }));
+  }
+
+  async markBillItemsAsRebilled(billItemIds: number[], invoiceId: number): Promise<boolean> {
+    if (billItemIds.length === 0) return true;
+
+    const result = await db
+      .update(billItems)
+      .set({ isRebilled: true, rebilledInvoiceId: invoiceId, rebilledAt: new Date() })
+      .where(inArray(billItems.id, billItemIds));
+
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async resetBillItemsForInvoice(invoiceId: number): Promise<boolean> {
+    const result = await db
+      .update(billItems)
+      .set({ isRebilled: false, rebilledInvoiceId: null, rebilledAt: null })
+      .where(eq(billItems.rebilledInvoiceId, invoiceId));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Bookkeeping - Bill Payments

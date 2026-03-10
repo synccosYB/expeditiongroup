@@ -909,14 +909,15 @@ export default function Expenses() {
                               : projects;
                             return (
                               <FormItem>
-                                <FormLabel>Project</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormLabel>Project (Optional)</FormLabel>
+                                <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || ""}>
                                   <FormControl>
                                     <SelectTrigger data-testid="select-rebill-project">
-                                      <SelectValue placeholder="Select project" />
+                                      <SelectValue placeholder="No Project / General" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
+                                    <SelectItem value="__none__" data-testid="select-rebill-project-none">No Project / General</SelectItem>
                                     {clientProjects?.map((project) => (
                                       <SelectItem key={project.id} value={project.id.toString()}>
                                         {project.name}
@@ -924,6 +925,9 @@ export default function Expenses() {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <FormDescription>
+                                  Leave as "No Project" for general rebillable expenses
+                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             );

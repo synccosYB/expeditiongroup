@@ -23,7 +23,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Expense, Vendor, Client, Project } from "@shared/schema";
+import type { Expense, Vendor, Client, Project, Bill, BillItem } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
@@ -36,52 +36,124 @@ type ExpenseWithRelations = Expense & {
   rebillableProject?: Project;
 };
 
+type BillItemWithRelations = BillItem & {
+  bill?: Bill;
+  vendor?: Vendor;
+  rebillableClient?: Client;
+  rebillableProject?: Project;
+};
+
+type RebillableItem = {
+  id: string;
+  type: "expense" | "bill_item";
+  sourceId: number;
+  description: string | null;
+  amount: string;
+  markupPercent: string | null;
+  date: string | Date | null;
+  vendorName?: string;
+  clientId: number | null;
+  clientName?: string;
+  projectId: number | null;
+  projectName?: string;
+  rebillableProject?: Project;
+};
+
+function toRebillableItem(expense: ExpenseWithRelations): RebillableItem {
+  return {
+    id: `expense-${expense.id}`,
+    type: "expense",
+    sourceId: expense.id,
+    description: expense.description,
+    amount: expense.amount,
+    markupPercent: expense.markupPercent,
+    date: expense.expenseDate,
+    vendorName: expense.vendor?.name,
+    clientId: expense.rebillableClientId,
+    clientName: expense.rebillableClient?.name,
+    projectId: expense.rebillableProjectId,
+    projectName: expense.rebillableProject?.name,
+    rebillableProject: expense.rebillableProject,
+  };
+}
+
+function toRebillableItemFromBill(item: BillItemWithRelations): RebillableItem {
+  return {
+    id: `bill-item-${item.id}`,
+    type: "bill_item",
+    sourceId: item.id,
+    description: item.description,
+    amount: item.amount,
+    markupPercent: item.markupPercent,
+    date: item.bill?.billDate || null,
+    vendorName: item.vendor?.name,
+    clientId: item.rebillableClientId,
+    clientName: item.rebillableClient?.name,
+    projectId: item.rebillableProjectId,
+    projectName: item.rebillableProject?.name,
+    rebillableProject: item.rebillableProject,
+  };
+}
+
 export default function RebillCenter() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExpenses, setSelectedExpenses] = useState<Set<number>>(new Set());
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [filterClient, setFilterClient] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
   const [rebillInvoiceDate, setRebillInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [rebillDueDate, setRebillDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
 
-  const { data: expenses, isLoading } = useQuery<ExpenseWithRelations[]>({
+  const { data: expenses, isLoading: expensesLoading } = useQuery<ExpenseWithRelations[]>({
     queryKey: ["/api/expenses/rebillable"],
+  });
+
+  const { data: billItems, isLoading: billItemsLoading } = useQuery<BillItemWithRelations[]>({
+    queryKey: ["/api/bill-items/rebillable"],
   });
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
+  const isLoading = expensesLoading || billItemsLoading;
+
+  const allItems: RebillableItem[] = [
+    ...(expenses?.map(toRebillableItem) || []),
+    ...(billItems?.map(toRebillableItemFromBill) || []),
+  ];
+
   const createInvoiceMutation = useMutation({
-    mutationFn: async (expenseIds: number[]) => {
-      const selectedExpensesList = expenses?.filter(e => expenseIds.includes(e.id)) || [];
-      if (selectedExpensesList.length === 0) return;
+    mutationFn: async (selectedIds: string[]) => {
+      const selectedItemsList = allItems.filter(item => selectedIds.includes(item.id));
+      if (selectedItemsList.length === 0) return;
 
-      const clientId = selectedExpensesList[0].rebillableClientId;
+      const clientId = selectedItemsList[0].clientId;
 
-      const groupedByProject = selectedExpensesList.reduce((groups, expense) => {
-        const projectId = expense.rebillableProjectId || 0;
+      const groupedByProject = selectedItemsList.reduce((groups, item) => {
+        const projectId = item.projectId || 0;
         if (!groups[projectId]) {
           groups[projectId] = [];
         }
-        groups[projectId].push(expense);
+        groups[projectId].push(item);
         return groups;
-      }, {} as Record<number, ExpenseWithRelations[]>);
+      }, {} as Record<number, RebillableItem[]>);
 
       const createdInvoices = [];
 
-      for (const [projectIdStr, projectExpenses] of Object.entries(groupedByProject)) {
+      for (const [projectIdStr, projectItems] of Object.entries(groupedByProject)) {
         const projectId = parseInt(projectIdStr) || null;
 
-        const items = projectExpenses.map(expense => {
-          const baseAmount = parseFloat(expense.amount || "0");
-          const markup = parseFloat(expense.markupPercent || "0");
+        const items = projectItems.map(item => {
+          const baseAmount = parseFloat(item.amount || "0");
+          const markup = parseFloat(item.markupPercent || "0");
           const totalAmount = baseAmount * (1 + markup / 100);
-          
-          const projectLabel = expense.rebillableProject?.name ? `[${expense.rebillableProject.name}] ` : "";
+
+          const projectLabel = item.projectName ? `[${item.projectName}] ` : "";
+          const typeLabel = item.type === "bill_item" ? "[Bill] " : "";
           return {
-            description: `${projectLabel}${expense.description}${expense.vendor ? ` - ${expense.vendor.name}` : ""}`,
+            description: `${typeLabel}${projectLabel}${item.description}${item.vendorName ? ` - ${item.vendorName}` : ""}`,
             quantity: "1",
             unitPrice: totalAmount.toFixed(2),
             amount: totalAmount.toFixed(2),
@@ -104,11 +176,22 @@ export default function RebillCenter() {
         const response = await apiRequest("POST", "/api/invoices", invoicePayload);
         const invoiceData = await response.json();
 
-        const projectExpenseIds = projectExpenses.map(e => e.id);
-        await apiRequest("POST", "/api/expenses/mark-rebilled", {
-          expenseIds: projectExpenseIds,
-          invoiceId: invoiceData.id,
-        });
+        const expenseIds = projectItems.filter(i => i.type === "expense").map(i => i.sourceId);
+        const billItemIds = projectItems.filter(i => i.type === "bill_item").map(i => i.sourceId);
+
+        if (expenseIds.length > 0) {
+          await apiRequest("POST", "/api/expenses/mark-rebilled", {
+            expenseIds,
+            invoiceId: invoiceData.id,
+          });
+        }
+
+        if (billItemIds.length > 0) {
+          await apiRequest("POST", "/api/bill-items/mark-rebilled", {
+            billItemIds,
+            invoiceId: invoiceData.id,
+          });
+        }
 
         createdInvoices.push(invoiceData);
       }
@@ -118,10 +201,12 @@ export default function RebillCenter() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses/rebillable"] });
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bill-items/rebillable"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       const count = Array.isArray(data) ? data.length : 1;
       toast({ title: count > 1 ? `${count} invoices created successfully` : "Invoice created successfully" });
-      setSelectedExpenses(new Set());
+      setSelectedItems(new Set());
       setIsCreateInvoiceOpen(false);
     },
     onError: (error) => {
@@ -144,15 +229,16 @@ export default function RebillCenter() {
     },
   });
 
-  const filteredExpenses = expenses?.filter((expense) => {
-    const matchesSearch = 
-      expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      expense.vendor?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      expense.rebillableClient?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesClient = filterClient === "all" || expense.rebillableClientId?.toString() === filterClient;
-    
-    return matchesSearch && matchesClient;
+  const filteredItems = allItems.filter((item) => {
+    const matchesSearch =
+      item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.vendorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.clientName?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesClient = filterClient === "all" || item.clientId?.toString() === filterClient;
+    const matchesType = filterType === "all" || item.type === filterType;
+
+    return matchesSearch && matchesClient && matchesType;
   });
 
   const formatCurrency = (value: string | null) => {
@@ -163,53 +249,54 @@ export default function RebillCenter() {
     }).format(num);
   };
 
-  const calculateRebillAmount = (expense: ExpenseWithRelations) => {
-    const baseAmount = parseFloat(expense.amount || "0");
-    const markup = parseFloat(expense.markupPercent || "0");
+  const calculateRebillAmount = (item: RebillableItem) => {
+    const baseAmount = parseFloat(item.amount || "0");
+    const markup = parseFloat(item.markupPercent || "0");
     return baseAmount * (1 + markup / 100);
   };
 
-  const toggleExpenseSelection = (id: number) => {
-    const newSelected = new Set(selectedExpenses);
+  const toggleItemSelection = (id: string) => {
+    const newSelected = new Set(selectedItems);
     if (newSelected.has(id)) {
       newSelected.delete(id);
     } else {
       newSelected.add(id);
     }
-    setSelectedExpenses(newSelected);
+    setSelectedItems(newSelected);
   };
 
   const selectAllForClient = (clientId: number) => {
-    const clientExpenses = filteredExpenses?.filter(e => e.rebillableClientId === clientId) || [];
-    const allSelected = clientExpenses.every(e => selectedExpenses.has(e.id));
-    
-    const newSelected = new Set(selectedExpenses);
+    const clientItems = filteredItems.filter(e => e.clientId === clientId);
+    const allSelected = clientItems.every(e => selectedItems.has(e.id));
+
+    const newSelected = new Set(selectedItems);
     if (allSelected) {
-      clientExpenses.forEach(e => newSelected.delete(e.id));
+      clientItems.forEach(e => newSelected.delete(e.id));
     } else {
-      clientExpenses.forEach(e => newSelected.add(e.id));
+      clientItems.forEach(e => newSelected.add(e.id));
     }
-    setSelectedExpenses(newSelected);
+    setSelectedItems(newSelected);
   };
 
-  const selectedExpensesList = expenses?.filter(e => selectedExpenses.has(e.id)) || [];
-  const canCreateInvoice = selectedExpensesList.length > 0 && 
-    selectedExpensesList.every(e => e.rebillableClientId === selectedExpensesList[0].rebillableClientId);
-  
-  const selectedTotal = selectedExpensesList.reduce((sum, e) => sum + calculateRebillAmount(e), 0);
-  const selectedClient = selectedExpensesList[0]?.rebillableClient;
+  const selectedItemsList = allItems.filter(item => selectedItems.has(item.id));
+  const canCreateInvoice = selectedItemsList.length > 0 &&
+    selectedItemsList.every(e => e.clientId === selectedItemsList[0].clientId);
 
-  const groupedByClient = filteredExpenses?.reduce((groups, expense) => {
-    const clientId = expense.rebillableClientId?.toString() || "unknown";
+  const selectedTotal = selectedItemsList.reduce((sum, e) => sum + calculateRebillAmount(e), 0);
+  const selectedClient = selectedItemsList[0]?.clientName;
+
+  const groupedByClient = filteredItems.reduce((groups, item) => {
+    const clientId = item.clientId?.toString() || "unknown";
     if (!groups[clientId]) {
       groups[clientId] = {
-        client: expense.rebillableClient,
-        expenses: [],
+        clientName: item.clientName,
+        clientId: item.clientId,
+        items: [],
       };
     }
-    groups[clientId].expenses.push(expense);
+    groups[clientId].items.push(item);
     return groups;
-  }, {} as Record<string, { client?: Client; expenses: ExpenseWithRelations[] }>);
+  }, {} as Record<string, { clientName?: string; clientId: number | null; items: RebillableItem[] }>);
 
   const activeClients = clients?.filter(c => c.status === "active");
 
@@ -219,7 +306,7 @@ export default function RebillCenter() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold text-foreground">Rebill Center</h1>
-            <p className="text-muted-foreground mt-1">Generate invoices from rebillable expenses</p>
+            <p className="text-muted-foreground mt-1">Generate invoices from rebillable expenses and bill items</p>
           </div>
         </div>
         <ListSkeleton rows={5} />
@@ -232,25 +319,25 @@ export default function RebillCenter() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold text-foreground">Rebill Center</h1>
-          <p className="text-muted-foreground mt-1">Generate invoices from rebillable expenses</p>
+          <p className="text-muted-foreground mt-1">Generate invoices from rebillable expenses and bill items</p>
         </div>
-        {selectedExpenses.size > 0 && (
+        {selectedItems.size > 0 && (
           <Button
             onClick={() => setIsCreateInvoiceOpen(true)}
             disabled={!canCreateInvoice}
             data-testid="button-create-invoice"
           >
             <FileText className="h-4 w-4 mr-2" />
-            Create Invoice ({selectedExpenses.size} items)
+            Create Invoice ({selectedItems.size} items)
           </Button>
         )}
       </div>
 
-      {selectedExpenses.size > 0 && !canCreateInvoice && (
+      {selectedItems.size > 0 && !canCreateInvoice && (
         <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <CardContent className="p-4">
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              Please select expenses for only one client at a time to create an invoice.
+              Please select items for only one client at a time to create an invoice.
             </p>
           </CardContent>
         </Card>
@@ -262,13 +349,23 @@ export default function RebillCenter() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search expenses..."
+                placeholder="Search expenses and bill items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
                 data-testid="input-search-rebillable"
               />
             </div>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-[160px]" data-testid="select-filter-type">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="expense">Expenses</SelectItem>
+                <SelectItem value="bill_item">Bill Items</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={filterClient} onValueChange={setFilterClient}>
               <SelectTrigger className="w-[200px]" data-testid="select-filter-client">
                 <SelectValue placeholder="All clients" />
@@ -285,71 +382,76 @@ export default function RebillCenter() {
           </div>
         </CardHeader>
         <CardContent>
-          {!filteredExpenses || filteredExpenses.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="No unbilled expenses"
-              description="All rebillable expenses have been invoiced"
+              title="No unbilled items"
+              description="All rebillable expenses and bill items have been invoiced"
             />
           ) : (
             <div className="space-y-6">
-              {Object.entries(groupedByClient || {}).map(([clientId, { client, expenses: clientExpenses }]) => (
+              {Object.entries(groupedByClient).map(([clientId, { clientName, clientId: numClientId, items: clientItems }]) => (
                 <div key={clientId} className="border rounded-lg overflow-hidden">
                   <div className="bg-muted/50 p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Checkbox
-                        checked={clientExpenses.every(e => selectedExpenses.has(e.id))}
-                        onCheckedChange={() => client && selectAllForClient(client.id)}
+                        checked={clientItems.every(e => selectedItems.has(e.id))}
+                        onCheckedChange={() => numClientId && selectAllForClient(numClientId)}
                         data-testid={`checkbox-client-${clientId}`}
                       />
                       <div>
-                        <p className="font-medium">{client?.name || "Unknown Client"}</p>
+                        <p className="font-medium">{clientName || "Unknown Client"}</p>
                         <p className="text-sm text-muted-foreground">
-                          {clientExpenses.length} expense{clientExpenses.length !== 1 ? "s" : ""} • 
-                          Total: {formatCurrency(clientExpenses.reduce((sum, e) => sum + calculateRebillAmount(e), 0).toString())}
+                          {clientItems.length} item{clientItems.length !== 1 ? "s" : ""} •
+                          Total: {formatCurrency(clientItems.reduce((sum, e) => sum + calculateRebillAmount(e), 0).toString())}
                         </p>
                       </div>
                     </div>
                   </div>
                   <div className="divide-y">
-                    {clientExpenses.map((expense) => (
+                    {clientItems.map((item) => (
                       <div
-                        key={expense.id}
+                        key={item.id}
                         className="flex items-center justify-between p-4 hover:bg-muted/30"
-                        data-testid={`rebillable-expense-row-${expense.id}`}
+                        data-testid={`rebillable-item-row-${item.id}`}
                       >
                         <div className="flex items-center gap-4">
                           <Checkbox
-                            checked={selectedExpenses.has(expense.id)}
-                            onCheckedChange={() => toggleExpenseSelection(expense.id)}
-                            data-testid={`checkbox-expense-${expense.id}`}
+                            checked={selectedItems.has(item.id)}
+                            onCheckedChange={() => toggleItemSelection(item.id)}
+                            data-testid={`checkbox-item-${item.id}`}
                           />
                           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                             <DollarSign className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="font-medium">{expense.description}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{item.description}</p>
+                              <Badge variant={item.type === "expense" ? "secondary" : "outline"} className="text-xs">
+                                {item.type === "expense" ? "Expense" : "Bill Item"}
+                              </Badge>
+                            </div>
                             <div className="flex items-center gap-3 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {expense.expenseDate ? format(parseLocalDateFromISO(expense.expenseDate) || new Date(), "MMM d, yyyy") : "No date"}
+                                {item.date ? format(parseLocalDateFromISO(item.date) || new Date(), "MMM d, yyyy") : "No date"}
                               </span>
-                              {expense.vendor && (
-                                <span>{expense.vendor.name}</span>
+                              {item.vendorName && (
+                                <span>{item.vendorName}</span>
                               )}
-                              {expense.rebillableProject && (
-                                <Badge variant="outline">{expense.rebillableProject.name}</Badge>
+                              {item.projectName && (
+                                <Badge variant="outline">{item.projectName}</Badge>
                               )}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">
-                            {formatCurrency(calculateRebillAmount(expense).toString())}
+                            {formatCurrency(calculateRebillAmount(item).toString())}
                           </p>
-                          {expense.markupPercent && parseFloat(expense.markupPercent) > 0 && (
+                          {item.markupPercent && parseFloat(item.markupPercent) > 0 && (
                             <p className="text-xs text-muted-foreground">
-                              Cost: {formatCurrency(expense.amount)} + {expense.markupPercent}%
+                              Cost: {formatCurrency(item.amount)} + {item.markupPercent}%
                             </p>
                           )}
                         </div>
@@ -368,26 +470,31 @@ export default function RebillCenter() {
           <DialogHeader>
             <DialogTitle>Create Invoice</DialogTitle>
             <DialogDescription>
-              Create an invoice for the selected expenses
+              Create an invoice for the selected items
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground">Bill To</p>
-              <p className="font-medium text-lg">{selectedClient?.name}</p>
+              <p className="font-medium text-lg">{selectedClient}</p>
             </div>
-            
+
             <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
-              {selectedExpensesList.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-3">
+              {selectedItemsList.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3">
                   <div>
-                    <p className="font-medium text-sm">{expense.description}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{item.description}</p>
+                      <Badge variant={item.type === "expense" ? "secondary" : "outline"} className="text-xs">
+                        {item.type === "expense" ? "Expense" : "Bill"}
+                      </Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {expense.expenseDate ? format(new Date(expense.expenseDate), "MMM d, yyyy") : ""}
+                      {item.date ? format(new Date(item.date), "MMM d, yyyy") : ""}
                     </p>
                   </div>
                   <p className="font-medium">
-                    {formatCurrency(calculateRebillAmount(expense).toString())}
+                    {formatCurrency(calculateRebillAmount(item).toString())}
                   </p>
                 </div>
               ))}
@@ -426,7 +533,7 @@ export default function RebillCenter() {
                 Cancel
               </Button>
               <Button
-                onClick={() => createInvoiceMutation.mutate(Array.from(selectedExpenses))}
+                onClick={() => createInvoiceMutation.mutate(Array.from(selectedItems))}
                 disabled={createInvoiceMutation.isPending}
                 data-testid="button-confirm-create-invoice"
               >
