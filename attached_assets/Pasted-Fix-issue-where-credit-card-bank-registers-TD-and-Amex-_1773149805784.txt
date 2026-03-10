@@ -1,0 +1,69 @@
+Fix issue where credit card bank registers (TD and Amex) show no transactions.
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When opening the bank register for the TD credit card and Amex credit card, no transaction records appear. The register displays a balance of $0.00 even though transactions exist for these accounts.
+
+The system should correctly display all related transactions in the register when the TD or Amex credit card account is opened. Users should be able to view the transaction history, balances, and linked payments just like with other bank accounts.
+
+AI Analysis
+
+### Bug Analysis:
+1. **Affected Part of the App:**
+   - The *Bank Register* screen for the TD and Amex credit card accounts.
+
+2. **Screenshot Observations:**
+   - The "TD - Business Solutions" account shows a balance of $585.96 in the header, but the transactions listed have $0.00 for the Payment, Deposit, and Balance columns. This discrepancy indicates that the displayed transactions are not associated with the actual balance.
+   - The interface layout appears correct otherwise, and there are saved records visible but seemingly disconnected from the actual transactions impacting the account balance.
+
+3. **Root Cause:**
+   - **Possible Data Fetching Issue:** The TD and Amex credit card transactions may not be properly retrieved from the database or API. This could stem from:
+     - An incorrect query filter applied to the database.
+     - Obsolete or incorrect account IDs linked to these credit cards in the backend logic.
+     - A mismatch between transactions stored for these specific accounts and those being displayed.
+   - **Frontend Rendering Issue:** The fetched transactions might not be correctly mapped to the corresponding credit card account on the frontend.
+
+4. **Recommended Fix or Next Steps:**
+   - **Backend Investigation:**
+     1. Verify the API endpoint or database query that retrieves transactions for TD and Amex accounts.
+     2. Debug to ensure the mapping between transactions and these specific account IDs is correct.
+     3. Check the integrity of data for TD and Amex accounts in the database to identify any mismatch or corruption.
+   - **Frontend Review:**
+     - Ensure the transactions data received from the API is appropriately bound to the frontend components, ensuring calculations for balances operate correctly.
+   - **Testing:**
+     1. Add test cases for TD and Amex accounts and verify if transactions display correctly.
+     2. Validate balance calculations against displayed transactions in the register.
+
+---
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-register/3
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
