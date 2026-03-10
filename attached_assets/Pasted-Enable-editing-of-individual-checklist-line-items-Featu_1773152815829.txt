@@ -1,0 +1,83 @@
+Enable editing of individual checklist line items.
+Feature Request
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Currently, if there is a mistake or typo in a checklist line item, users cannot edit it and must delete the item and recreate it. The system should allow users to edit any line item directly to correct errors without deleting and recreating it.
+
+Acceptance Criteria:
+
+Users can click on a line item and edit its text or details.
+
+Edited changes are saved and reflected immediately in the checklist.
+
+No deletion/recreation should be required for simple corrections.
+
+AI Analysis
+
+### Analysis of Bug Report and Screenshot
+
+#### Part of the App Affected:
+The affected area appears to be the "Tasks" section within the "Projects" module. The issue concerns editing individual checklist items. The screenshot shows a task detail panel and checklist display, lacking a visible option to edit individual checklist line items.
+
+#### Root Cause Analysis:
+1. **Feature Gap:**
+   - There seems to be no interaction affordance (e.g., "Edit" button or inline textbox) for checklist line items, as shown in the screenshot. 
+   - Current implementation likely supports adding, deleting, or marking items as complete but not editing the text/details of a checklist item.
+
+2. **User Experience Limitation:**
+   - Requiring users to delete and recreate an item for corrections is time-consuming and error-prone, violating standard expectations for such interfaces.
+
+3. **UI Design Deficiency:**
+   - No apparent inline editing functionality is presented in the screenshot (e.g., pencil icon, double-click to edit, or a modal for editing), indicating a missing essential feature.
+
+#### Recommended Fix or Next Steps:
+1. **UI and Feature Enhancement:**
+   - Introduce inline editing functionality directly in the checklist UI.
+     - On clicking a line item or an adjacent "Edit" icon, convert the static text into an editable text field.
+     - On blur or pressing "Enter," save the modified text immediately.
+ 
+2. **Backend Support:**
+   - Ensure the backend API has an endpoint for updating specific checklist items. If missing, implement the necessary methods.
+
+3. **Validation and State Updates:**
+   - Implement appropriate validation for input fields (e.g., preventing empty entries or special characters).
+   - Ensure real-time UI updates after edits without needing page reloads.
+
+4. **Testing:**
+   - Perform both unit and integration testing to confirm seamless addition, deletion, and editing of items.
+
+5. **Optional Enhancements:**
+   - Add history tracking/logging to track changes made to checklist items.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/18
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
