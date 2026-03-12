@@ -259,9 +259,9 @@ export default function BankReconciliationPage() {
   const clearedBalance = transactions?.reduce((sum, t) => {
     if (selectedTransactions.has(t.id)) {
       const amount = parseFloat(t.amount || "0");
-      if (t.transactionType === "deposit") {
+      if (t.transactionType === "deposit" || t.transactionType === "refund") {
         return sum + amount;
-      } else if (t.transactionType === "withdrawal" || t.transactionType === "transfer") {
+      } else if (t.transactionType === "withdrawal" || t.transactionType === "transfer" || t.transactionType === "check" || t.transactionType === "payment") {
         return sum - amount;
       }
     }
