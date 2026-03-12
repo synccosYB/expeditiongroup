@@ -1,0 +1,67 @@
+BUG-0131
+check #115 is not appearing in the bank register.
+Bug
+In Progress
+Medium
+Close
+Resolve
+Status
+In Progress
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+An expense transaction shows $500 paid from NECB Bank using Check #115.
+
+However, when reviewing the bank register, Check #115 does not appear.
+
+AI Analysis
+
+### Bug Analysis:
+1. **Affected part of the app:**
+   - The "Bank Register" under the NECB (North East Community Bank) account does not display Check #115, which should reflect a $500 expense payment.
+
+2. **Observations from screenshot:**
+   - The bank register currently lists transactions sorted by date, type, reference, payee, payment, deposit, and balance. 
+   - Check numbers are displayed in the "Ref" column (e.g., "101" for an existing transaction).
+   - The transaction for Check #115 is missing entirely. It does not appear under "Withdrawals" or elsewhere in the register.
+
+3. **Potential root cause:**
+   - **Data entry issue:** The transaction for Check #115 may not be correctly saved into the ledger or database.
+   - **Filtering problems:** The register may be filtering out this transaction due to incorrect criteria (e.g., filters applied but not visible in the screenshot), or it could be misclassified as another type of transaction.
+   - **Backend issue:** If Check #115 exists in the database but does not appear, it suggests that the API or query fetching data from the database is incomplete or incorrectly formatted.
+
+4. **Recommended fixes/next steps:**
+   - **Data integrity check:** Verify in the database if Check #115 is recorded under NECB Bank. Ensure it has correct attributes like type (`Withdrawal`), reference (`Check #115`), and account (`NECB Bank`).
+   - **Filter log review:** Check for unintended filters applied to the bank register view that are hiding the transaction.
+   - **Backend debugging:** Investigate whether the API or database query fetching the bank register transactions includes Check #115 appropriately. Ensure all transactions for the selected account with correct types (Withdrawals) and references are retrieved.
+   - **Manual reconciliation:** If filters or backend issues cannot be pinpointed, manually reconcile Check #115 on the bank account to test if it becomes visible.
+   - **UI validation:** Confirm that the bank register UI correctly displays all fetched transaction data.
+
+---
+
+### JSON Response:
+```json
+{"severity": "medium", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-register/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
