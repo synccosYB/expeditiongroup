@@ -945,8 +945,8 @@ export default function BankRegister() {
                           </span>
                         </div>
                       </td>
-                      <td className="p-3 text-sm text-muted-foreground">
-                        {transaction.reference || "-"}
+                      <td className="p-3 text-sm text-muted-foreground" data-testid={`text-ref-${transaction.id}`}>
+                        {transaction.transactionType === "check" ? (transaction.checkNumber || transaction.reference || "-") : (transaction.reference || "-")}
                       </td>
                       <td className="p-3">
                         <p className="font-medium text-sm">{transaction.payee || transaction.description || "-"}</p>

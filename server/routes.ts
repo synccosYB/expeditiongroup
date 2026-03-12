@@ -5036,7 +5036,7 @@ export async function registerRoutes(
       if (parsed.bankAccountId) {
         const bankAccount = await storage.getBankAccount(parsed.bankAccountId);
         if (bankAccount) {
-          const transactionType = bankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+          const transactionType = bankAccount.accountType === "credit_card" ? "payment" : (parsed.paymentType === "check" ? "check" : "withdrawal");
           const vendorName = parsed.vendorId ? (await storage.getVendor(parsed.vendorId))?.name : undefined;
           
           const bankTransaction = await storage.createBankTransaction({
@@ -5047,6 +5047,7 @@ export async function registerRoutes(
             vendorId: parsed.vendorId || undefined,
             description: `Expense - ${parsed.description || ""}`,
             reference: parsed.reference || undefined,
+            checkNumber: parsed.paymentType === "check" ? (parsed.reference || undefined) : undefined,
             amount: parsed.amount,
             accountId: parsed.accountId || undefined,
           });
