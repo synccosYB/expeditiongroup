@@ -383,7 +383,7 @@ export interface IStorage {
   deleteBankAccount(id: number): Promise<boolean>;
 
   // Bookkeeping - Bank Transactions
-  getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account })[]>;
+  getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account; linkedSource?: { type: string; id: number; billId?: number } })[]>;
   getBankTransaction(id: number): Promise<BankTransaction | undefined>;
   createBankTransaction(transaction: InsertBankTransaction): Promise<BankTransaction>;
   updateBankTransaction(id: number, transaction: Partial<InsertBankTransaction>): Promise<BankTransaction | undefined>;
@@ -2330,7 +2330,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Bookkeeping - Bank Transactions
-  async getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account })[]> {
+  async getBankTransactions(bankAccountId?: number): Promise<(BankTransaction & { vendor?: Vendor; account?: Account; linkedSource?: { type: string; id: number; billId?: number } })[]> {
     let query = db
       .select()
       .from(bankTransactions)
@@ -2343,10 +2343,84 @@ export class DatabaseStorage implements IStorage {
     }
     
     const result = await query;
+    const txIds = result.map(r => r.bank_transactions.id);
+
+    const expenseLinks = txIds.length > 0
+      ? await db.select({ bankTransactionId: expenses.bankTransactionId, id: expenses.id, billId: expenses.billId })
+          .from(expenses)
+          .where(inArray(expenses.bankTransactionId, txIds))
+      : [];
+
+    const billPaymentLinks = txIds.length > 0
+      ? await db.select({ bankTransactionId: billPayments.bankTransactionId, id: billPayments.id, billId: billPayments.billId })
+          .from(billPayments)
+          .where(inArray(billPayments.bankTransactionId, txIds))
+      : [];
+
+    const depositLinks = txIds.length > 0
+      ? await db.select({ bankTransactionId: deposits.bankTransactionId, id: deposits.id })
+          .from(deposits)
+          .where(inArray(deposits.bankTransactionId, txIds))
+      : [];
+
+    const depositIds = depositLinks.filter(d => d.bankTransactionId).map(d => d.id);
+    const depositPaymentLinks = depositIds.length > 0
+      ? await db.select({ depositId: payments.depositId, invoiceId: payments.invoiceId })
+          .from(payments)
+          .where(inArray(payments.depositId, depositIds))
+      : [];
+
+    const depositInvoiceMap = new Map<number, number | null>();
+    for (const dp of depositPaymentLinks) {
+      if (dp.depositId) {
+        if (!depositInvoiceMap.has(dp.depositId)) {
+          depositInvoiceMap.set(dp.depositId, dp.invoiceId);
+        } else if (depositInvoiceMap.get(dp.depositId) !== dp.invoiceId) {
+          depositInvoiceMap.set(dp.depositId, null);
+        }
+      }
+    }
+
+    const sourceMap = new Map<number, { type: string; id: number; billId?: number }>();
+    for (const e of expenseLinks) {
+      if (e.bankTransactionId) {
+        sourceMap.set(e.bankTransactionId, {
+          type: e.billId ? "bill" : "expense",
+          id: e.billId || e.id,
+          billId: e.billId || undefined,
+        });
+      }
+    }
+    for (const bp of billPaymentLinks) {
+      if (bp.bankTransactionId && !sourceMap.has(bp.bankTransactionId)) {
+        sourceMap.set(bp.bankTransactionId, {
+          type: "bill",
+          id: bp.billId,
+        });
+      }
+    }
+    for (const d of depositLinks) {
+      if (d.bankTransactionId && !sourceMap.has(d.bankTransactionId)) {
+        const singleInvoiceId = depositInvoiceMap.get(d.id);
+        if (singleInvoiceId) {
+          sourceMap.set(d.bankTransactionId, {
+            type: "invoice",
+            id: singleInvoiceId,
+          });
+        } else {
+          sourceMap.set(d.bankTransactionId, {
+            type: "deposit",
+            id: d.id,
+          });
+        }
+      }
+    }
+
     return result.map(r => ({
       ...r.bank_transactions,
       vendor: r.vendors || undefined,
       account: r.accounts || undefined,
+      linkedSource: sourceMap.get(r.bank_transactions.id),
     }));
   }
 

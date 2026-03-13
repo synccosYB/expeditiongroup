@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Check, X, AlertTriangle, CheckCircle, Loader2, DollarSign } from "lucide-react";
+import { ArrowLeft, Check, X, AlertTriangle, CheckCircle, Loader2, DollarSign, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import type { BankAccount, BankTransaction, BankReconciliation } from "@shared/schema";
 
@@ -45,7 +45,41 @@ function safeFormatDate(dateValue: string | Date | null | undefined, formatStr: 
 type TransactionWithRelations = BankTransaction & {
   vendor?: { company: string } | null;
   account?: { name: string } | null;
+  linkedSource?: { type: string; id: number; billId?: number } | null;
 };
+
+const CHECKS_AND_PAYMENTS_TYPES = ["withdrawal", "check", "payment", "transfer"];
+const DEPOSITS_AND_CREDITS_TYPES = ["deposit", "refund"];
+
+function isChecksAndPayments(type: string): boolean {
+  return CHECKS_AND_PAYMENTS_TYPES.includes(type);
+}
+
+function isDepositsAndCredits(type: string): boolean {
+  return DEPOSITS_AND_CREDITS_TYPES.includes(type);
+}
+
+function getTransactionNavigationPath(
+  transaction: TransactionWithRelations,
+  bankAccountId: number
+): string {
+  const link = transaction.linkedSource;
+
+  if (link) {
+    switch (link.type) {
+      case "expense":
+        return "/expenses";
+      case "bill":
+        return `/bills/${link.id}`;
+      case "deposit":
+        return "/deposits";
+      case "invoice":
+        return `/invoices/${link.id}`;
+    }
+  }
+
+  return `/bank-register/${bankAccountId}`;
+}
 
 export default function BankReconciliationPage() {
   const params = useParams<{ id: string }>();
@@ -228,6 +262,11 @@ export default function BankReconciliationPage() {
     updateTransactionMutation.mutate({ id: transactionId, isCleared: isNowCleared });
   };
 
+  const handleTransactionClick = (transaction: TransactionWithRelations) => {
+    const path = getTransactionNavigationPath(transaction, accountId);
+    setLocation(path);
+  };
+
   const handleCancelReconciliation = () => {
     setIsReconciling(false);
     setActiveReconciliation(null);
@@ -271,8 +310,17 @@ export default function BankReconciliationPage() {
   const statementBalance = parseFloat(statementEndingBalance || "0");
   const difference = (statementBalance - clearedBalance).toFixed(2);
 
-  const unclearedTransactions = transactions?.filter(t => !selectedTransactions.has(t.id)) || [];
-  const clearedTransactionsList = transactions?.filter(t => selectedTransactions.has(t.id)) || [];
+  const checksAndPayments = transactions?.filter(t => !isDepositsAndCredits(t.transactionType)) || [];
+  const depositsAndCredits = transactions?.filter(t => isDepositsAndCredits(t.transactionType)) || [];
+
+  const clearedChecksAndPayments = checksAndPayments.filter(t => selectedTransactions.has(t.id));
+  const clearedDepositsAndCredits = depositsAndCredits.filter(t => selectedTransactions.has(t.id));
+
+  const checksAndPaymentsTotal = checksAndPayments.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+  const depositsAndCreditsTotal = depositsAndCredits.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+
+  const clearedChecksAndPaymentsTotal = clearedChecksAndPayments.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+  const clearedDepositsAndCreditsTotal = clearedDepositsAndCredits.reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
 
   if (isLoadingAccount || isLoadingTransactions) {
     return (
@@ -293,6 +341,61 @@ export default function BankReconciliationPage() {
       </div>
     );
   }
+
+  const renderTransactionRow = (transaction: TransactionWithRelations, columnType: "checks" | "deposits") => {
+    const isCleared = selectedTransactions.has(transaction.id);
+    const isDeposit = columnType === "deposits";
+
+    return (
+      <TableRow
+        key={transaction.id}
+        className={`${isCleared ? "bg-muted/30" : ""} group`}
+        data-testid={`transaction-row-${columnType}-${transaction.id}`}
+      >
+        <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isCleared}
+            onCheckedChange={() => handleToggleCleared(transaction.id)}
+            data-testid={`checkbox-clear-${transaction.id}`}
+          />
+        </TableCell>
+        <TableCell
+          className="cursor-pointer hover:underline"
+          onClick={() => handleTransactionClick(transaction)}
+          data-testid={`link-transaction-${transaction.id}`}
+        >
+          {safeFormatDate(transaction.transactionDate, "MM/dd/yyyy")}
+        </TableCell>
+        <TableCell
+          className="cursor-pointer"
+          onClick={() => handleTransactionClick(transaction)}
+        >
+          <Badge variant={isDeposit ? "default" : "secondary"}>
+            {transaction.transactionType}
+          </Badge>
+        </TableCell>
+        <TableCell
+          className="cursor-pointer"
+          onClick={() => handleTransactionClick(transaction)}
+        >
+          {transaction.payee || transaction.vendor?.company || "-"}
+        </TableCell>
+        <TableCell
+          className={`text-right font-mono cursor-pointer ${isDeposit ? "text-green-600" : "text-red-600"}`}
+          onClick={() => handleTransactionClick(transaction)}
+        >
+          ${parseFloat(transaction.amount || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
+        </TableCell>
+        <TableCell className="w-8">
+          <ExternalLink
+            className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+            onClick={() => handleTransactionClick(transaction)}
+            data-testid={`icon-navigate-${transaction.id}`}
+          />
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -405,12 +508,28 @@ export default function BankReconciliationPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-muted-foreground">Opening Balance</p>
                 <p className="text-2xl font-bold" data-testid="text-opening-balance">
                   ${openingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Cleared Checks/Payments</p>
+                <p className="text-2xl font-bold text-red-600" data-testid="text-cleared-checks-payments">
+                  -${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Cleared Deposits/Credits</p>
+                <p className="text-2xl font-bold text-green-600" data-testid="text-cleared-deposits-credits">
+                  +${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
               </CardContent>
             </Card>
@@ -476,109 +595,103 @@ export default function BankReconciliationPage() {
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Uncleared Transactions ({unclearedTransactions.length})</CardTitle>
-              <CardDescription>Check transactions that appear on your bank statement</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {unclearedTransactions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Clear</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Payee</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {unclearedTransactions.map((transaction) => (
-                      <TableRow key={transaction.id} data-testid={`transaction-row-uncleared-${transaction.id}`}>
-                        <TableCell>
-                          <Checkbox
-                            checked={false}
-                            onCheckedChange={() => handleToggleCleared(transaction.id)}
-                            data-testid={`checkbox-clear-${transaction.id}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {safeFormatDate(transaction.transactionDate, "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.transactionType === "deposit" ? "default" : "secondary"}>
-                            {transaction.transactionType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{transaction.payee || transaction.vendor?.company || "-"}</TableCell>
-                        <TableCell>{transaction.description || "-"}</TableCell>
-                        <TableCell className={`text-right font-mono ${transaction.transactionType === "deposit" ? "text-green-600" : "text-red-600"}`}>
-                          {transaction.transactionType === "deposit" ? "+" : "-"}
-                          ${parseFloat(transaction.amount || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </TableCell>
+          <div className="grid gap-6 md:grid-cols-2" data-testid="reconciliation-columns">
+            <Card>
+              <CardHeader>
+                <CardTitle>Checks and Payments ({checksAndPayments.length})</CardTitle>
+                <CardDescription>Withdrawals, checks, payments, and transfers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {checksAndPayments.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">Clear</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Payee</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-8"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">All transactions are cleared</p>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {checksAndPayments.map((transaction) =>
+                        renderTransactionRow(transaction, "checks")
+                      )}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No checks or payments</p>
+                )}
+                <div className="mt-4 pt-4 border-t space-y-2" data-testid="subtotal-checks-payments">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {checksAndPayments.length} item{checksAndPayments.length !== 1 ? "s" : ""}
+                    </span>
+                    <span className="font-mono font-medium text-red-600">
+                      -${checksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {clearedChecksAndPayments.length} cleared
+                    </span>
+                    <span className="font-mono font-medium text-red-600">
+                      -${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Cleared Transactions ({clearedTransactionsList.length})</CardTitle>
-              <CardDescription>Transactions that have been marked as cleared</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {clearedTransactionsList.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Clear</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Payee</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clearedTransactionsList.map((transaction) => (
-                      <TableRow key={transaction.id} className="bg-muted/30" data-testid={`transaction-row-cleared-${transaction.id}`}>
-                        <TableCell>
-                          <Checkbox
-                            checked={true}
-                            onCheckedChange={() => handleToggleCleared(transaction.id)}
-                            data-testid={`checkbox-unclear-${transaction.id}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {safeFormatDate(transaction.transactionDate, "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.transactionType === "deposit" ? "default" : "secondary"}>
-                            {transaction.transactionType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{transaction.payee || transaction.vendor?.company || "-"}</TableCell>
-                        <TableCell>{transaction.description || "-"}</TableCell>
-                        <TableCell className={`text-right font-mono ${transaction.transactionType === "deposit" ? "text-green-600" : "text-red-600"}`}>
-                          {transaction.transactionType === "deposit" ? "+" : "-"}
-                          ${parseFloat(transaction.amount || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </TableCell>
+            <Card>
+              <CardHeader>
+                <CardTitle>Deposits and Credits ({depositsAndCredits.length})</CardTitle>
+                <CardDescription>Deposits and refunds</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {depositsAndCredits.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">Clear</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Payee</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-8"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">No cleared transactions</p>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {depositsAndCredits.map((transaction) =>
+                        renderTransactionRow(transaction, "deposits")
+                      )}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No deposits or credits</p>
+                )}
+                <div className="mt-4 pt-4 border-t space-y-2" data-testid="subtotal-deposits-credits">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {depositsAndCredits.length} item{depositsAndCredits.length !== 1 ? "s" : ""}
+                    </span>
+                    <span className="font-mono font-medium text-green-600">
+                      +${depositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {clearedDepositsAndCredits.length} cleared
+                    </span>
+                    <span className="font-mono font-medium text-green-600">
+                      +${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           <Card>
             <CardHeader>
@@ -616,8 +729,12 @@ export default function BankReconciliationPage() {
               <span className="font-medium">${statementBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Cleared Transactions:</span>
-              <span className="font-medium">{clearedTransactionsList.length}</span>
+              <span className="text-muted-foreground">Cleared Checks/Payments:</span>
+              <span className="font-medium text-red-600">{clearedChecksAndPayments.length} (-${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cleared Deposits/Credits:</span>
+              <span className="font-medium text-green-600">{clearedDepositsAndCredits.length} (+${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
             </div>
           </div>
           <DialogFooter>
