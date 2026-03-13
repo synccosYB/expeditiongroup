@@ -156,6 +156,67 @@ export async function registerRoutes(
   `).then(() => console.log('[Data Fix] Seeded equity accounts'))
     .catch((err: any) => console.log('[Data Fix] Equity accounts seed skipped:', err?.message));
 
+  (async () => {
+    try {
+      const existingExpense16 = await db.execute(sql`
+        SELECT e.id, e.bank_transaction_id, e.bank_account_id, e.expense_date, e.amount, e.reference, e.description,
+               bt.id as bt_id,
+               v.name as vendor_name
+        FROM expenses e
+        LEFT JOIN bank_transactions bt ON bt.id = e.bank_transaction_id
+        LEFT JOIN vendors v ON v.id = e.vendor_id
+        WHERE e.id = 16
+      `);
+      const row = existingExpense16.rows?.[0];
+      if (row && row.bank_transaction_id && !row.bt_id) {
+        const alreadyFixed = await db.execute(sql`
+          SELECT bt.id FROM bank_transactions bt
+          JOIN expenses e ON e.bank_transaction_id = bt.id
+          WHERE e.id = 16
+        `);
+        if (alreadyFixed.rows?.length === 0) {
+          const bankAccountId = row.bank_account_id || 1;
+          const checkNum = row.reference || '115';
+          const amount = row.amount || '500';
+          const payee = row.vendor_name || 'Village Of Wesley Hills';
+          const desc = `Expense - ${row.description || '25 Onderdonk Rd - Planning board application fee'}`;
+
+          const inserted = await db.execute(sql`
+            INSERT INTO bank_transactions (bank_account_id, transaction_date, transaction_type, check_number, amount, payee, description, reference)
+            VALUES (${bankAccountId}, ${row.expense_date}, 'check', ${checkNum}, ${amount}, ${payee}, ${desc}, ${checkNum})
+            RETURNING id
+          `);
+          const newTxId = inserted.rows?.[0]?.id;
+          if (newTxId) {
+            await db.execute(sql`UPDATE expenses SET bank_transaction_id = ${newTxId} WHERE id = 16`);
+            console.log(`[Data Fix] Re-created missing bank transaction for Check #115 (expense 16), new tx id: ${newTxId}`);
+          }
+        } else {
+          console.log('[Data Fix] Check #115 fix skipped: already fixed');
+        }
+      } else {
+        console.log('[Data Fix] Check #115 fix skipped: expense 16 not missing its bank transaction');
+      }
+    } catch (err: any) {
+      console.log('[Data Fix] Check #115 fix error:', err?.message);
+    }
+
+    try {
+      const result = await db.execute(sql`
+        UPDATE bank_transactions bt
+        SET transaction_type = 'check',
+            check_number = COALESCE(NULLIF(TRIM(e.reference), ''), bt.check_number)
+        FROM expenses e
+        WHERE e.payment_type = 'check'
+          AND e.bank_transaction_id = bt.id
+          AND (bt.transaction_type != 'check' OR bt.check_number IS NULL OR bt.check_number = '')
+      `);
+      console.log(`[Data Fix] Updated existing check-expense bank transactions to type=check with check_number (${result.rowCount} rows)`);
+    } catch (err: any) {
+      console.log('[Data Fix] Check transaction type fix error:', err?.message);
+    }
+  })();
+
   const synkdexProxy = async (req: Request, res: any) => {
     try {
       const targetUrl = `${SYNKDEX_URL}${req.path}`;
