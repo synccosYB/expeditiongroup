@@ -398,14 +398,15 @@ export default function BankReconciliationPage() {
   };
 
   const openingBalance = parseFloat(bankAccount?.openingBalance || "0");
+  const isCreditCard = bankAccount?.accountType === "credit_card";
 
   const clearedBalance = transactions?.reduce((sum, t) => {
     if (selectedTransactions.has(t.id)) {
       const amount = parseFloat(t.amount || "0");
       if (t.transactionType === "deposit" || t.transactionType === "refund") {
-        return sum + amount;
+        return isCreditCard ? sum - amount : sum + amount;
       } else if (t.transactionType === "withdrawal" || t.transactionType === "transfer" || t.transactionType === "check" || t.transactionType === "payment") {
-        return sum - amount;
+        return isCreditCard ? sum + amount : sum - amount;
       }
     }
     return sum;
@@ -567,17 +568,17 @@ export default function BankReconciliationPage() {
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground">Cleared Checks/Payments</p>
-                <p className="text-2xl font-bold text-red-600" data-testid="text-cleared-checks-payments">
-                  -${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                <p className="text-sm text-muted-foreground">{isCreditCard ? "Cleared Charges" : "Cleared Checks/Payments"}</p>
+                <p className={`text-2xl font-bold ${isCreditCard ? "text-green-600" : "text-red-600"}`} data-testid="text-cleared-checks-payments">
+                  {isCreditCard ? "+" : "-"}${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground">Cleared Deposits/Credits</p>
-                <p className="text-2xl font-bold text-green-600" data-testid="text-cleared-deposits-credits">
-                  +${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                <p className="text-sm text-muted-foreground">{isCreditCard ? "Cleared Payments/Credits" : "Cleared Deposits/Credits"}</p>
+                <p className={`text-2xl font-bold ${isCreditCard ? "text-red-600" : "text-green-600"}`} data-testid="text-cleared-deposits-credits">
+                  {isCreditCard ? "-" : "+"}${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
               </CardContent>
             </Card>
@@ -651,7 +652,7 @@ export default function BankReconciliationPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TransactionColumn
-                  title="Checks and Payments"
+                  title={isCreditCard ? "Charges" : "Checks and Payments"}
                   transactions={unclearedOutgoing}
                   selectedTransactions={selectedTransactions}
                   onToggleCleared={handleToggleCleared}
@@ -659,7 +660,7 @@ export default function BankReconciliationPage() {
                   isCleared={false}
                 />
                 <TransactionColumn
-                  title="Deposits and Other Credits"
+                  title={isCreditCard ? "Payments and Credits" : "Deposits and Other Credits"}
                   transactions={unclearedIncoming}
                   selectedTransactions={selectedTransactions}
                   onToggleCleared={handleToggleCleared}
@@ -678,7 +679,7 @@ export default function BankReconciliationPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <TransactionColumn
-                  title="Checks and Payments"
+                  title={isCreditCard ? "Charges" : "Checks and Payments"}
                   transactions={clearedOutgoing}
                   selectedTransactions={selectedTransactions}
                   onToggleCleared={handleToggleCleared}
@@ -686,7 +687,7 @@ export default function BankReconciliationPage() {
                   isCleared={true}
                 />
                 <TransactionColumn
-                  title="Deposits and Other Credits"
+                  title={isCreditCard ? "Payments and Credits" : "Deposits and Other Credits"}
                   transactions={clearedIncoming}
                   selectedTransactions={selectedTransactions}
                   onToggleCleared={handleToggleCleared}
@@ -733,12 +734,12 @@ export default function BankReconciliationPage() {
               <span className="font-medium">${statementBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Cleared Checks/Payments:</span>
-              <span className="font-medium text-red-600">{clearedOutgoing.length} (-${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
+              <span className="text-muted-foreground">{isCreditCard ? "Cleared Charges:" : "Cleared Checks/Payments:"}</span>
+              <span className={`font-medium ${isCreditCard ? "text-green-600" : "text-red-600"}`}>{clearedOutgoing.length} ({isCreditCard ? "+" : "-"}${clearedChecksAndPaymentsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Cleared Deposits/Credits:</span>
-              <span className="font-medium text-green-600">{clearedIncoming.length} (+${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
+              <span className="text-muted-foreground">{isCreditCard ? "Cleared Payments/Credits:" : "Cleared Deposits/Credits:"}</span>
+              <span className={`font-medium ${isCreditCard ? "text-red-600" : "text-green-600"}`}>{clearedIncoming.length} ({isCreditCard ? "-" : "+"}${clearedDepositsAndCreditsTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })})</span>
             </div>
           </div>
           <DialogFooter>
