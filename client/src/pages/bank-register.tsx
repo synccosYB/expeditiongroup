@@ -59,11 +59,12 @@ import { format } from "date-fns";
 
 const transactionFormSchema = z.object({
   transactionDate: z.string().min(1, "Date is required"),
-  transactionType: z.enum(["deposit", "withdrawal", "transfer", "owner_contribution", "owner_distribution"]),
+  transactionType: z.enum(["deposit", "withdrawal", "transfer", "check", "owner_contribution", "owner_distribution"]),
   amount: z.string().min(1, "Amount is required"),
   payee: z.string().optional(),
   description: z.string().optional(),
   reference: z.string().optional(),
+  checkNumber: z.string().optional(),
   vendorId: z.string().optional(),
   accountId: z.string().optional(),
   transferToBankAccountId: z.string().optional(),
@@ -147,6 +148,7 @@ export default function BankRegister() {
         payee: data.payee || (autoMemo ? autoMemo : undefined),
         description: data.description || autoMemo,
         reference: data.reference,
+        checkNumber: data.transactionType === "check" ? (data.checkNumber || data.reference || undefined) : undefined,
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
         transferToBankAccountId: data.transferToBankAccountId ? parseInt(data.transferToBankAccountId) : null,
@@ -195,6 +197,7 @@ export default function BankRegister() {
         payee: data.payee || (autoMemo ? autoMemo : undefined),
         description: data.description || autoMemo,
         reference: data.reference,
+        checkNumber: data.transactionType === "check" ? (data.checkNumber || data.reference || undefined) : undefined,
         vendorId: data.vendorId ? parseInt(data.vendorId) : null,
         accountId: data.accountId ? parseInt(data.accountId) : null,
         transferToBankAccountId: data.transferToBankAccountId ? parseInt(data.transferToBankAccountId) : null,
@@ -264,11 +267,12 @@ export default function BankRegister() {
       setEditingTransaction(transaction);
       form.reset({
         transactionDate: transaction.transactionDate ? new Date(transaction.transactionDate).toISOString().split("T")[0] : "",
-        transactionType: transaction.transactionType as "deposit" | "withdrawal" | "transfer",
+        transactionType: transaction.transactionType as "deposit" | "withdrawal" | "transfer" | "check",
         amount: transaction.amount || "",
         payee: transaction.payee || "",
         description: transaction.description || "",
         reference: transaction.reference || "",
+        checkNumber: transaction.checkNumber || "",
         vendorId: transaction.vendorId?.toString() || "",
         accountId: transaction.accountId?.toString() || "",
         transferToBankAccountId: transaction.transferToBankAccountId?.toString() || "",
@@ -522,6 +526,7 @@ export default function BankRegister() {
                           <SelectContent>
                             <SelectItem value="deposit">Deposit</SelectItem>
                             <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                            <SelectItem value="check">Check</SelectItem>
                             <SelectItem value="transfer">Transfer</SelectItem>
                             <SelectItem value="owner_contribution">Owner's Contribution</SelectItem>
                             <SelectItem value="owner_distribution">Owner's Distribution</SelectItem>
@@ -570,6 +575,25 @@ export default function BankRegister() {
                     )}
                   />
                 </div>
+                {transactionType === "check" && (
+                  <FormField
+                    control={form.control}
+                    name="checkNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Check Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Check number"
+                            {...field}
+                            data-testid="input-transaction-check-number"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="payee"

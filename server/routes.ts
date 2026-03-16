@@ -5269,17 +5269,21 @@ export async function registerRoutes(
               const adjusted = newBankAccount.accountType === "credit_card" ? bal + newAmount : bal - newAmount;
               await storage.updateBankAccount(newBankAccountId, { currentBalance: adjusted.toFixed(2) });
               
-              const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
+              const paymentType = parsed.paymentType !== undefined ? parsed.paymentType : currentExpense.paymentType;
+              const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : (paymentType === "check" ? "check" : "withdrawal");
+              const checkNumber = paymentType === "check" ? (reference || null) : null;
               
               if (currentExpense.bankTransactionId && oldBankAccountId === newBankAccountId) {
                 // Same bank account - update existing transaction
                 await storage.updateBankTransaction(currentExpense.bankTransactionId, {
                   bankAccountId: newBankAccountId,
                   transactionDate: expenseDate,
+                  transactionType,
                   amount: (parsed.amount || currentExpense.amount),
                   payee: vendorName || "Expense Payment",
                   description: `Expense - ${description}`,
-                  reference: reference || undefined,
+                  reference: reference || null,
+                  checkNumber,
                 });
               } else {
                 // New bank account or first time - create new transaction
@@ -5289,7 +5293,8 @@ export async function registerRoutes(
                   transactionType,
                   payee: vendorName || "Expense Payment",
                   description: `Expense - ${description}`,
-                  reference: reference || undefined,
+                  reference: reference || null,
+                  checkNumber,
                   amount: parsed.amount || currentExpense.amount,
                   accountId: accountId || undefined,
                 });
@@ -5303,17 +5308,25 @@ export async function registerRoutes(
             updateData.status = "pending";
           }
         } else if (oldBankAccountId && currentExpense.bankTransactionId) {
-          // No balance/account change, but update transaction metadata if description, vendor, etc changed
+          // No balance/account change, but update transaction metadata if description, vendor, paymentType, etc changed
           const metadataChanged = parsed.description !== undefined || parsed.vendorId !== undefined || 
-                                  parsed.reference !== undefined || parsed.expenseDate !== undefined;
+                                  parsed.reference !== undefined || parsed.expenseDate !== undefined ||
+                                  parsed.paymentType !== undefined;
           if (metadataChanged) {
             const vendorId = parsed.vendorId !== undefined ? parsed.vendorId : currentExpense.vendorId;
             const vendorName = vendorId ? (await storage.getVendor(vendorId))?.name : undefined;
+            const reference = (parsed.reference !== undefined ? parsed.reference : currentExpense.reference) || null;
+            const paymentType = parsed.paymentType !== undefined ? parsed.paymentType : currentExpense.paymentType;
+            const bankAccount = await storage.getBankAccount(oldBankAccountId);
+            const transactionType = bankAccount?.accountType === "credit_card" ? "payment" : (paymentType === "check" ? "check" : "withdrawal");
+            const checkNumber = paymentType === "check" ? (reference || null) : null;
             await storage.updateBankTransaction(currentExpense.bankTransactionId, {
               transactionDate: parsed.expenseDate || currentExpense.expenseDate,
+              transactionType,
               payee: vendorName || "Expense Payment",
               description: `Expense - ${parsed.description || currentExpense.description || ""}`,
-              reference: (parsed.reference !== undefined ? parsed.reference : currentExpense.reference) || undefined,
+              reference,
+              checkNumber,
             });
           }
         }
