@@ -7,7 +7,7 @@ import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills } from "@shared/schema";
+import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -4855,8 +4855,43 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const transactions = await storage.getBankTransactions(parseInt(req.params.id));
-      res.json(transactions);
+      const txns = await storage.getBankTransactions(parseInt(req.params.id));
+
+      const txnIds = txns.map(t => t.id);
+      if (txnIds.length === 0) {
+        return res.json(txns);
+      }
+
+      const [linkedExpenses, linkedBillPayments, linkedDeposits] = await Promise.all([
+        db.select({ bankTransactionId: expenses.bankTransactionId, id: expenses.id })
+          .from(expenses)
+          .where(sql`${expenses.bankTransactionId} IN (${sql.join(txnIds.map(id => sql`${id}`), sql`, `)})`),
+        db.select({ bankTransactionId: billPayments.bankTransactionId, id: billPayments.id, billId: billPayments.billId })
+          .from(billPayments)
+          .where(sql`${billPayments.bankTransactionId} IN (${sql.join(txnIds.map(id => sql`${id}`), sql`, `)})`),
+        db.select({ bankTransactionId: deposits.bankTransactionId, id: deposits.id })
+          .from(deposits)
+          .where(sql`${deposits.bankTransactionId} IN (${sql.join(txnIds.map(id => sql`${id}`), sql`, `)})`),
+      ]);
+
+      const expenseMap = new Map<number, number>();
+      linkedExpenses.forEach(e => { if (e.bankTransactionId) expenseMap.set(e.bankTransactionId, e.id); });
+
+      const billPaymentMap = new Map<number, { billPaymentId: number; billId: number }>();
+      linkedBillPayments.forEach(bp => { if (bp.bankTransactionId) billPaymentMap.set(bp.bankTransactionId, { billPaymentId: bp.id, billId: bp.billId }); });
+
+      const depositMap = new Map<number, number>();
+      linkedDeposits.forEach(d => { if (d.bankTransactionId) depositMap.set(d.bankTransactionId, d.id); });
+
+      const enriched = txns.map(t => ({
+        ...t,
+        linkedExpenseId: expenseMap.get(t.id) || null,
+        linkedBillPaymentId: billPaymentMap.get(t.id)?.billPaymentId || null,
+        linkedBillId: billPaymentMap.get(t.id)?.billId || null,
+        linkedDepositId: depositMap.get(t.id) || null,
+      }));
+
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching bank transactions:", error);
       res.status(500).json({ message: "Failed to fetch bank transactions" });
