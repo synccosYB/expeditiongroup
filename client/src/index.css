@@ -334,13 +334,29 @@
   #synkdex-widget,
   [class*="sdx-"],
   [id*="synkdex"],
-  [data-api-key],
+  script[data-api-key][src*="synkdex"],
   header {
     display: none !important;
     visibility: hidden !important;
     width: 0 !important;
     height: 0 !important;
     overflow: hidden !important;
+    position: absolute !important;
+    left: -9999px !important;
+  }
+
+  #synkdex-widget iframe,
+  .sdx-overlay iframe,
+  [id*="synkdex"] iframe,
+  [class*="sdx-"] iframe,
+  iframe[src*="synkdex"],
+  iframe[id*="synkdex"],
+  iframe[id*="sdx"],
+  iframe[class*="sdx"] {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
     position: absolute !important;
     left: -9999px !important;
   }

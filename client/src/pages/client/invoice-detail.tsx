@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
+import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +45,11 @@ export default function ClientInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
 
   const invoiceId = parseInt(id || "0");
+
+  useEffect(() => {
+    const cleanup = installPrintListeners();
+    return cleanup;
+  }, []);
 
   const { data: invoice, isLoading } = useQuery<InvoiceWithRelations>({
     queryKey: ["/api/client/invoices", id],
@@ -118,37 +125,9 @@ export default function ClientInvoiceDetail() {
   };
 
   const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = invoice?.invoiceNumber || "Invoice";
-
-    const htmlEl = document.documentElement;
-    const wasDark = htmlEl.classList.contains("dark");
-    if (wasDark) {
-      htmlEl.classList.remove("dark");
-    }
-
-    const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
-    const widgetOverlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
-    const widgetRoot = document.getElementById("synkdex-widget") as HTMLElement | null;
-    if (widgetBtn) widgetBtn.style.setProperty("display", "none", "important");
-    if (widgetOverlay) widgetOverlay.style.setProperty("display", "none", "important");
-    if (widgetRoot) widgetRoot.style.setProperty("display", "none", "important");
-
-    const restore = () => {
-      if (wasDark) {
-        htmlEl.classList.add("dark");
-      }
-      if (widgetBtn) widgetBtn.style.removeProperty("display");
-      if (widgetOverlay) widgetOverlay.style.removeProperty("display");
-      if (widgetRoot) widgetRoot.style.removeProperty("display");
-      document.title = originalTitle;
-    };
-
-    window.addEventListener("afterprint", restore, { once: true });
-
-    setTimeout(() => {
-      window.print();
-    }, 150);
+    handlePrintWithWidgetRemoval({
+      documentTitle: invoice?.invoiceNumber || "Invoice",
+    });
   };
 
   return (

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Printer, Landmark } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
+import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
 import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 import type { BankAccount, BankTransaction } from "@shared/schema";
 
@@ -32,6 +34,11 @@ export default function BankAccountDetail() {
   const { id } = useParams<{ id: string }>();
   const accountId = id || "";
 
+  useEffect(() => {
+    const cleanup = installPrintListeners();
+    return cleanup;
+  }, []);
+
   const { data: account, isLoading } = useQuery<BankAccount>({
     queryKey: ["/api/bank-accounts", parseInt(accountId)],
     enabled: !!accountId,
@@ -43,37 +50,9 @@ export default function BankAccountDetail() {
   });
 
   const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = account?.name || "Bank Account";
-
-    const htmlEl = document.documentElement;
-    const wasDark = htmlEl.classList.contains("dark");
-    if (wasDark) {
-      htmlEl.classList.remove("dark");
-    }
-
-    const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
-    const widgetOverlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
-    const widgetRoot = document.getElementById("synkdex-widget") as HTMLElement | null;
-    if (widgetBtn) widgetBtn.style.setProperty("display", "none", "important");
-    if (widgetOverlay) widgetOverlay.style.setProperty("display", "none", "important");
-    if (widgetRoot) widgetRoot.style.setProperty("display", "none", "important");
-
-    const restore = () => {
-      if (wasDark) {
-        htmlEl.classList.add("dark");
-      }
-      if (widgetBtn) widgetBtn.style.removeProperty("display");
-      if (widgetOverlay) widgetOverlay.style.removeProperty("display");
-      if (widgetRoot) widgetRoot.style.removeProperty("display");
-      document.title = originalTitle;
-    };
-
-    window.addEventListener("afterprint", restore, { once: true });
-
-    setTimeout(() => {
-      window.print();
-    }, 150);
+    handlePrintWithWidgetRemoval({
+      documentTitle: account?.name || "Bank Account",
+    });
   };
 
   if (isLoading) {
