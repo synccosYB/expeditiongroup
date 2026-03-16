@@ -410,10 +410,11 @@ export default function BankReconciliationPage() {
       }
     }
     return sum;
-  }, openingBalance) || openingBalance;
+  }, openingBalance) ?? openingBalance;
 
   const statementBalance = parseFloat(statementEndingBalance || "0");
-  const difference = (statementBalance - clearedBalance).toFixed(2);
+  const rawDifference = (statementBalance - clearedBalance).toFixed(2);
+  const difference = rawDifference === "-0.00" ? "0.00" : rawDifference;
 
   const unclearedTransactions = transactions?.filter(t => !selectedTransactions.has(t.id)) || [];
   const clearedTransactionsList = transactions?.filter(t => selectedTransactions.has(t.id)) || [];
