@@ -271,6 +271,10 @@ export interface IStorage {
   updateTaskReminder(id: number, reminder: Partial<InsertTaskReminder>): Promise<TaskReminder | undefined>;
   deleteTaskReminder(id: number): Promise<boolean>;
   
+  getOneTimeRecipients(): Promise<{ recipientName: string; recipientEmail: string | null; recipientAddress: string | null }[]>;
+  findClientByName(name: string): Promise<Client | undefined>;
+  linkInvoicesByRecipientName(recipientName: string, clientId: number): Promise<void>;
+
   // Invoices
   getInvoices(): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] })[]>;
   getInvoicesByProjectId(projectId: number): Promise<(Invoice & { items: InvoiceItem[] })[]>;
@@ -529,6 +533,41 @@ export class DatabaseStorage implements IStorage {
   async getClient(id: number): Promise<Client | undefined> {
     const [client] = await db.select().from(clients).where(eq(clients.id, id));
     return client;
+  }
+
+  async getOneTimeRecipients(): Promise<{ recipientName: string; recipientEmail: string | null; recipientAddress: string | null }[]> {
+    const rows = await db
+      .selectDistinctOn([invoices.recipientName], {
+        recipientName: invoices.recipientName,
+        recipientEmail: invoices.recipientEmail,
+        recipientAddress: invoices.recipientAddress,
+      })
+      .from(invoices)
+      .where(
+        and(
+          isNull(invoices.clientId),
+          isNotNull(invoices.recipientName),
+          sql`${invoices.status} IN ('draft', 'sent')`
+        )
+      );
+    return rows.filter(r => r.recipientName !== null) as { recipientName: string; recipientEmail: string | null; recipientAddress: string | null }[];
+  }
+
+  async findClientByName(name: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.name, name)).limit(1);
+    return client;
+  }
+
+  async linkInvoicesByRecipientName(recipientName: string, clientId: number): Promise<void> {
+    await db
+      .update(invoices)
+      .set({ clientId, updatedAt: new Date() })
+      .where(
+        and(
+          isNull(invoices.clientId),
+          eq(invoices.recipientName, recipientName)
+        )
+      );
   }
 
   async createClient(client: InsertClient): Promise<Client> {

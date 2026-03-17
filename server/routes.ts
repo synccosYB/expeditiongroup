@@ -326,6 +326,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/one-time-recipients", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const recipients = await storage.getOneTimeRecipients();
+      res.json(recipients);
+    } catch (error) {
+      console.error("Error fetching one-time recipients:", error);
+      res.status(500).json({ message: "Failed to fetch one-time recipients" });
+    }
+  });
+
   app.get("/api/clients/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -6258,7 +6272,10 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const { paymentDate, clientId, totalAmount, paymentMethod, reference, memo, allocations } = req.body;
+      let { paymentDate, clientId, totalAmount, paymentMethod, reference, memo, allocations, recipientName, recipientEmail, recipientAddress } = req.body;
+      if (!clientId && !recipientName) {
+        return res.status(400).json({ message: "Either clientId or recipientName is required" });
+      }
       if (!allocations || !Array.isArray(allocations) || allocations.length === 0) {
         return res.status(400).json({ message: "At least one invoice allocation is required" });
       }
@@ -6283,6 +6300,22 @@ export async function registerRoutes(
       const allocTotal = allocations.reduce((sum: number, a: any) => sum + parseFloat(a.amount), 0);
       if (totalAmount && Math.abs(allocTotal - parseFloat(totalAmount)) > 0.01) {
         return res.status(400).json({ message: `Allocation total ($${allocTotal.toFixed(2)}) does not match payment amount ($${parseFloat(totalAmount).toFixed(2)})` });
+      }
+
+      if (!clientId && recipientName) {
+        const existingClient = await storage.findClientByName(recipientName);
+        if (existingClient) {
+          clientId = existingClient.id;
+        } else {
+          const newClient = await storage.createClient({
+            name: recipientName,
+            email: recipientEmail || null,
+            address: recipientAddress || null,
+          });
+          clientId = newClient.id;
+        }
+
+        await storage.linkInvoicesByRecipientName(recipientName, clientId);
       }
 
       const createdPayments = [];
@@ -6329,7 +6362,31 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const parsed = insertPaymentSchema.parse({ ...req.body, createdByUserId: req.session.userId });
+
+      const { clientId: rawClientId, recipientName, recipientEmail, recipientAddress, ...rest } = req.body;
+
+      if (!rawClientId && !recipientName) {
+        return res.status(400).json({ message: "Either clientId or recipientName is required" });
+      }
+
+      let resolvedClientId = rawClientId;
+
+      if (!resolvedClientId && recipientName) {
+        const existingClient = await storage.findClientByName(recipientName);
+        if (existingClient) {
+          resolvedClientId = existingClient.id;
+        } else {
+          const newClient = await storage.createClient({
+            name: recipientName,
+            email: recipientEmail || null,
+            address: recipientAddress || null,
+          });
+          resolvedClientId = newClient.id;
+        }
+        await storage.linkInvoicesByRecipientName(recipientName, resolvedClientId);
+      }
+
+      const parsed = insertPaymentSchema.parse({ ...rest, clientId: resolvedClientId, createdByUserId: req.session.userId });
       const payment = await storage.createPayment(parsed);
       
       if (parsed.invoiceId) {

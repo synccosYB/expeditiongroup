@@ -81,6 +81,12 @@ type InvoiceAllocation = {
   allocatedAmount: string;
 };
 
+type OneTimeRecipient = {
+  recipientName: string;
+  recipientEmail: string | null;
+  recipientAddress: string | null;
+};
+
 type PaymentWithRelations = Payment & {
   client: Client;
   invoice?: Invoice;
@@ -114,6 +120,10 @@ export default function UndepositedFunds() {
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+  });
+
+  const { data: oneTimeRecipients } = useQuery<OneTimeRecipient[]>({
+    queryKey: ["/api/one-time-recipients"],
   });
 
   const { data: invoices } = useQuery<(Invoice & { client: Client })[]>({
@@ -187,20 +197,39 @@ export default function UndepositedFunds() {
   const createPaymentMutation = useMutation({
     mutationFn: async (data: PaymentFormData) => {
       const invoiceIdValue = data.invoiceId && data.invoiceId !== "none" ? parseInt(data.invoiceId) : null;
-      const response = await apiRequest("POST", "/api/payments", {
+      const isRecipient = data.clientId.startsWith("recipient:");
+      const recipientName = isRecipient ? data.clientId.slice("recipient:".length) : null;
+      const matchedRecipient = isRecipient ? oneTimeRecipients?.find(r => r.recipientName === recipientName) : null;
+
+      const basePayload = {
         paymentNumber: nextNumber?.paymentNumber || `PMT-${Date.now()}`,
         paymentDate: new Date(data.paymentDate).toISOString(),
-        clientId: parseInt(data.clientId),
         invoiceId: invoiceIdValue,
         amount: data.amount,
         paymentMethod: data.paymentMethod,
         reference: data.reference || null,
         memo: data.memo || null,
-      });
+      };
+
+      const body = isRecipient
+        ? {
+            ...basePayload,
+            recipientName,
+            recipientEmail: matchedRecipient?.recipientEmail || null,
+            recipientAddress: matchedRecipient?.recipientAddress || null,
+          }
+        : {
+            ...basePayload,
+            clientId: parseInt(data.clientId),
+          };
+
+      const response = await apiRequest("POST", "/api/payments", body);
       return response.json();
     },
     onSuccess: () => {
       invalidatePaymentQueries();
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/one-time-recipients"] });
       toast({ title: "Payment recorded successfully" });
       setIsPaymentDialogOpen(false);
       form.reset();
@@ -217,9 +246,12 @@ export default function UndepositedFunds() {
 
   const bulkPaymentMutation = useMutation({
     mutationFn: async ({ formData, allocations }: { formData: PaymentFormData; allocations: InvoiceAllocation[] }) => {
-      const response = await apiRequest("POST", "/api/payments/bulk", {
+      const isRecipient = formData.clientId.startsWith("recipient:");
+      const recipientName = isRecipient ? formData.clientId.slice("recipient:".length) : null;
+      const matchedRecipient = isRecipient ? oneTimeRecipients?.find(r => r.recipientName === recipientName) : null;
+
+      const baseBulkPayload = {
         paymentDate: new Date(formData.paymentDate).toISOString(),
-        clientId: parseInt(formData.clientId),
         totalAmount: formData.amount,
         paymentMethod: formData.paymentMethod,
         reference: formData.reference || null,
@@ -228,11 +260,27 @@ export default function UndepositedFunds() {
           invoiceId: a.invoiceId,
           amount: a.allocatedAmount,
         })),
-      });
+      };
+
+      const body = isRecipient
+        ? {
+            ...baseBulkPayload,
+            recipientName,
+            recipientEmail: matchedRecipient?.recipientEmail || null,
+            recipientAddress: matchedRecipient?.recipientAddress || null,
+          }
+        : {
+            ...baseBulkPayload,
+            clientId: parseInt(formData.clientId),
+          };
+
+      const response = await apiRequest("POST", "/api/payments/bulk", body);
       return response.json();
     },
     onSuccess: () => {
       invalidatePaymentQueries();
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/one-time-recipients"] });
       toast({ title: "Bulk payment recorded successfully" });
       setIsPaymentDialogOpen(false);
       setUseBulkAllocation(false);
@@ -320,7 +368,14 @@ export default function UndepositedFunds() {
   const unpaidInvoices = invoices?.filter(inv => inv.status === 'sent' || inv.status === 'draft');
   const selectedClientId = form.watch("clientId");
   const selectedInvoiceId = form.watch("invoiceId");
-  const clientInvoicesRaw = unpaidInvoices?.filter(inv => inv.clientId.toString() === selectedClientId);
+  const isOneTimeRecipient = selectedClientId?.startsWith("recipient:");
+  const selectedRecipientName = isOneTimeRecipient ? selectedClientId.slice("recipient:".length) : null;
+  const clientInvoicesRaw = unpaidInvoices?.filter(inv => {
+    if (isOneTimeRecipient) {
+      return !inv.clientId && inv.recipientName === selectedRecipientName;
+    }
+    return inv.clientId?.toString() === selectedClientId;
+  });
 
   const clientInvoiceIds = clientInvoicesRaw?.map(inv => inv.id).sort() || [];
   const { data: invoiceBalances, isLoading: balancesLoading } = useQuery<Record<string, { total: number; totalPaid: number; remainingBalance: number }>>({
@@ -416,10 +471,20 @@ export default function UndepositedFunds() {
                           </FormControl>
                           <SelectContent>
                             {clients?.map((client) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
+                              <SelectItem key={client.id} value={client.id.toString()} data-testid={`select-client-${client.id}`}>
                                 {client.name}
                               </SelectItem>
                             ))}
+                            {oneTimeRecipients && oneTimeRecipients.length > 0 && (
+                              <>
+                                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-t mt-1 pt-1">One-time Recipients</div>
+                                {oneTimeRecipients.map((r) => (
+                                  <SelectItem key={`recipient:${r.recipientName}`} value={`recipient:${r.recipientName}`} data-testid={`select-recipient-${r.recipientName}`}>
+                                    {r.recipientName} (one-time)
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
