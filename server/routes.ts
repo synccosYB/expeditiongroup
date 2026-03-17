@@ -3439,6 +3439,7 @@ export async function registerRoutes(
       }
       
       const updateSchema = z.object({
+        invoiceNumber: z.string().trim().min(1, "Invoice number is required").optional(),
         status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
         notes: z.string().nullable().optional(),
         createdAt: z.string().nullable().optional(),
@@ -3466,6 +3467,15 @@ export async function registerRoutes(
       const currentInvoice = await storage.getInvoice(invoiceId);
       if (!currentInvoice) {
         return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      if (parsed.invoiceNumber) {
+        if (parsed.invoiceNumber !== currentInvoice.invoiceNumber) {
+          const existingInvoice = await storage.getInvoiceByNumber(parsed.invoiceNumber);
+          if (existingInvoice && existingInvoice.id !== invoiceId) {
+            return res.status(409).json({ message: `Invoice number "${parsed.invoiceNumber}" is already in use by another invoice` });
+          }
+        }
       }
       
       const { items, ...invoiceFields } = parsed;

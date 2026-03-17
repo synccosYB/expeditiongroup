@@ -538,6 +538,7 @@ function EditInvoiceDialog({
   invoiceId: number;
 }) {
   const { toast } = useToast();
+  const [invoiceNumber, setInvoiceNumber] = useState(invoice.invoiceNumber || "");
   const [recipientName, setRecipientName] = useState(invoice.recipientName || "");
   const [recipientEmail, setRecipientEmail] = useState(invoice.recipientEmail || "");
   const [recipientAddress, setRecipientAddress] = useState(invoice.recipientAddress || "");
@@ -580,11 +581,15 @@ function EditInvoiceDialog({
 
   const updateMutation = useMutation({
     mutationFn: async () => {
+      if (!invoiceNumber.trim()) {
+        throw new Error("Invoice number is required");
+      }
       const validItems = lineItems.filter((i) => i.description.trim());
       if (validItems.length === 0) {
         throw new Error("At least one line item is required");
       }
       const body: any = {
+        invoiceNumber: invoiceNumber.trim(),
         recipientName: recipientName || null,
         recipientEmail: recipientEmail || null,
         recipientAddress: recipientAddress || null,
@@ -626,6 +631,16 @@ function EditInvoiceDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-invoice-number">Invoice Number</Label>
+            <Input
+              id="edit-invoice-number"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+              data-testid="input-edit-invoice-number"
+            />
+          </div>
+
           {!invoice.clientId && (
             <div className="space-y-4">
               <h3 className="text-sm font-medium">Recipient Information</h3>

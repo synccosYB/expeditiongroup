@@ -276,6 +276,7 @@ export interface IStorage {
   getInvoicesByProjectId(projectId: number): Promise<(Invoice & { items: InvoiceItem[] })[]>;
   getInvoicesByClientId(clientId: number): Promise<(Invoice & { project: Project | null; items: InvoiceItem[] })[]>;
   getInvoice(id: number): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] }) | undefined>;
+  getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
   createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }>;
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
@@ -1503,6 +1504,15 @@ export class DatabaseStorage implements IStorage {
       ...newInvoice,
       items: createdItems,
     };
+  }
+
+  async getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined> {
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.invoiceNumber, invoiceNumber))
+      .limit(1);
+    return invoice;
   }
 
   async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
