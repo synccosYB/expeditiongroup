@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { FileText, Plus, Trash2 } from "lucide-react";
-import type { Client } from "@shared/schema";
+import type { Client, Project } from "@shared/schema";
 
 interface ManualInvoiceDialogProps {
   isOpen: boolean;
@@ -40,6 +40,7 @@ interface CustomLineItem {
 export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProps) {
   const { toast } = useToast();
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
@@ -62,6 +63,19 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
     queryKey: ["/api/clients"],
     enabled: isOpen,
   });
+
+  const { data: projects } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: isOpen,
+  });
+
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+    if (selectedClientId) {
+      return projects.filter((p) => p.clientId.toString() === selectedClientId);
+    }
+    return projects;
+  }, [projects, selectedClientId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -99,6 +113,7 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
 
   const resetForm = () => {
     setSelectedClientId("");
+    setSelectedProjectId("");
     setRecipientName("");
     setRecipientEmail("");
     setRecipientAddress("");
@@ -179,6 +194,10 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
       data.clientId = parseInt(selectedClientId);
     }
 
+    if (selectedProjectId) {
+      data.projectId = parseInt(selectedProjectId);
+    }
+
     if (recipientName) data.recipientName = recipientName;
     if (recipientEmail) data.recipientEmail = recipientEmail;
     if (recipientAddress) data.recipientAddress = recipientAddress;
@@ -195,6 +214,7 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
     } else {
       setSelectedClientId(value);
     }
+    setSelectedProjectId("");
   };
 
   return (
@@ -238,6 +258,23 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
                 {clients?.filter(c => c.status !== "archived").map((client) => (
                   <SelectItem key={client.id} value={client.id.toString()}>
                     {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Link to Project (optional)</Label>
+            <Select value={selectedProjectId || "none"} onValueChange={(value) => setSelectedProjectId(value === "none" ? "" : value)}>
+              <SelectTrigger data-testid="select-manual-project">
+                <SelectValue placeholder="Select a project (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Project</SelectItem>
+                {filteredProjects.filter(p => p.status !== "archived").map((project) => (
+                  <SelectItem key={project.id} value={project.id.toString()}>
+                    {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
