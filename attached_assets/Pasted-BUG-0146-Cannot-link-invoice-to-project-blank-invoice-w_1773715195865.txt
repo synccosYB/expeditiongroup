@@ -1,0 +1,71 @@
+BUG-0146
+Cannot link invoice to project – (blank invoice without linking hours)
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Attempted to create a separate invoice without hours tracking, but the system does not allow linking it to a project. Issue occurs when creating standalone invoices.
+
+AI Analysis
+
+### Analysis of Bug Report
+
+1. **Affected Part of the App**:
+   - The "Invoices" module, specifically when creating standalone invoices not linked to hour tracking.
+
+2. **Screenshot Description**:
+   - The UI shows an overview of invoices, including details like Invoice #, Client, Project, Status, Total, Due Date, Created Date, and Actions.
+   - This view appears to be functioning correctly; however, no standalone invoice linked to a project is observable here. The creation of the standalone invoice with this functionality is not detailed on the screen.
+   - The issue likely occurs during the invoice creation process, which appears to be upstream of this display.
+
+3. **Root Cause Analysis**:
+   - Based on the description, the issue originates during invoice creation. The system does not allow linking a blank invoice (without tracking hours) to a project, which may be due to:
+     - A missing option or validation in the invoice creation form to allow linking projects without hours.
+     - A business rule embedded in the logic that considers project-linking only valid when hours are attached, possibly to avoid mismatched data.
+     - Backend validation or constraints rejecting invoices of this nature during the save action.
+
+4. **Recommended Fix or Next Steps**:
+   - **Frontend**: Review the invoice creation form to ensure there is UI support for linking a blank invoice to a project. Check whether:
+     - A dropdown or field exists to select a project.
+     - Any validation rules in the UI prevent the user from linking the invoice to a project without associated hours.
+   - **Backend**: Check API endpoint validations for invoice creation. Specifically:
+     - Audit if the API rejects invoices without hours when a project is selected.
+     - Update the logic to accept invoices linked to projects irrespective of hours.
+   - **Design Consideration**: If this behavior is intentional (business rule), notify the user via an error or message explaining why invoices without hours cannot be linked to a project.
+
+### JSON Summary
+
+```json
+{
+  "severity": "medium", 
+  "category": "functionality"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

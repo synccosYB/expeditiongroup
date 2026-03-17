@@ -1,0 +1,67 @@
+BUG-0147
+Cannot manually edit invoice number
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Currently, invoice numbers cannot be manually changed in the invoice section. Users should have the ability to edit invoice numbers—for example, to enter invoices from a previous year or adjust numbering for special cases.
+
+AI Analysis
+
+### Analysis:
+
+1. **Part of the App Affected:**
+   - The issue is within the `Invoices` section, specifically in the "Invoice List" area, where invoice numbers are displayed in the first column and remain static without any option for manual editing.
+
+2. **Root Cause Analysis:**
+   - From the UI shown in the screenshot, there appears to be no mechanism (e.g., an edit button or editable text field) for users to modify invoice numbers.
+   - This limitation could be due to:
+     - Business rules or constraints that explicitly prohibit editing invoice numbers (e.g., for data integrity reasons).
+     - Overlooked functionality during the development of the invoice handling system.
+     - Absence of appropriate backend API support to allow updates to invoice numbers.
+
+3. **Recommended Fix or Next Steps:**
+   - **UI Changes:** Add an edit button or make the invoice number field inline-editable to enable modifications.
+   - **Validation Rules:** If editing invoice numbers is allowed, implement strict validation to ensure the new numbers follow standardized formats (e.g., "INV-YYYY-NNNN").
+   - **Backend API Updates:** Verify the backend API can support updating invoice numbers. Create or adjust endpoints as necessary to handle edits.
+   - **Permissions Settings:** If invoice editing is intended to be controlled (e.g., reserved for admin roles), ensure proper permissioning is applied.
+
+---
+
+### Example Flow for Resolution
+- **UI Update:** Add an edit icon or make the "Invoice #" field inline-editable.
+- **API Update:** Implement a `PUT` or `PATCH` endpoint to handle invoice number updates.
+- **Error Handling:** Provide user feedback on successful updates or when edits fail due to constraints.
+- **Testing:** Validate both the UI and backend functionality by editing invoice numbers and confirming the updates persist and are reflected across the application.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
