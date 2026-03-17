@@ -1,0 +1,69 @@
+BUG-0152
+Cannot receive payment for client without project
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When going to Undeposited Funds → Receive Payment, clients created for one-time invoices (without a project) do not appear in the selection list. This prevents receiving and applying payments for those clients.
+
+AI Analysis
+
+### Issue Analysis:
+
+1. **Affected Part of the App:**
+   - The issue occurs in the **"Receive Payment"** workflow within the **Undeposited Funds** section. The user is unable to receive payments for clients created for one-time invoices when no associated project exists.
+
+2. **UI State Analysis (from Screenshot):**
+   - The "Receive Payment" section UI looks functional, with a clear display of total undeposited funds and various payments awaiting deposit.
+   - There is no apparent visual error in the UI; however, the described problem suggests a **selection list bug**—specifically, filtering logic prevents one-time clients from appearing in the list.
+
+3. **Root Cause Analysis:**
+   - This issue is likely related to **selection list filtering logic** that restricts clients without associated projects from appearing. 
+   - Possible causes include:
+     - A validation or filter condition that explicitly requires projects for a client to show up in the payment selection list.
+     - A database query/logic mismatch where one-time client entries without projects are incorrectly excluded.
+     - Missing support in backend API or frontend handling for clients with invoices but no projects. 
+
+4. **Recommended Fix:**
+   - **Review filtering logic** for the client list in the "Receive Payment" dropdown. Ensure that clients with invoices, regardless of associated projects, are included.
+   - Examine API requests (if applicable):
+      - Update backend query/logic to include clients without projects in payment-related searches.
+   - If a restriction was intentional, consult business requirements and consider allowing flexibility for one-time clients to resolve this workflow gap.
+
+---
+
+### JSON Summary:
+```json
+{
+  "severity": "high",
+  "category": "functionality"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/undeposited-funds
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
