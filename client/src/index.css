@@ -419,6 +419,26 @@
   .print\\:border-0 {
     border: none !important;
   }
+
+  [data-testid="table-invoice-items"] td:first-child,
+  .invoice-items-table td:first-child {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: pre-wrap !important;
+    max-width: none !important;
+  }
+
+  [data-testid="table-invoice-items"] tr,
+  .invoice-items-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  [data-testid="table-invoice-items"],
+  .invoice-items-table {
+    table-layout: auto !important;
+    width: 100% !important;
+  }
 }
 
 /* Mobile responsive fixes - prevent text overlap on small screens */

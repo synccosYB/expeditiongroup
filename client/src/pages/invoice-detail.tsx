@@ -371,7 +371,7 @@ export default function InvoiceDetail() {
               <tbody>
                 {invoice.items?.map((item, index) => (
                   <tr key={item.id || index} className="border-b" data-testid={`row-item-${item.id}`}>
-                    <td className="py-3">{item.description}</td>
+                    <td className="py-3 whitespace-pre-wrap break-words">{item.description}</td>
                     <td className="text-right py-3">{item.quantity}</td>
                     <td className="text-right py-3">${parseFloat(item.unitPrice || "0").toFixed(2)}</td>
                     <td className="text-right py-3 font-medium">${parseFloat(item.amount || "0").toFixed(2)}</td>
@@ -502,6 +502,8 @@ export default function InvoiceDetail() {
           }
           table {
             border-collapse: collapse;
+            table-layout: auto !important;
+            width: 100% !important;
           }
           th {
             color: #111 !important;
@@ -510,6 +512,16 @@ export default function InvoiceDetail() {
           td {
             color: #111 !important;
             border-bottom: 1px solid #ddd !important;
+          }
+          td:first-child {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: pre-wrap !important;
+            max-width: none !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           [data-testid="invoice-totals"] span {
             color: #111 !important;

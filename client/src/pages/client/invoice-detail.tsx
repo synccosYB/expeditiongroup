@@ -260,7 +260,7 @@ export default function ClientInvoiceDetail() {
           <CardTitle className="text-base">Invoice Items</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="invoice-items-table">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50%]">Description</TableHead>
@@ -272,7 +272,7 @@ export default function ClientInvoiceDetail() {
             <TableBody>
               {invoice.items?.map((item, index) => (
                 <TableRow key={item.id || index}>
-                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="whitespace-pre-wrap break-words">{item.description}</TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
                   <TableCell className="text-right">${parseFloat(item.unitPrice || "0").toFixed(2)}</TableCell>
                   <TableCell className="text-right">${parseFloat(item.amount || "0").toFixed(2)}</TableCell>
@@ -349,6 +349,20 @@ export default function ClientInvoiceDetail() {
         @media print {
           .text-green-600 {
             color: #16a34a !important;
+          }
+          table {
+            table-layout: auto !important;
+            width: 100% !important;
+          }
+          td:first-child {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: pre-wrap !important;
+            max-width: none !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}</style>
