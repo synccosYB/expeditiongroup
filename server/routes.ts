@@ -830,6 +830,24 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const parsed = insertNoteSchema.parse({ ...req.body, userId });
+
+      if (!parsed.projectId && !parsed.taskId && !parsed.associateId && !parsed.clientId) {
+        return res.status(400).json({ message: "Note must be associated with a project, task, associate, or client" });
+      }
+
+      if (parsed.taskId) {
+        const task = await storage.getTask(parsed.taskId);
+        if (!task) {
+          return res.status(400).json({ message: "Referenced task not found" });
+        }
+        if (parsed.projectId && task.projectId !== parsed.projectId) {
+          return res.status(400).json({ message: "Task does not belong to the specified project" });
+        }
+        if (!parsed.projectId) {
+          parsed.projectId = task.projectId;
+        }
+      }
+
       const note = await storage.createNote(parsed);
       res.status(201).json(note);
     } catch (error) {

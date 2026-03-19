@@ -152,7 +152,13 @@ const noteFormSchema = z.object({
   taskId: z.number().optional().nullable(),
   associateId: z.number().optional().nullable(),
   clientId: z.number().optional().nullable(),
-});
+}).refine((data) => {
+  if (data.entityType === "task") return data.taskId != null;
+  return true;
+}, { message: "Please select a task", path: ["taskId"] }).refine((data) => {
+  if (data.entityType === "associate") return data.associateId != null;
+  return true;
+}, { message: "Please select an associate", path: ["associateId"] });
 
 const timeLogFormSchema = z.object({
   date: z.string().min(1, "Date is required"),
@@ -1425,10 +1431,16 @@ export default function ProjectDetail() {
           payload.projectId = parseInt(id!);
           break;
         case "task":
+          if (!data.taskId) {
+            throw new Error("Task must be selected when adding a note to a task");
+          }
           payload.taskId = data.taskId;
           payload.projectId = parseInt(id!);
           break;
         case "associate":
+          if (!data.associateId) {
+            throw new Error("Associate must be selected when adding a note to an associate");
+          }
           payload.associateId = data.associateId;
           break;
         case "client":
@@ -1440,6 +1452,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "orphaned-notes"] });
       toast({ title: "Note added successfully" });
       setIsNoteDialogOpen(false);
       noteForm.reset();
@@ -1493,6 +1506,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "orphaned-notes"] });
       toast({ title: "Note deleted successfully" });
     },
     onError: (error) => {
@@ -2430,22 +2444,22 @@ export default function ProjectDetail() {
           </div>
 
           {orphanedNotes && orphanedNotes.length > 0 && (
-            <div className="mb-4 p-3 rounded-lg border border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20" data-testid="orphaned-notes-banner">
+            <div className="mb-4 p-3 rounded-lg border border-border bg-muted/30" data-testid="orphaned-notes-banner">
               <div className="flex items-start gap-2">
-                <MessageSquare className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                    {orphanedNotes.length} project-level note{orphanedNotes.length !== 1 ? "s" : ""} without task linkage
+                  <p className="text-sm font-medium text-foreground">
+                    {orphanedNotes.length} Project-Level Note{orphanedNotes.length !== 1 ? "s" : ""}
                   </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                    These notes are attached to this project but not linked to any specific task. If they should appear under a task's note history, you can link them below.
+                  <p className="text-xs text-muted-foreground mt-1">
+                    These notes are attached to this project but not linked to any specific task. You can optionally link them to a task below.
                   </p>
                   <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
                     {orphanedNotes.map((note) => (
-                      <div key={note.id} className="flex items-start gap-2 text-xs bg-white/60 dark:bg-black/20 rounded p-2" data-testid={`orphaned-note-${note.id}`}>
+                      <div key={note.id} className="flex items-start gap-2 text-xs bg-background/60 dark:bg-background/20 rounded p-2" data-testid={`orphaned-note-${note.id}`}>
                         <div className="flex-1 min-w-0">
-                          <p className="text-yellow-900 dark:text-yellow-100 line-clamp-2">{note.content}</p>
-                          <span className="text-yellow-600 dark:text-yellow-400">
+                          <p className="text-foreground line-clamp-2">{note.content}</p>
+                          <span className="text-muted-foreground">
                             {note.user?.firstName || note.user?.email || "Unknown"} — {formatLocalDate(note.createdAt)}
                           </span>
                         </div>
