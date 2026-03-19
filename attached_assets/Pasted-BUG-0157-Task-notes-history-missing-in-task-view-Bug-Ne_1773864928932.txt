@@ -1,0 +1,66 @@
+BUG-0157
+Task notes history missing in task view
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+At 2 Summit Drive, the task does not show the full history of notes entered. There were more than 30 notes added in the past, but they only appear in the main Notes section and not within the task under the Veolia Water checklist.
+
+AI Analysis
+
+### Analysis of the Bug
+1. **Affected Part of the App:**
+   - **Task Details Section:** Specifically, the section under "Tasks" for the Veolia Water checklist at the 2 Summit Drive project. The issue pertains to task notes history not displaying in this section as expected.
+
+2. **Root Cause Analysis:**
+   - While the screenshot doesn't display any explicit error or technical debugging information, the issue seems related to how notes are being fetched and displayed for a specific checklist related to a task. Possibilities include:
+     - A filtering or querying issue restricting the number of note records displayed in the checklist view.
+     - Lack of synchronization between the global Notes section and task-specific notes under the Veolia Water checklist.
+     - Improper association between tasks and their corresponding notes in the database.
+     - UI component or data mapping issue causing incomplete rendering of notes.
+
+3. **Next Steps and Recommendations:**
+   - Inspect the database query responsible for fetching the notes for the "Veolia Water checklist." Ensure it's retrieving the full history.
+   - Verify the API endpoint (or relevant backend logic) that populates the task notes section under each checklist. Confirm if all notes for the task are being included.
+   - Debug the rendering logic for the checklist view to ensure it handles large datasets of notes appropriately.
+   - Cross-reference the notes stored in the main "Notes" section with the ones tied to the task to confirm consistency.
+   - Perform user testing to verify the scenario of having 30+ notes in multiple tasks and ensure proper UI display.
+
+4. **Workaround:**
+   - Until resolved, users may navigate to the general "Notes" section to view the complete note history for the task.
+
+---
+
+### JSON Summary:
+
+```json
+{"severity": "medium", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/52
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
