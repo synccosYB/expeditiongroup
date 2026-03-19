@@ -90,6 +90,19 @@ export async function registerRoutes(
     console.error('[Data Fix] Error ensuring bill_items rebill columns:', err);
   });
 
+  db.execute(sql`
+    UPDATE notes SET task_id = NULL
+    WHERE task_id IS NOT NULL
+      AND task_id NOT IN (SELECT id FROM tasks)
+  `).then((result: any) => {
+    const count = result.rowCount ?? 0;
+    if (count > 0) {
+      console.log(`[Data Fix] Recovered ${count} notes that referenced deleted tasks`);
+    }
+  }).catch((err: any) => {
+    console.error('[Data Fix] Error recovering orphaned notes:', err);
+  });
+
   db.execute(sql`ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS linked_transaction_id INTEGER`)
     .then(() => {
       console.log('[Data Fix] Ensured linked_transaction_id column exists');

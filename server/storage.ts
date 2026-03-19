@@ -868,6 +868,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(id: number): Promise<boolean> {
+    await db.update(notes).set({ taskId: null }).where(eq(notes.taskId, id));
     const result = await db.delete(tasks).where(eq(tasks.id, id));
     return (result.rowCount ?? 0) > 0;
   }
