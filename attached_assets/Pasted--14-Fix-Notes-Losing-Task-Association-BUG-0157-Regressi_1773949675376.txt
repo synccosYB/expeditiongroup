@@ -1,0 +1,168 @@
+#14 - Fix Notes Losing Task Association (BUG-0157 Regression)
+
+What & Why
+
+The earlier BUG-0157 fix for task notes history introduced a regression: notes stored in the structured notes table are no longer consistently tied to the task they were created on. As a result, notes that should appear under a task are showing up as orphaned instead.
+
+This needs to be investigated at both the data and code level. The issue may be caused by one of two things:
+
+Data corruption — task_id is being written as NULL or cleared unintentionally.
+
+Display / API regression — notes still have the correct task_id in the database, but the backend response or frontend filtering is dropping or ignoring the association.
+
+The goal is to restore correct task-note linkage for existing notes where possible, prevent future notes from losing their task association, and ensure the orphaned-notes recovery flow still works for any truly unrecoverable records.
+
+Done looks like
+
+Notes appear under their correct tasks in the project detail view
+
+Each task’s Notes badge reflects the correct number of linked notes
+
+Expanding a task shows its linked notes as expected
+
+Notes that legitimately belong to a task no longer appear in the orphaned notes banner
+
+Newly created notes consistently retain their correct taskId / task_id
+
+If any historical notes cannot be auto-recovered, the orphaned notes re-link UI works correctly so users can manually restore the association
+
+Out of scope
+
+Redesigning the notes history feature
+
+Changes to audit log behavior
+
+UI redesign of the orphaned notes banner
+
+Tasks
+1) Diagnose the root cause
+
+Determine whether this is primarily a database issue or a query / rendering issue.
+
+Check:
+
+Whether structured notes currently have task_id = NULL
+
+Whether note creation or note update logic is clearing task_id
+
+Whether the API is omitting taskId from the returned payload
+
+Whether the frontend is misclassifying notes as orphaned even when taskId exists
+
+Inspection target:
+
+Query the notes table and compare:
+
+count of notes with task_id IS NULL
+
+count of notes with non-null task_id
+
+recent notes created after BUG-0157
+
+notes linked to tasks that are missing in the UI
+
+2) Fix the regression in code
+
+Trace what changed in the BUG-0157 fix and correct the breakage.
+
+Likely failure points:
+
+insertNote no longer passes taskId
+
+updateNote overwrites task_id with NULL
+
+schema mapping strips taskId
+
+API serializer / response transform omits taskId
+
+frontend grouping/filter logic treats linked notes as orphaned
+
+The fix should ensure:
+
+task-linked notes preserve their taskId throughout insert, update, read, and render flows
+
+note updates do not null out task_id unless explicitly intended
+
+project detail task grouping uses the actual linked task ID consistently
+
+3) Restore historical data if possible
+
+If task_id values were actually cleared in the database, attempt recovery using available context.
+
+Possible recovery sources:
+
+audit log entries referencing note creation and task context
+
+task activity timestamps matching note creation timestamps
+
+note metadata or legacy fields that still reference the originating task
+
+related API payload history if any is stored
+
+If automatic restoration is reliable, perform a safe backfill.
+
+If not fully reliable:
+
+do not guess associations destructively
+
+leave uncertain records orphaned
+
+verify the orphaned notes re-linking UI works correctly for manual repair
+
+4) Verify end-to-end behavior
+
+Confirm:
+
+creating a note from a task links it to that task
+
+editing a note does not remove the task association
+
+project detail view shows notes under the right task
+
+orphaned banner only shows truly unlinked notes
+
+manual re-linking removes the note from orphaned state and restores it under the correct task
+
+note counts match actual linked notes shown in UI
+
+Relevant files
+
+client/src/pages/project-detail.tsx:660-690,1420-1465
+
+server/routes.ts:748-842,906-945
+
+server/storage.ts:685-727,896-950,1948-1960
+
+shared/schema.ts:184-195
+
+client/src/components/calendar/calendar-task-dialog.tsx
+
+Suggested dev notes
+
+A good first pass is:
+
+inspect DB state,
+
+inspect note create/update payloads,
+
+inspect server response shape,
+
+inspect frontend grouping logic.
+
+That will quickly tell whether this is a write-path regression, read-path regression, or both.
+
+QA checklist
+
+Create note on Task A → note appears under Task A
+
+Create note on Task B → note does not appear under orphaned banner
+
+Edit note on Task A → note remains on Task A
+
+Reload page → note still linked correctly
+
+Task note badge count matches expanded notes list
+
+Truly orphaned note can be re-linked manually
+
+Re-linked note disappears from orphaned banner and appears under chosen task
