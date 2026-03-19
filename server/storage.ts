@@ -172,7 +172,9 @@ export interface IStorage {
   
   // Notes
   createNote(note: InsertNote): Promise<Note>;
+  getNote(id: number): Promise<Note | undefined>;
   getNotesByProjectId(projectId: number): Promise<(Note & { user?: User })[]>;
+  getOrphanedNotesByProjectId(projectId: number): Promise<(Note & { user?: User })[]>;
   updateNote(id: number, note: Partial<InsertNote>): Promise<Note | undefined>;
   deleteNote(id: number): Promise<boolean>;
   
@@ -895,12 +897,36 @@ export class DatabaseStorage implements IStorage {
     return newNote;
   }
 
+  async getNote(id: number): Promise<Note | undefined> {
+    const [note] = await db.select().from(notes).where(eq(notes.id, id));
+    return note;
+  }
+
   async getNotesByProjectId(projectId: number): Promise<(Note & { user?: User })[]> {
     const result = await db
       .select()
       .from(notes)
       .leftJoin(users, eq(notes.userId, users.id))
       .where(eq(notes.projectId, projectId))
+      .orderBy(desc(notes.createdAt));
+    
+    return result.map(r => ({
+      ...r.notes,
+      user: r.users || undefined,
+    }));
+  }
+
+  async getOrphanedNotesByProjectId(projectId: number): Promise<(Note & { user?: User })[]> {
+    const result = await db
+      .select()
+      .from(notes)
+      .leftJoin(users, eq(notes.userId, users.id))
+      .where(and(
+        eq(notes.projectId, projectId),
+        isNull(notes.taskId),
+        isNull(notes.associateId),
+        isNull(notes.clientId),
+      ))
       .orderBy(desc(notes.createdAt));
     
     return result.map(r => ({

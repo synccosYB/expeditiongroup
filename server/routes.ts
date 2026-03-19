@@ -841,6 +841,68 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/projects/:id/orphaned-notes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      const orphanedNotes = await storage.getOrphanedNotesByProjectId(projectId);
+      res.json(orphanedNotes);
+    } catch (error) {
+      console.error("Error fetching orphaned notes:", error);
+      res.status(500).json({ message: "Failed to fetch orphaned notes" });
+    }
+  });
+
+  app.patch("/api/notes/:id/link-task", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const linkSchema = z.object({
+        taskId: z.number(),
+      });
+      const { taskId } = linkSchema.parse(req.body);
+
+      const noteId = parseInt(req.params.id);
+      if (isNaN(noteId)) {
+        return res.status(400).json({ message: "Invalid note ID" });
+      }
+
+      const existingNote = await storage.getNote(noteId);
+      if (!existingNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      const targetTask = await storage.getTask(taskId);
+      if (!targetTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      if (existingNote.projectId !== targetTask.projectId) {
+        return res.status(400).json({ message: "Note and task must belong to the same project" });
+      }
+
+      const note = await storage.updateNote(noteId, { taskId });
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+      res.json(note);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Error linking note to task:", error);
+      res.status(500).json({ message: "Failed to link note to task" });
+    }
+  });
+
   app.patch("/api/notes/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

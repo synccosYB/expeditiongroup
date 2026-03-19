@@ -787,22 +787,25 @@ function TaskHierarchyItem({
             </Popover>
             <Badge variant="outline" size="sm">{task.locationType}</Badge>
           </div>
-          {taskNotes && taskNotes.length > 0 && (
-            <div className="mt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => toggleNotesExpand(task.id)}
-                data-testid={`button-view-notes-${task.id}`}
-              >
-                <MessageSquare className="h-3 w-3 mr-1" />
-                {notesExpanded ? "Hide" : "View"} Note History ({taskNotes.length})
-                {notesExpanded ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
-              </Button>
-              {notesExpanded && (
-                <div className="mt-2 space-y-2 pl-2 border-l-2 border-muted">
-                  {taskNotes.map((note) => (
+          <div className="mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => toggleNotesExpand(task.id)}
+              data-testid={`button-view-notes-${task.id}`}
+            >
+              <MessageSquare className="h-3 w-3 mr-1" />
+              {notesExpanded ? "Hide" : "View"} Note History
+              <Badge variant={taskNotes && taskNotes.length > 0 ? "default" : "secondary"} size="sm" className="ml-1">
+                {taskNotes?.length || 0}
+              </Badge>
+              {notesExpanded ? <ChevronDown className="h-3 w-3 ml-1" /> : <ChevronRight className="h-3 w-3 ml-1" />}
+            </Button>
+            {notesExpanded && (
+              <div className="mt-2 space-y-2 pl-2 border-l-2 border-muted">
+                {taskNotes && taskNotes.length > 0 ? (
+                  taskNotes.map((note) => (
                     <div key={note.id} className="text-xs bg-muted/50 rounded p-2" data-testid={`task-note-${note.id}`}>
                       <p className="text-foreground whitespace-pre-wrap">{note.content}</p>
                       <div className="flex items-center gap-2 mt-1 text-muted-foreground">
@@ -814,11 +817,15 @@ function TaskHierarchyItem({
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground py-2" data-testid={`text-no-notes-${task.id}`}>
+                    No notes linked to this task. Use "Add Note" from the task menu to create one.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Tooltip>
@@ -1138,6 +1145,15 @@ export default function ProjectDetail() {
     queryKey: ["/api/reminders"],
   });
 
+  const { data: orphanedNotes } = useQuery<(Note & { user?: User })[]>({
+    queryKey: ["/api/projects", id, "orphaned-notes"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/projects/${id}/orphaned-notes`);
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
   const taskReminderCounts = new Map<number, number>();
   allReminders?.filter(r => r.status === "pending").forEach(reminder => {
     const count = taskReminderCounts.get(reminder.taskId) || 0;
@@ -1435,6 +1451,20 @@ export default function ProjectDetail() {
         return;
       }
       toast({ title: "Error", description: "Failed to add note", variant: "destructive" });
+    },
+  });
+
+  const linkNoteToTaskMutation = useMutation({
+    mutationFn: async ({ noteId, taskId }: { noteId: number; taskId: number }) => {
+      return await apiRequest("PATCH", `/api/notes/${noteId}/link-task`, { taskId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", id, "orphaned-notes"] });
+      toast({ title: "Note linked to task successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to link note to task", variant: "destructive" });
     },
   });
 
@@ -2398,6 +2428,50 @@ export default function ProjectDetail() {
               </DialogContent>
             </Dialog>
           </div>
+
+          {orphanedNotes && orphanedNotes.length > 0 && (
+            <div className="mb-4 p-3 rounded-lg border border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20" data-testid="orphaned-notes-banner">
+              <div className="flex items-start gap-2">
+                <MessageSquare className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    {orphanedNotes.length} project-level note{orphanedNotes.length !== 1 ? "s" : ""} without task linkage
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                    These notes are attached to this project but not linked to any specific task. If they should appear under a task's note history, you can link them below.
+                  </p>
+                  <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                    {orphanedNotes.map((note) => (
+                      <div key={note.id} className="flex items-start gap-2 text-xs bg-white/60 dark:bg-black/20 rounded p-2" data-testid={`orphaned-note-${note.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-yellow-900 dark:text-yellow-100 line-clamp-2">{note.content}</p>
+                          <span className="text-yellow-600 dark:text-yellow-400">
+                            {note.user?.firstName || note.user?.email || "Unknown"} — {formatLocalDate(note.createdAt)}
+                          </span>
+                        </div>
+                        {allTasksFlattened.length > 0 && (
+                          <Select
+                            onValueChange={(taskId) => {
+                              linkNoteToTaskMutation.mutate({ noteId: note.id, taskId: parseInt(taskId) });
+                            }}
+                          >
+                            <SelectTrigger className="w-[160px] h-7 text-xs" data-testid={`select-link-note-${note.id}`}>
+                              <SelectValue placeholder="Link to task..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allTasksFlattened.map((t) => (
+                                <SelectItem key={t.id} value={t.id.toString()}>{t.displayTitle}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTasks.length > 0 ? (
             <div className="space-y-4">
