@@ -4972,7 +4972,9 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const txns = await storage.getBankTransactions(parseInt(req.params.id));
+      const allTxns = await storage.getBankTransactions(parseInt(req.params.id));
+      const excludeReconciled = req.query.excludeReconciled === "true";
+      const txns = excludeReconciled ? allTxns.filter(t => !t.isReconciled) : allTxns;
 
       const txnIds = txns.map(t => t.id);
       if (txnIds.length === 0) {

@@ -2814,12 +2814,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined> {
-    const [updated] = await db
-      .update(bankReconciliations)
-      .set({ status: 'completed', completedAt: new Date(), completedByUserId: userId, updatedAt: new Date() })
-      .where(eq(bankReconciliations.id, id))
-      .returning();
-    return updated;
+    return await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(bankReconciliations)
+        .set({ status: 'completed', completedAt: new Date(), completedByUserId: userId, updatedAt: new Date() })
+        .where(eq(bankReconciliations.id, id))
+        .returning();
+
+      if (updated) {
+        await tx
+          .update(bankTransactions)
+          .set({ isReconciled: true, reconciliationId: id, updatedAt: new Date() })
+          .where(
+            and(
+              eq(bankTransactions.bankAccountId, updated.bankAccountId),
+              eq(bankTransactions.isCleared, true),
+              eq(bankTransactions.isReconciled, false),
+              lte(bankTransactions.transactionDate, updated.statementDate)
+            )
+          );
+
+        await tx
+          .update(bankAccounts)
+          .set({ openingBalance: updated.statementEndingBalance, updatedAt: new Date() })
+          .where(eq(bankAccounts.id, updated.bankAccountId));
+      }
+
+      return updated;
+    });
   }
 
   // Customer Payments (Undeposited Funds)

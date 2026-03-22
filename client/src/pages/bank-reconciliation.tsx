@@ -210,7 +210,15 @@ export default function BankReconciliationPage() {
   });
 
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery<TransactionWithRelations[]>({
-    queryKey: ["/api/bank-accounts", accountId, "transactions"],
+    queryKey: ["/api/bank-accounts", accountId, "transactions", { excludeReconciled: isReconciling }],
+    queryFn: async () => {
+      const url = isReconciling
+        ? `/api/bank-accounts/${accountId}/transactions?excludeReconciled=true`
+        : `/api/bank-accounts/${accountId}/transactions`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
     enabled: accountId > 0,
   });
 
@@ -288,6 +296,7 @@ export default function BankReconciliationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts", accountId, "reconciliations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts", accountId, "transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts", accountId] });
       setIsReconciling(false);
       setActiveReconciliation(null);
       setSelectedTransactions(new Set());
@@ -359,6 +368,7 @@ export default function BankReconciliationPage() {
   };
 
   const handleToggleCleared = (transactionId: number) => {
+    const previousSelected = new Set(selectedTransactions);
     const newSelected = new Set(selectedTransactions);
     const isNowCleared = !newSelected.has(transactionId);
     
@@ -368,7 +378,14 @@ export default function BankReconciliationPage() {
       newSelected.delete(transactionId);
     }
     setSelectedTransactions(newSelected);
-    updateTransactionMutation.mutate({ id: transactionId, isCleared: isNowCleared });
+    updateTransactionMutation.mutate(
+      { id: transactionId, isCleared: isNowCleared },
+      {
+        onError: () => {
+          setSelectedTransactions(previousSelected);
+        },
+      }
+    );
   };
 
   const handleCancelReconciliation = () => {
