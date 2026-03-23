@@ -230,6 +230,32 @@ export async function registerRoutes(
     }
   })();
 
+  db.execute(sql`
+    UPDATE bank_accounts SET opening_balance = '0.00', updated_at = NOW()
+    WHERE id = 1 AND opening_balance = '25.00'
+  `).then(() => console.log('[Data Fix] Corrected NECB bank account opening balance from $25.00 to $0.00'))
+    .catch((err: any) => console.log('[Data Fix] NECB opening balance fix skipped:', err?.message));
+
+  (async () => {
+    try {
+      const staleResult = await db.execute(sql`
+        DELETE FROM bank_reconciliations
+        WHERE status = 'in_progress'
+          AND id NOT IN (
+            SELECT MAX(id) FROM bank_reconciliations
+            WHERE status = 'in_progress'
+            GROUP BY bank_account_id
+          )
+      `);
+      const count = staleResult.rowCount ?? 0;
+      if (count > 0) {
+        console.log(`[Data Fix] Cleaned up ${count} stale in-progress reconciliation records`);
+      }
+    } catch (err: any) {
+      console.log('[Data Fix] Stale reconciliation cleanup skipped:', err?.message);
+    }
+  })();
+
   const synkdexProxy = async (req: Request, res: any) => {
     try {
       const targetUrl = `${SYNKDEX_URL}${req.path}`;

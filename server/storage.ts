@@ -2800,8 +2800,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation> {
-    const [newReconciliation] = await db.insert(bankReconciliations).values(reconciliation).returning();
-    return newReconciliation;
+    return await db.transaction(async (tx) => {
+      await tx
+        .delete(bankReconciliations)
+        .where(
+          and(
+            eq(bankReconciliations.bankAccountId, reconciliation.bankAccountId),
+            eq(bankReconciliations.status, 'in_progress')
+          )
+        );
+
+      const [newReconciliation] = await tx.insert(bankReconciliations).values(reconciliation).returning();
+      return newReconciliation;
+    });
   }
 
   async updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined> {
