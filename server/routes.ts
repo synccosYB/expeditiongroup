@@ -4911,7 +4911,14 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const bankAccounts = await storage.getBankAccounts();
-      res.json(bankAccounts);
+      const accountsWithReconciliation = await Promise.all(
+        bankAccounts.map(async (account) => {
+          const reconciliations = await storage.getBankReconciliations(account.id);
+          const lastReconciliation = reconciliations.find(r => r.status === "completed") || null;
+          return { ...account, lastReconciliation };
+        })
+      );
+      res.json(accountsWithReconciliation);
     } catch (error) {
       console.error("Error fetching bank accounts:", error);
       res.status(500).json({ message: "Failed to fetch bank accounts" });
