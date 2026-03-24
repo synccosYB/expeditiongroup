@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, Printer, FileText, ExternalLink, Landmark } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
@@ -231,6 +231,14 @@ export default function BillDetail() {
                           {bankAccount?.name && <span> — {bankAccount.name}</span>}
                         </p>
                       </div>
+                      {payment.bankAccountId && payment.bankTransactionId && (
+                        <Link href={`/bank-register/${payment.bankAccountId}?txn=${payment.bankTransactionId}`}>
+                          <Button variant="ghost" size="sm" className="text-xs gap-1" data-testid={`link-bank-register-${payment.id}`}>
+                            <Landmark className="h-3 w-3" />
+                            View in Bank Register
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   );
                 })}

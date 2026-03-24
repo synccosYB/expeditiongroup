@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,26 @@ export default function Deposits() {
   const [expandedDepositId, setExpandedDepositId] = useState<number | null>(null);
   const [viewDepositId, setViewDepositId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [highlightedDepositId, setHighlightedDepositId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = parseInt(highlight);
+      if (!isNaN(id)) {
+        setHighlightedDepositId(id);
+        setExpandedDepositId(id);
+        setTimeout(() => {
+          const el = document.querySelector(`[data-testid="deposit-row-${id}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 500);
+        setTimeout(() => setHighlightedDepositId(null), 3000);
+      }
+    }
+  }, []);
 
   const { data: deposits, isLoading } = useQuery<DepositWithRelations[]>({
     queryKey: ["/api/deposits"],
@@ -103,7 +123,7 @@ export default function Deposits() {
           <CardContent>
             <div className="space-y-2">
               {deposits.map((deposit) => (
-                <div key={deposit.id} className="border rounded-lg" data-testid={`deposit-row-${deposit.id}`}>
+                <div key={deposit.id} className={`border rounded-lg transition-colors duration-500 ${highlightedDepositId === deposit.id ? "bg-primary/10 ring-2 ring-primary/30" : ""}`} data-testid={`deposit-row-${deposit.id}`}>
                   <div className="flex items-center gap-4 p-4">
                     <Button
                       variant="ghost"

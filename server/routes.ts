@@ -7,7 +7,7 @@ import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions } from "@shared/schema";
+import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -6361,8 +6361,42 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const payments = await storage.getPaymentsByInvoiceId(parseInt(req.params.id));
-      res.json(payments);
+      const pmts = await storage.getPaymentsByInvoiceId(parseInt(req.params.id));
+
+      const depositIds = pmts
+        .filter(p => p.depositId)
+        .map(p => p.depositId!);
+
+      let depositInfoMap = new Map<number, { depositDate: string | null; bankAccountId: number; bankAccountName: string; bankTransactionId: number | null }>();
+      if (depositIds.length > 0) {
+        const depositRows = await db
+          .select({
+            id: deposits.id,
+            depositDate: deposits.depositDate,
+            bankAccountId: deposits.bankAccountId,
+            bankTransactionId: deposits.bankTransactionId,
+            bankAccountName: bankAccounts.name,
+          })
+          .from(deposits)
+          .innerJoin(bankAccounts, eq(deposits.bankAccountId, bankAccounts.id))
+          .where(sql`${deposits.id} IN (${sql.join(depositIds.map(id => sql`${id}`), sql`, `)})`);
+
+        depositRows.forEach(d => {
+          depositInfoMap.set(d.id, {
+            depositDate: d.depositDate ? d.depositDate.toISOString() : null,
+            bankAccountId: d.bankAccountId,
+            bankAccountName: d.bankAccountName,
+            bankTransactionId: d.bankTransactionId,
+          });
+        });
+      }
+
+      const enriched = pmts.map(p => ({
+        ...p,
+        deposit: p.depositId ? depositInfoMap.get(p.depositId) || null : null,
+      }));
+
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching invoice payments:", error);
       res.status(500).json({ message: "Failed to fetch invoice payments" });

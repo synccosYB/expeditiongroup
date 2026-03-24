@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -291,6 +291,25 @@ export default function Expenses() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseWithRelations | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<ExpenseWithRelations | null>(null);
+  const [highlightedExpenseId, setHighlightedExpenseId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlight = params.get("highlight");
+    if (highlight) {
+      const id = parseInt(highlight);
+      if (!isNaN(id)) {
+        setHighlightedExpenseId(id);
+        setTimeout(() => {
+          const el = document.querySelector(`[data-testid="expense-row-${id}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 500);
+        setTimeout(() => setHighlightedExpenseId(null), 3000);
+      }
+    }
+  }, []);
 
   const { data: expenses, isLoading } = useQuery<ExpenseWithRelations[]>({
     queryKey: ["/api/expenses"],
@@ -1034,7 +1053,7 @@ export default function Expenses() {
               {filteredExpenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="flex items-center justify-between p-4 hover-elevate"
+                  className={`flex items-center justify-between p-4 hover-elevate transition-colors duration-500 ${highlightedExpenseId === expense.id ? "bg-primary/10 ring-2 ring-primary/30 rounded-lg" : ""}`}
                   data-testid={`expense-row-${expense.id}`}
                 >
                   <div className="flex items-center gap-4">
@@ -1058,7 +1077,11 @@ export default function Expenses() {
                           <span>{expense.vendor.name}</span>
                         )}
                         {expense.bill && (
-                          <span className="text-blue-600 dark:text-blue-400">
+                          <span
+                            className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); setLocation(`/bills/${expense.bill!.id}`); }}
+                            data-testid={`link-bill-${expense.id}`}
+                          >
                             Pays: {expense.bill.billNumber}
                           </span>
                         )}

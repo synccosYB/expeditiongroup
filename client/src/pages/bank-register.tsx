@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList, Search, Filter, X, UserCheck, UserMinus } from "lucide-react";
+import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHorizontal, Pencil, Trash2, ClipboardList, Search, Filter, X, UserCheck, UserMinus, Receipt, FileText, Banknote, ExternalLink } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -76,6 +76,10 @@ type TransactionFormData = z.infer<typeof transactionFormSchema>;
 type TransactionWithRelations = BankTransaction & {
   vendor?: Vendor;
   account?: Account;
+  linkedExpenseId?: number | null;
+  linkedBillPaymentId?: number | null;
+  linkedBillId?: number | null;
+  linkedDepositId?: number | null;
 };
 
 export default function BankRegister() {
@@ -93,6 +97,25 @@ export default function BankRegister() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [filterAmountMin, setFilterAmountMin] = useState("");
   const [filterAmountMax, setFilterAmountMax] = useState("");
+  const [highlightedTxnId, setHighlightedTxnId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const txn = params.get("txn");
+    if (txn) {
+      const id = parseInt(txn);
+      if (!isNaN(id)) {
+        setHighlightedTxnId(id);
+        setTimeout(() => {
+          const el = document.querySelector(`[data-testid="transaction-row-${id}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 500);
+        setTimeout(() => setHighlightedTxnId(null), 3000);
+      }
+    }
+  }, []);
 
   const { data: bankAccount, isLoading: accountLoading } = useQuery<BankAccount>({
     queryKey: ["/api/bank-accounts", accountId],
@@ -948,7 +971,7 @@ export default function BankRegister() {
                   {filteredTransactions.map((transaction) => (
                     <tr
                       key={transaction.id}
-                      className="hover:bg-muted/30"
+                      className={`hover:bg-muted/30 transition-colors duration-500 ${highlightedTxnId === transaction.id ? "bg-primary/10 ring-2 ring-primary/30" : ""}`}
                       data-testid={`transaction-row-${transaction.id}`}
                     >
                       <td className="p-3">
@@ -974,10 +997,40 @@ export default function BankRegister() {
                         {transaction.transactionType === "check" ? (transaction.checkNumber || transaction.reference || "-") : (transaction.reference || "-")}
                       </td>
                       <td className="p-3">
-                        <p className="font-medium text-sm">{transaction.payee || transaction.description || "-"}</p>
-                        {transaction.payee && transaction.description && (
-                          <p className="text-xs text-muted-foreground">{transaction.description}</p>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-sm">{transaction.payee || transaction.description || "-"}</p>
+                            {transaction.payee && transaction.description && (
+                              <p className="text-xs text-muted-foreground">{transaction.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {transaction.linkedExpenseId && (
+                              <Link href={`/expenses?highlight=${transaction.linkedExpenseId}`}>
+                                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1" data-testid={`link-expense-${transaction.id}`}>
+                                  <Receipt className="h-3 w-3" />
+                                  Expense
+                                </Badge>
+                              </Link>
+                            )}
+                            {transaction.linkedBillId && (
+                              <Link href={`/bills/${transaction.linkedBillId}`}>
+                                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1" data-testid={`link-bill-${transaction.id}`}>
+                                  <FileText className="h-3 w-3" />
+                                  Bill
+                                </Badge>
+                              </Link>
+                            )}
+                            {transaction.linkedDepositId && (
+                              <Link href={`/deposits?highlight=${transaction.linkedDepositId}`}>
+                                <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1" data-testid={`link-deposit-${transaction.id}`}>
+                                  <Banknote className="h-3 w-3" />
+                                  Deposit
+                                </Badge>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3 text-right text-sm">
                         {transaction.transactionType === "withdrawal" || transaction.transactionType === "transfer" || transaction.transactionType === "payment" || transaction.transactionType === "check"

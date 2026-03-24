@@ -54,6 +54,16 @@ import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/li
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
+import { Landmark } from "lucide-react";
+
+type PaymentWithDeposit = Payment & {
+  deposit?: {
+    depositDate: string | null;
+    bankAccountId: number;
+    bankAccountName: string;
+    bankTransactionId: number | null;
+  } | null;
+};
 import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 
 interface InvoiceWithRelations extends Invoice {
@@ -119,7 +129,7 @@ export default function InvoiceDetail() {
     enabled: !!invoiceId,
   });
 
-  const { data: invoicePayments } = useQuery<Payment[]>({
+  const { data: invoicePayments } = useQuery<PaymentWithDeposit[]>({
     queryKey: ["/api/invoices", invoiceId, "payments"],
     queryFn: async () => {
       const res = await fetch(`/api/invoices/${invoiceId}/payments`, { credentials: "include" });
@@ -477,12 +487,29 @@ export default function InvoiceDetail() {
                 <>
                   <Separator />
                   {invoicePayments.map((pmt) => (
-                    <div key={pmt.id} className="flex justify-between gap-4 text-sm" data-testid={`row-payment-${pmt.id}`}>
-                      <span className="text-muted-foreground">
-                        Payment {pmt.paymentDate ? formatLocalDate(parseLocalDateFromISO(pmt.paymentDate)!) : ""}
-                        {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
-                      </span>
-                      <span className="text-green-600">-${parseFloat(pmt.amount).toFixed(2)}</span>
+                    <div key={pmt.id} className="space-y-1" data-testid={`row-payment-${pmt.id}`}>
+                      <div className="flex justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">
+                          Payment {pmt.paymentDate ? formatLocalDate(parseLocalDateFromISO(pmt.paymentDate)!) : ""}
+                          {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
+                        </span>
+                        <span className="text-green-600">-${parseFloat(pmt.amount).toFixed(2)}</span>
+                      </div>
+                      {pmt.deposit && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground pl-2">
+                          <Landmark className="h-3 w-3" />
+                          <span>
+                            Deposited {pmt.deposit.depositDate ? formatLocalDate(parseLocalDateFromISO(pmt.deposit.depositDate)!) : ""} to {pmt.deposit.bankAccountName}
+                          </span>
+                          {pmt.deposit.bankAccountId && (
+                            <Link href={`/bank-register/${pmt.deposit.bankAccountId}${pmt.deposit.bankTransactionId ? `?txn=${pmt.deposit.bankTransactionId}` : ""}`}>
+                              <span className="text-primary hover:underline cursor-pointer" data-testid={`link-bank-register-${pmt.id}`}>
+                                View in Bank Register
+                              </span>
+                            </Link>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                   <Separator />

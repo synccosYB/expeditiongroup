@@ -62,7 +62,7 @@ const INCOMING_TYPES = ["deposit", "refund"];
 
 function getLinkedRoute(transaction: TransactionWithRelations): string | null {
   if (transaction.linkedExpenseId) {
-    return "/expenses";
+    return `/expenses?highlight=${transaction.linkedExpenseId}`;
   }
   if (transaction.linkedBillId) {
     return `/bills/${transaction.linkedBillId}`;
@@ -71,7 +71,7 @@ function getLinkedRoute(transaction: TransactionWithRelations): string | null {
     return `/bills/${transaction.linkedBillId}`;
   }
   if (transaction.linkedDepositId) {
-    return "/deposits";
+    return `/deposits?highlight=${transaction.linkedDepositId}`;
   }
   return null;
 }
