@@ -1,0 +1,66 @@
+BUG-0163
+Date filter logs out of chronological order
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+When filtering by date, logs should display in chronological order (e.g., 9:00 AM → 9:30 AM → 10:00 AM), but currently they appear mixed.
+
+AI Analysis
+
+### Bug Analysis
+
+1. **Affected Part of the App:**
+   - The issue is with the "Time Logs" view, specifically when the user applies a date filter. Logs do not appear organized chronologically after filtering.
+
+2. **Root Cause Analysis:**
+   - From the screenshot:
+     - The date filter UI is visible, indicating the user attempted to sort or filter logs by date. The logs' actual order appears incorrect as expected chronological sequencing (ascending from earliest to latest time) is not maintained.
+   - This could result from:
+     1. **Backend Issue:**
+        - The API responsible for fetching filtered log data might not be sorting the logs correctly.
+     2. **Frontend Issue:**
+        - If the backend API correctly provides sorted data, the issue might lie in how the frontend processes or displays the data, such as incorrect handling of timestamps or sorting priorities.
+   - **Console Debugging:**
+     - Console errors are not visible in this screenshot, so further console inspection is recommended to verify if errors like incorrect timestamps, date conversion, or JavaScript sorting issues occur.
+
+3. **Recommended Fix or Next Steps:**
+   - **Immediate Investigation:**
+     - Verify and test the API endpoint handling the date filter to ensure logs are sorted before sending the response.
+     - Check the frontend date sorting logic to confirm whether the logs are being ordered correctly after receiving them from the API.
+   - **Possible Fix:**
+     1. Backend: Enforce chronological ordering of logs via the query or API logic (e.g., add an `ORDER BY` clause in the database query for logs based on date and time).
+     2. Frontend: Fix any issues with rendering or sorting timestamps, especially ensuring consistent date-time formats are maintained for comparison.
+   - Conduct QA testing to ensure this is resolved, particularly for edge cases like varying time zones or invalid timestamps.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/time-logs
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
