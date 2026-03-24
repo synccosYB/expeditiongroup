@@ -429,6 +429,7 @@ export interface IStorage {
   getBankReconciliation(id: number): Promise<BankReconciliation | undefined>;
   createBankReconciliation(reconciliation: InsertBankReconciliation): Promise<BankReconciliation>;
   updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined>;
+  updateBankReconciliationActivityDate(id: number): Promise<BankReconciliation | undefined>;
   completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined>;
 
   // Customer Payments (Undeposited Funds)
@@ -2819,6 +2820,15 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(bankReconciliations)
       .set({ ...reconciliation, updatedAt: new Date() })
+      .where(eq(bankReconciliations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateBankReconciliationActivityDate(id: number): Promise<BankReconciliation | undefined> {
+    const [updated] = await db
+      .update(bankReconciliations)
+      .set({ lastActivityAt: new Date(), updatedAt: new Date() })
       .where(eq(bankReconciliations.id, id))
       .returning();
     return updated;

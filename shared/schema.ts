@@ -845,6 +845,7 @@ export const bankReconciliations = pgTable("bank_reconciliations", {
   status: reconciliationStatusEnum("status").default("in_progress"),
   completedAt: timestamp("completed_at"),
   completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+  lastActivityAt: timestamp("last_activity_at"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1504,7 +1505,7 @@ export const insertBillItemSchema = createInsertSchema(billItems).omit({ id: tru
 export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ id: true, createdAt: true }).extend({
   paymentDate: requiredDateCoercion,
 });
-export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true }).extend({
+export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true, lastActivityAt: true }).extend({
   statementDate: requiredDateCoercion,
 });
 export const insertDepositSchema = createInsertSchema(deposits).omit({ id: true, createdAt: true }).extend({

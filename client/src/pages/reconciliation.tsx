@@ -7,7 +7,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Scale, ArrowRight, Landmark, CreditCard, Wallet } from "lucide-react";
 import { format } from "date-fns";
-import { parseLocalDateFromISO } from "@/lib/dateUtils";
+
 import type { BankAccount, BankReconciliation } from "@shared/schema";
 
 type BankAccountWithReconciliation = BankAccount & {
@@ -95,12 +95,15 @@ export default function ReconciliationPage() {
                       <span className="font-medium">{formatCurrency(account.currentBalance)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Last Reconciled</span>
-                      <span className="text-sm">
-                        {account.lastReconciliation?.statementDate 
-                          ? format(parseLocalDateFromISO(account.lastReconciliation.statementDate)!, "MMM d, yyyy")
-                          : "Never"
-                        }
+                      <span className="text-sm text-muted-foreground">Last Reconciliation Date</span>
+                      <span className="text-sm" data-testid={`text-last-reconciliation-date-${account.id}`}>
+                        {(() => {
+                          const recon = account.lastReconciliation;
+                          const activityDate = recon?.lastActivityAt || recon?.completedAt || recon?.statementDate;
+                          return activityDate
+                            ? format(new Date(activityDate), "MMM d, yyyy")
+                            : "Never";
+                        })()}
                       </span>
                     </div>
                     <Button className="w-full mt-2" variant="outline" data-testid={`button-reconcile-${account.id}`}>

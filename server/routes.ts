@@ -4914,7 +4914,13 @@ export async function registerRoutes(
       const accountsWithReconciliation = await Promise.all(
         bankAccounts.map(async (account) => {
           const reconciliations = await storage.getBankReconciliations(account.id);
-          const lastReconciliation = reconciliations.find(r => r.status === "completed") || null;
+          const lastReconciliation = reconciliations.reduce<typeof reconciliations[number] | null>((best, r) => {
+            const rDate = r.lastActivityAt || r.completedAt || r.statementDate;
+            const bestDate = best ? (best.lastActivityAt || best.completedAt || best.statementDate) : null;
+            if (!rDate) return best;
+            if (!bestDate) return r;
+            return new Date(rDate) > new Date(bestDate) ? r : best;
+          }, null);
           return { ...account, lastReconciliation };
         })
       );
@@ -5137,6 +5143,14 @@ export async function registerRoutes(
       const transaction = await storage.updateBankTransaction(parseInt(req.params.id), parsed);
       if (!transaction) {
         return res.status(404).json({ message: "Bank transaction not found" });
+      }
+
+      if (parsed.isCleared !== undefined && existingTx) {
+        const reconciliations = await storage.getBankReconciliations(existingTx.bankAccountId);
+        const activeReconciliation = reconciliations.find(r => r.status === "in_progress");
+        if (activeReconciliation) {
+          await storage.updateBankReconciliationActivityDate(activeReconciliation.id);
+        }
       }
 
       if (existingTx?.linkedTransactionId) {
