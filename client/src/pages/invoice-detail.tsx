@@ -398,7 +398,7 @@ export default function InvoiceDetail() {
                   {invoicePayments.map((pmt) => (
                     <div key={pmt.id} className="flex justify-between gap-4 text-sm" data-testid={`row-payment-${pmt.id}`}>
                       <span className="text-muted-foreground">
-                        Payment {pmt.paymentDate ? formatLocalDate(new Date(pmt.paymentDate)) : ""}
+                        Payment {pmt.paymentDate ? formatLocalDate(parseLocalDateFromISO(pmt.paymentDate)!) : ""}
                         {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
                       </span>
                       <span className="text-green-600">-${parseFloat(pmt.amount).toFixed(2)}</span>

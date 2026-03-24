@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
 
 const transactionFormSchema = z.object({
   transactionDate: z.string().min(1, "Date is required"),
@@ -118,7 +119,7 @@ export default function BankRegister() {
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      transactionDate: new Date().toISOString().split("T")[0],
+      transactionDate: formatDateForInput(new Date()),
       transactionType: "withdrawal",
       amount: "",
       payee: "",
@@ -142,7 +143,7 @@ export default function BankRegister() {
         : undefined;
       const payload = {
         bankAccountId: accountId,
-        transactionDate: new Date(data.transactionDate),
+        transactionDate: new Date(data.transactionDate + 'T12:00:00'),
         transactionType: dbTransactionType,
         amount: data.amount,
         payee: data.payee || (autoMemo ? autoMemo : undefined),
@@ -191,7 +192,7 @@ export default function BankRegister() {
         : data.transactionType === "owner_distribution" ? "Owner's Distribution"
         : undefined;
       const payload = {
-        transactionDate: new Date(data.transactionDate),
+        transactionDate: new Date(data.transactionDate + 'T12:00:00'),
         transactionType: dbTransactionType,
         amount: data.amount,
         payee: data.payee || (autoMemo ? autoMemo : undefined),
@@ -266,7 +267,7 @@ export default function BankRegister() {
     if (transaction) {
       setEditingTransaction(transaction);
       form.reset({
-        transactionDate: transaction.transactionDate ? new Date(transaction.transactionDate).toISOString().split("T")[0] : "",
+        transactionDate: transaction.transactionDate ? formatDateForInput(transaction.transactionDate) : "",
         transactionType: transaction.transactionType as "deposit" | "withdrawal" | "transfer" | "check",
         amount: transaction.amount || "",
         payee: transaction.payee || "",
@@ -375,11 +376,11 @@ export default function BankRegister() {
     }
     if (filterType !== "all" && t.transactionType !== filterType) return false;
     if (filterDateFrom && t.transactionDate) {
-      const txDate = new Date(t.transactionDate).toISOString().split("T")[0];
+      const txDate = formatDateForInput(t.transactionDate);
       if (txDate < filterDateFrom) return false;
     }
     if (filterDateTo && t.transactionDate) {
-      const txDate = new Date(t.transactionDate).toISOString().split("T")[0];
+      const txDate = formatDateForInput(t.transactionDate);
       if (txDate > filterDateTo) return false;
     }
     if (filterAmountMin) {
@@ -957,7 +958,7 @@ export default function BankRegister() {
                         />
                       </td>
                       <td className="p-3 text-sm">
-                        {transaction.transactionDate ? format(new Date(transaction.transactionDate), "MM/dd/yy") : "-"}
+                        {transaction.transactionDate ? format(parseLocalDateFromISO(transaction.transactionDate)!, "MM/dd/yy") : "-"}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-1">

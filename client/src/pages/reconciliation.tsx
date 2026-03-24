@@ -7,6 +7,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Scale, ArrowRight, Landmark, CreditCard, Wallet } from "lucide-react";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import type { BankAccount, BankReconciliation } from "@shared/schema";
 
 type BankAccountWithReconciliation = BankAccount & {
@@ -97,7 +98,7 @@ export default function ReconciliationPage() {
                       <span className="text-sm text-muted-foreground">Last Reconciled</span>
                       <span className="text-sm">
                         {account.lastReconciliation?.statementDate 
-                          ? format(new Date(account.lastReconciliation.statementDate), "MMM d, yyyy")
+                          ? format(parseLocalDateFromISO(account.lastReconciliation.statementDate)!, "MMM d, yyyy")
                           : "Never"
                         }
                       </span>

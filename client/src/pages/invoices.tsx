@@ -37,7 +37,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Invoice, Project, Client, InvoiceItem } from "@shared/schema";
@@ -284,7 +284,7 @@ export default function Invoices() {
                       {formatCurrency(parseFloat(invoice?.total || "0"))}
                     </TableCell>
                     <TableCell>
-                      {invoice.dueDate ? formatLocalDate(new Date(invoice.dueDate)) : "-"}
+                      {invoice.dueDate ? formatLocalDate(parseLocalDateFromISO(invoice.dueDate)!) : "-"}
                     </TableCell>
                     <TableCell>
                       {invoice.createdAt ? formatLocalDate(new Date(invoice.createdAt)) : "-"}

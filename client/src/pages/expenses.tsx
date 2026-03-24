@@ -323,7 +323,7 @@ export default function Expenses() {
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
-      expenseDate: new Date().toISOString().split("T")[0],
+      expenseDate: formatDateForInput(new Date()),
       vendorId: "",
       accountId: "",
       bankAccountId: "",
@@ -504,7 +504,7 @@ export default function Expenses() {
   const handleDuplicate = (expense: ExpenseWithRelations) => {
     setEditingExpense(null);
     form.reset({
-      expenseDate: new Date().toISOString().split("T")[0],
+      expenseDate: formatDateForInput(new Date()),
       vendorId: expense.vendorId?.toString() || "",
       accountId: expense.accountId?.toString() || "",
       bankAccountId: expense.bankAccountId?.toString() || "",

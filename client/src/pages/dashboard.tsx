@@ -29,6 +29,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { DailyActivityDialog } from "@/components/daily-activity-dialog";
 import type { Project, Task, Client, Invoice } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
+import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 
 interface DashboardStats {
   totalClients: number;
@@ -221,7 +222,7 @@ export default function Dashboard() {
                 <td>${t.project?.name ?? "-"}</td>
                 <td>${t.status?.replace(/_/g, " ")}</td>
                 <td>${t.type ?? "-"}</td>
-                <td>${t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-US") : "-"}</td>
+                <td>${t.dueDate ? formatLocalDate(t.dueDate) : "-"}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -256,7 +257,7 @@ export default function Dashboard() {
                   <td>${inv.invoiceNumber}</td>
                   <td>${inv.project?.name ?? "-"}</td>
                   <td>${inv.createdAt ? new Date(inv.createdAt).toLocaleDateString("en-US") : "-"}</td>
-                  <td>${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-US") : "-"}</td>
+                  <td>${inv.dueDate ? formatLocalDate(inv.dueDate) : "-"}</td>
                   <td>$${parseFloat(inv?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
                 </tr>
               `).join("")}
@@ -529,7 +530,7 @@ export default function Dashboard() {
                     {task.dueDate && (
                       <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
+                        {formatDistanceToNow(parseLocalDateFromISO(task.dueDate) || new Date(), { addSuffix: true })}
                       </Badge>
                     )}
                   </div>

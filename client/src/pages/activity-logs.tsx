@@ -36,6 +36,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import { DailyActivityDialog } from "@/components/daily-activity-dialog";
 
 type DailyActivityLog = {
@@ -107,7 +108,7 @@ export default function ActivityLogs() {
   }) || [];
 
   const sortedLogs = [...filteredLogs].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+    (parseLocalDateFromISO(b.date)?.getTime() || 0) - (parseLocalDateFromISO(a.date)?.getTime() || 0)
   );
 
   const getUserName = (log: DailyActivityLog) => {
@@ -171,7 +172,7 @@ export default function ActivityLogs() {
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <Badge variant="secondary" data-testid={`badge-date-${log.id}`}>
                         <Calendar className="h-3 w-3 mr-1" />
-                        {format(new Date(log.date), "EEEE, MMMM d, yyyy")}
+                        {format(parseLocalDateFromISO(log.date)!, "EEEE, MMMM d, yyyy")}
                       </Badge>
                       {log.hoursWorked && (
                         <Badge variant="outline" data-testid={`badge-hours-${log.id}`}>
@@ -311,7 +312,7 @@ export default function ActivityLogs() {
             <AlertDialogTitle>Delete Activity Log</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this activity log from{" "}
-              {deletingLog && format(new Date(deletingLog.date), "MMMM d, yyyy")}?
+              {deletingLog && format(parseLocalDateFromISO(deletingLog.date)!, "MMMM d, yyyy")}?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -34,6 +34,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import type { Invoice, Project, Client, InvoiceItem, Payment } from "@shared/schema";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type InvoiceWithRelations = Invoice & {
   project: Project;
@@ -225,7 +226,7 @@ export default function ClientInvoiceDetail() {
             {invoice.dueDate && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Due Date</span>
-                <span>{format(new Date(invoice.dueDate), "MMM d, yyyy")}</span>
+                <span>{format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy")}</span>
               </div>
             )}
             {invoice.paidAt && (
@@ -301,7 +302,7 @@ export default function ClientInvoiceDetail() {
                   {invoicePayments.map((pmt) => (
                     <TableRow key={pmt.id} data-testid={`row-payment-${pmt.id}`}>
                       <TableCell colSpan={3} className="text-right text-sm text-muted-foreground">
-                        Payment {pmt.paymentDate ? format(new Date(pmt.paymentDate), "MMM d, yyyy") : ""}
+                        Payment {pmt.paymentDate ? format(parseLocalDateFromISO(pmt.paymentDate)!, "MMM d, yyyy") : ""}
                         {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
                       </TableCell>
                       <TableCell className="text-right text-sm text-green-600">

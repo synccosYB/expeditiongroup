@@ -2350,7 +2350,7 @@ export async function registerRoutes(
         documentType: parsed.documentType,
         description: parsed.description,
         isRequired: parsed.isRequired ?? true,
-        dueDate: parsed.dueDate ? new Date(parsed.dueDate) : undefined,
+        dueDate: parsed.dueDate ? new Date(parsed.dueDate + 'T12:00:00') : undefined,
       });
 
       res.status(201).json(documentRequest);
@@ -5895,7 +5895,7 @@ export async function registerRoutes(
       const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
       const parsedBankAccountId = parseInt(bankAccountId);
       const parsedAmount = amount?.toString() || "0";
-      const parsedPaymentDate = new Date(paymentDate);
+      const parsedPaymentDate = new Date(paymentDate + (paymentDate && !paymentDate.includes('T') ? 'T12:00:00' : ''));
       
       if (isNaN(parsedBankAccountId)) {
         return res.status(400).json({ message: "Bank account is required" });
@@ -6001,7 +6001,7 @@ export async function registerRoutes(
       const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
       const parsedBankAccountId = bankAccountId ? parseInt(bankAccountId) : existingPayment.bankAccountId;
       const parsedAmount = amount?.toString() || existingPayment.amount;
-      const parsedPaymentDate = paymentDate ? new Date(paymentDate) : existingPayment.paymentDate;
+      const parsedPaymentDate = paymentDate ? new Date(paymentDate + (!paymentDate.includes('T') ? 'T12:00:00' : '')) : existingPayment.paymentDate;
 
       // Get the old and new bank accounts
       const oldBankAccount = await storage.getBankAccount(existingPayment.bankAccountId);
@@ -6451,7 +6451,7 @@ export async function registerRoutes(
         const paymentNumber = await storage.getNextPaymentNumber();
         const parsed = insertPaymentSchema.parse({
           paymentNumber,
-          paymentDate: new Date(paymentDate),
+          paymentDate: new Date(paymentDate + (!paymentDate.includes('T') ? 'T12:00:00' : '')),
           clientId,
           invoiceId: alloc.invoiceId,
           amount: alloc.amount,

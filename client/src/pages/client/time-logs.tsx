@@ -31,6 +31,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type TimeEntryWithRelations = TimeEntry & { 
   task: Task;
@@ -63,10 +64,10 @@ export default function ClientTimeLogs() {
     const matchesProject = projectFilter === "all" || entry.projectId === parseInt(projectFilter);
     let matchesDateRange = true;
     if (dateFrom && entry.date) {
-      matchesDateRange = new Date(entry.date) >= new Date(dateFrom + "T00:00:00");
+      matchesDateRange = (parseLocalDateFromISO(entry.date) || new Date(0)) >= new Date(dateFrom + "T00:00:00");
     }
     if (dateTo && entry.date && matchesDateRange) {
-      matchesDateRange = new Date(entry.date) <= new Date(dateTo + "T23:59:59");
+      matchesDateRange = (parseLocalDateFromISO(entry.date) || new Date(0)) <= new Date(dateTo + "T23:59:59");
     }
     return matchesSearch && matchesProject && matchesDateRange;
   }) || [];
@@ -238,7 +239,7 @@ export default function ClientTimeLogs() {
                 {filteredEntries.map((entry) => (
                   <TableRow key={entry.id} data-testid={`row-time-entry-${entry.id}`}>
                     <TableCell className="whitespace-nowrap">
-                      {entry.date ? format(new Date(entry.date), "MMM d, yyyy") : "-"}
+                      {entry.date ? format(parseLocalDateFromISO(entry.date)!, "MMM d, yyyy") : "-"}
                     </TableCell>
                     <TableCell>{entry.project?.name || "-"}</TableCell>
                     <TableCell>{entry.task?.title || "-"}</TableCell>

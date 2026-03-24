@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import { Plus, FileText, Search, Trash2, Edit, Eye, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +80,9 @@ export default function Intake() {
 
   const formatDate = (date: string | Date | null) => {
     if (!date) return "-";
-    return new Date(date).toLocaleDateString("en-US", {
+    const d = typeof date === 'string' ? parseLocalDateFromISO(date) : date;
+    if (!d) return "-";
+    return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",

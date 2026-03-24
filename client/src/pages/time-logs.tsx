@@ -226,7 +226,7 @@ export default function TimeLogs() {
       isBillable: entry.isBillable ?? true,
       notes: entry.notes,
     })) || []),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => (parseLocalDateFromISO(b.date)?.getTime() || 0) - (parseLocalDateFromISO(a.date)?.getTime() || 0));
 
   const filteredLogs = unifiedLogs.filter((log) => {
     const matchesSearch =
@@ -533,7 +533,7 @@ function EditTimeLogDialog({
     
     if (isLegacy) {
       onSave({
-        date: date ? new Date(date) : undefined,
+        date: date ? new Date(date + 'T12:00:00') : undefined,
         startTime: startTime || null,
         endTime: endTime || null,
         totalHours: totalHours,
@@ -543,7 +543,7 @@ function EditTimeLogDialog({
       });
     } else {
       onSave({
-        date: date ? new Date(date) : undefined,
+        date: date ? new Date(date + 'T12:00:00') : undefined,
         startTime: startTime || null,
         endTime: endTime || null,
         totalHours: totalHours,

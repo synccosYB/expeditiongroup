@@ -32,7 +32,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, formatDateForInput } from "@/lib/dateUtils";
 import { ArrowLeft, Save, Plus, Trash2, Calculator, Send, CheckCircle, XCircle } from "lucide-react";
 import type { Proposal, Client, ProposalItem, Service, SalesContact } from "@shared/schema";
 
@@ -145,7 +145,7 @@ export default function ProposalDetail() {
         description: proposal.description || "",
         status: proposal.status,
         notes: proposal.notes || "",
-        validUntil: proposal.validUntil ? new Date(proposal.validUntil).toISOString().split('T')[0] : "",
+        validUntil: proposal.validUntil ? formatDateForInput(proposal.validUntil) : "",
       });
       setItems(proposal.items.map(item => ({
         id: item.id,

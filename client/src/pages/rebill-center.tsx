@@ -490,7 +490,7 @@ export default function RebillCenter() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {item.date ? format(new Date(item.date), "MMM d, yyyy") : ""}
+                      {item.date ? format(parseLocalDateFromISO(item.date)!, "MMM d, yyyy") : ""}
                     </p>
                   </div>
                   <p className="font-medium">

@@ -63,7 +63,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, isDateOverdue } from "@/lib/dateUtils";
+import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, formatDateForInput, isDateOverdue } from "@/lib/dateUtils";
 import { useLocation, useSearch } from "wouter";
 import { format } from "date-fns";
 import type { Task, Project, User, TimeEntry } from "@shared/schema";
@@ -198,7 +198,7 @@ function TaskDetailDialog({
         description: task.description || "",
         status: task.status || "todo",
         priority: task.priority || "normal",
-        dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+        dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
         internalNotes: task.internalNotes || "",
       });
       setNotesValue(task.internalNotes || "");

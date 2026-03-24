@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Printer, Landmark } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
 import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 import type { BankAccount, BankTransaction } from "@shared/schema";
@@ -71,7 +72,7 @@ export default function BankAccountDetail() {
   }
 
   const sortedTransactions = [...(transactions || [])]
-    .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime())
+    .sort((a, b) => (parseLocalDateFromISO(b.transactionDate)?.getTime() || 0) - (parseLocalDateFromISO(a.transactionDate)?.getTime() || 0))
     .slice(0, 20);
 
   const allTransactions = transactions || [];
@@ -199,7 +200,7 @@ export default function BankAccountDetail() {
                   sortedTransactions.map((txn) => (
                     <tr key={txn.id} className="border-b" data-testid={`row-transaction-${txn.id}`}>
                       <td className="py-3">
-                        {format(new Date(txn.transactionDate), "MM/dd/yyyy")}
+                        {format(parseLocalDateFromISO(txn.transactionDate)!, "MM/dd/yyyy")}
                       </td>
                       <td className="py-3 capitalize">{txn.transactionType}</td>
                       <td className="py-3">

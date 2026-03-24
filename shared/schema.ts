@@ -1403,7 +1403,14 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, creat
   dueDate: z.preprocess((val) => {
     if (val === null || val === undefined || val === '') return null;
     if (val instanceof Date) return val;
-    if (typeof val === 'string') return new Date(val);
+    if (typeof val === 'string') {
+      const dateOnlyMatch = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dateOnlyMatch) {
+        const [, y, m, d] = dateOnlyMatch.map(Number);
+        return new Date(y, m - 1, d, 12, 0, 0);
+      }
+      return new Date(val);
+    }
     return val;
   }, z.date().nullable().optional()),
   relatedAssociateId: z.number().int().nullable().optional(),
@@ -1412,7 +1419,14 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, creat
 export const insertNoteSchema = createInsertSchema(notes).omit({ id: true, createdAt: true, updatedAt: true });
 const requiredDateCoercion = z.preprocess((val) => {
   if (val instanceof Date) return val;
-  if (typeof val === 'string') return new Date(val);
+  if (typeof val === 'string') {
+    const dateOnlyMatch = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      const [, y, m, d] = dateOnlyMatch.map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    return new Date(val);
+  }
   return val;
 }, z.date());
 

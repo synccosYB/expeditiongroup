@@ -34,6 +34,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import type { Invoice, Project } from "@shared/schema";
 import { format } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type InvoiceWithProject = Invoice & { project?: Project };
 
@@ -207,7 +208,7 @@ export default function ClientInvoices() {
                       {invoice.createdAt ? format(new Date(invoice.createdAt), "MMM d, yyyy") : "-"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {invoice.dueDate ? format(new Date(invoice.dueDate), "MMM d, yyyy") : "-"}
+                      {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy") : "-"}
                     </TableCell>
                     <TableCell className="font-medium">
                       ${parseFloat(invoice?.total || "0").toLocaleString()}

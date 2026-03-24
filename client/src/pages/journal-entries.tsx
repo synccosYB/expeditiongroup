@@ -52,6 +52,7 @@ import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { parseLocalDateFromISO, formatDateForInput } from "@/lib/dateUtils";
 import type { Account, JournalEntry, JournalEntryLine } from "@shared/schema";
 
 type JournalEntryWithLines = JournalEntry & {
@@ -93,7 +94,8 @@ function formatCurrency(amount: string | number | null | undefined) {
 
 function formatDate(date: string | Date | null) {
   if (!date) return "-";
-  const d = new Date(date);
+  const d = typeof date === 'string' ? parseLocalDateFromISO(date) : date;
+  if (!d || isNaN(d.getTime())) return "-";
   const month = (d.getMonth() + 1).toString().padStart(2, "0");
   const day = d.getDate().toString().padStart(2, "0");
   const year = d.getFullYear();
@@ -107,7 +109,7 @@ export default function JournalEntries() {
   const [viewingEntry, setViewingEntry] = useState<JournalEntryWithLines | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<JournalEntryWithLines | null>(null);
 
-  const [entryDate, setEntryDate] = useState(new Date().toISOString().split("T")[0]);
+  const [entryDate, setEntryDate] = useState(formatDateForInput(new Date()));
   const [memo, setMemo] = useState("");
   const [lines, setLines] = useState<LineItem[]>([emptyLine(), emptyLine()]);
 
@@ -127,7 +129,7 @@ export default function JournalEntries() {
   const activeAccounts = accounts?.filter((a) => a.isActive) || [];
 
   const resetForm = () => {
-    setEntryDate(new Date().toISOString().split("T")[0]);
+    setEntryDate(formatDateForInput(new Date()));
     setMemo("");
     setLines([emptyLine(), emptyLine()]);
   };

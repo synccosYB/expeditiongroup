@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "Cash" },
@@ -203,7 +203,7 @@ export default function UndepositedFunds() {
 
       const basePayload = {
         paymentNumber: nextNumber?.paymentNumber || `PMT-${Date.now()}`,
-        paymentDate: new Date(data.paymentDate).toISOString(),
+        paymentDate: new Date(data.paymentDate + 'T12:00:00').toISOString(),
         invoiceId: invoiceIdValue,
         amount: data.amount,
         paymentMethod: data.paymentMethod,
@@ -251,7 +251,7 @@ export default function UndepositedFunds() {
       const matchedRecipient = isRecipient ? oneTimeRecipients?.find(r => r.recipientName === recipientName) : null;
 
       const baseBulkPayload = {
-        paymentDate: new Date(formData.paymentDate).toISOString(),
+        paymentDate: new Date(formData.paymentDate + 'T12:00:00').toISOString(),
         totalAmount: formData.amount,
         paymentMethod: formData.paymentMethod,
         reference: formData.reference || null,
@@ -811,7 +811,7 @@ export default function UndepositedFunds() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {payment.paymentDate && formatLocalDate(new Date(payment.paymentDate))}
+                      {payment.paymentDate && formatLocalDate(parseLocalDateFromISO(payment.paymentDate)!)}
                       {payment.reference && <span> - Ref: {payment.reference}</span>}
                     </div>
                   </div>

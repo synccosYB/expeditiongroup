@@ -35,13 +35,14 @@ import {
 } from "@/components/ui/tooltip";
 import { ArrowLeft, Check, X, AlertTriangle, CheckCircle, Loader2, DollarSign, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { formatDateForInput, parseLocalDateFromISO } from "@/lib/dateUtils";
 import type { BankAccount, BankTransaction, BankReconciliation } from "@shared/schema";
 
 function safeFormatDate(dateValue: string | Date | null | undefined, formatStr: string): string {
   if (!dateValue) return "N/A";
   try {
-    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-    if (isNaN(date.getTime())) return "N/A";
+    const date = dateValue instanceof Date ? dateValue : parseLocalDateFromISO(dateValue);
+    if (!date || isNaN(date.getTime())) return "N/A";
     return format(date, formatStr);
   } catch {
     return "N/A";
@@ -196,7 +197,7 @@ export default function BankReconciliationPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [statementDate, setStatementDate] = useState(new Date().toISOString().split("T")[0]);
+  const [statementDate, setStatementDate] = useState(formatDateForInput(new Date()));
   const [statementEndingBalance, setStatementEndingBalance] = useState("");
   const [isReconciling, setIsReconciling] = useState(false);
   const [activeReconciliation, setActiveReconciliation] = useState<BankReconciliation | null>(null);
@@ -352,7 +353,7 @@ export default function BankReconciliationPage() {
       });
       return;
     }
-    const parsedDate = new Date(statementDate);
+    const parsedDate = new Date(statementDate + 'T12:00:00');
     if (isNaN(parsedDate.getTime())) {
       toast({
         title: "Error",

@@ -41,7 +41,7 @@ import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import type { Task, Project, TimeEntry } from "@shared/schema";
-import { formatLocalDate } from "@/lib/dateUtils";
+import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 
 type TaskWithProject = Task & { project: Project };
 
@@ -307,7 +307,8 @@ export default function ClientTasks() {
 
   const isOverdue = (task: TaskWithProject) => {
     if (!task.dueDate || task.status === "done" || task.status === "cancelled") return false;
-    const dueDate = new Date(task.dueDate);
+    const dueDate = parseLocalDateFromISO(task.dueDate);
+    if (!dueDate) return false;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     return dueDate < todayStart;

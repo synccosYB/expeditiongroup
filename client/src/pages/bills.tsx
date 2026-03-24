@@ -58,6 +58,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { formatDateForInput, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 
 const billItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -275,7 +276,7 @@ export default function Bills() {
   const [payingBill, setPayingBill] = useState<BillWithRelations | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentBankAccountId, setPaymentBankAccountId] = useState("");
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [paymentDate, setPaymentDate] = useState(formatDateForInput(new Date()));
   const [paymentMethod, setPaymentMethod] = useState("check");
   const [paymentReference, setPaymentReference] = useState("");
 
@@ -321,7 +322,7 @@ export default function Bills() {
     defaultValues: {
       vendorId: "",
       billNumber: "",
-      billDate: new Date().toISOString().split("T")[0],
+      billDate: formatDateForInput(new Date()),
       dueDate: "",
       notes: "",
       documentUrl: "",
@@ -356,8 +357,8 @@ export default function Bills() {
       const payload = {
         vendorId: parseInt(data.vendorId),
         billNumber: data.billNumber || undefined,
-        billDate: new Date(data.billDate),
-        dueDate: new Date(data.dueDate),
+        billDate: new Date(data.billDate + 'T12:00:00'),
+        dueDate: new Date(data.dueDate + 'T12:00:00'),
         notes: data.notes,
         documentUrl: data.documentUrl || null,
         subtotal: totalAmount.toFixed(2),
@@ -397,8 +398,8 @@ export default function Bills() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<BillFormData> }) => {
       const payload: any = {
         billNumber: data.billNumber,
-        billDate: data.billDate ? new Date(data.billDate) : undefined,
-        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+        billDate: data.billDate ? new Date(data.billDate + 'T12:00:00') : undefined,
+        dueDate: data.dueDate ? new Date(data.dueDate + 'T12:00:00') : undefined,
         notes: data.notes,
         documentUrl: data.documentUrl || null,
       };
@@ -475,7 +476,7 @@ export default function Bills() {
       return await apiRequest("POST", `/api/bills/${billId}/payments`, {
         amount,
         bankAccountId,
-        paymentDate: new Date(paymentDate),
+        paymentDate: new Date(paymentDate + 'T12:00:00'),
         paymentMethod,
         reference,
       });
@@ -488,7 +489,7 @@ export default function Bills() {
       setPayingBill(null);
       setPaymentAmount("");
       setPaymentBankAccountId("");
-      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setPaymentDate(formatDateForInput(new Date()));
       setPaymentMethod("check");
       setPaymentReference("");
     },
@@ -524,7 +525,7 @@ export default function Bills() {
       return await apiRequest("PATCH", `/api/bill-payments/${paymentId}`, {
         amount,
         bankAccountId,
-        paymentDate: new Date(paymentDate),
+        paymentDate: new Date(paymentDate + 'T12:00:00'),
         paymentMethod,
         reference,
       });
@@ -537,7 +538,7 @@ export default function Bills() {
       setEditingPayment(null);
       setPaymentAmount("");
       setPaymentBankAccountId("");
-      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setPaymentDate(formatDateForInput(new Date()));
       setPaymentMethod("check");
       setPaymentReference("");
     },
@@ -598,8 +599,8 @@ export default function Bills() {
       form.reset({
         vendorId: bill.vendorId?.toString() || "",
         billNumber: bill.billNumber || "",
-        billDate: bill.billDate ? new Date(bill.billDate).toISOString().split("T")[0] : "",
-        dueDate: bill.dueDate ? new Date(bill.dueDate).toISOString().split("T")[0] : "",
+        billDate: bill.billDate ? formatDateForInput(bill.billDate) : "",
+        dueDate: bill.dueDate ? formatDateForInput(bill.dueDate) : "",
         notes: bill.notes || "",
         documentUrl: bill.documentUrl || "",
         items: bill.items?.map(item => ({
@@ -625,8 +626,8 @@ export default function Bills() {
     form.reset({
       vendorId: bill.vendorId?.toString() || "",
       billNumber: "",
-      billDate: new Date().toISOString().split("T")[0],
-      dueDate: bill.dueDate ? new Date(bill.dueDate).toISOString().split("T")[0] : "",
+      billDate: formatDateForInput(new Date()),
+      dueDate: bill.dueDate ? formatDateForInput(bill.dueDate) : "",
       notes: bill.notes || "",
       documentUrl: "",
       items: bill.items?.map(item => ({
@@ -1116,7 +1117,7 @@ export default function Bills() {
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         {bill.billNumber && <span>#{bill.billNumber}</span>}
-                        <span>Due: {bill.dueDate ? format(new Date(bill.dueDate), "MMM d, yyyy") : "-"}</span>
+                        <span>Due: {bill.dueDate ? format(parseLocalDateFromISO(bill.dueDate)!, "MMM d, yyyy") : "-"}</span>
                       </div>
                     </div>
                   </Link>
@@ -1207,7 +1208,7 @@ export default function Bills() {
       <Dialog open={!!payingBill} onOpenChange={() => {
         setPayingBill(null);
         setPaymentBankAccountId("");
-        setPaymentDate(new Date().toISOString().split("T")[0]);
+        setPaymentDate(formatDateForInput(new Date()));
         setPaymentMethod("check");
         setPaymentReference("");
       }}>
@@ -1363,7 +1364,7 @@ export default function Bills() {
                         {formatCurrency(payment.amount)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(payment.paymentDate), "MMM d, yyyy")} via {payment.paymentMethod}
+                        {format(parseLocalDateFromISO(payment.paymentDate)!, "MMM d, yyyy")} via {payment.paymentMethod}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {bankAccount?.name || "Unknown account"}
@@ -1378,7 +1379,7 @@ export default function Bills() {
                           setEditingPayment(payment);
                           setPaymentAmount(payment.amount);
                           setPaymentBankAccountId(payment.bankAccountId.toString());
-                          setPaymentDate(new Date(payment.paymentDate).toISOString().split("T")[0]);
+                          setPaymentDate(formatDateForInput(payment.paymentDate));
                           setPaymentMethod(payment.paymentMethod || "check");
                           setPaymentReference(payment.reference || "");
                         }}
@@ -1409,7 +1410,7 @@ export default function Bills() {
       <Dialog open={!!editingPayment} onOpenChange={() => {
         setEditingPayment(null);
         setPaymentBankAccountId("");
-        setPaymentDate(new Date().toISOString().split("T")[0]);
+        setPaymentDate(formatDateForInput(new Date()));
         setPaymentMethod("check");
         setPaymentReference("");
       }}>

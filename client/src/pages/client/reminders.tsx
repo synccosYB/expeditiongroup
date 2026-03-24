@@ -90,7 +90,7 @@ export default function ClientReminders() {
   };
 
   const getDateLabel = (date: Date | string) => {
-    const d = new Date(date);
+    const d = date instanceof Date ? date : new Date(date);
     if (isToday(d)) return "Today";
     if (isTomorrow(d)) return "Tomorrow";
     if (isPast(d)) return "Overdue";

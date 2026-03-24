@@ -73,7 +73,7 @@ export default function BillDetail() {
   const total = parseFloat(bill.total || "0");
   const amountPaid = parseFloat(bill.amountPaid || "0");
   const balanceDue = parseFloat(bill.amountDue || "0");
-  const billDate = bill.billDate ? new Date(bill.billDate) : new Date();
+  const billDate = bill.billDate ? parseLocalDateFromISO(bill.billDate)! : new Date();
 
   return (
     <div className="space-y-6">
@@ -223,7 +223,7 @@ export default function BillDetail() {
                     <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg text-sm">
                       <div className="space-y-0.5">
                         <p className="font-medium">
-                          {format(new Date(payment.paymentDate), "MMMM d, yyyy")} — {formatCurrency.format(parseFloat(payment.amount || "0"))}
+                          {format(parseLocalDateFromISO(payment.paymentDate)!, "MMMM d, yyyy")} — {formatCurrency.format(parseFloat(payment.amount || "0"))}
                         </p>
                         <p className="text-muted-foreground">
                           {payment.paymentMethod && <span className="capitalize">{payment.paymentMethod}</span>}

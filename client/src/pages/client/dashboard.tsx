@@ -20,6 +20,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import type { Project, Task, Invoice } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
 interface ClientDashboardStats {
   totalProjects: number;
@@ -79,7 +80,8 @@ export default function ClientDashboard() {
   const pendingTasks = tasks?.filter(t => t.status !== "done" && t.status !== "cancelled").slice(0, 5) || [];
   const overdueTasks = tasks?.filter(t => {
     if (t.status === "done" || t.status === "cancelled" || !t.dueDate) return false;
-    const dueDate = new Date(t.dueDate);
+    const dueDate = parseLocalDateFromISO(t.dueDate);
+    if (!dueDate) return false;
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
     return dueDate <= todayEnd;
@@ -240,7 +242,7 @@ export default function ClientDashboard() {
                     {task.dueDate && (
                       <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
+                        {formatDistanceToNow(parseLocalDateFromISO(task.dueDate) || new Date(), { addSuffix: true })}
                       </Badge>
                     )}
                   </div>
