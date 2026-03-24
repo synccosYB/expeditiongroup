@@ -46,7 +46,7 @@ export default function BankAccountDetail() {
   });
 
   const { data: transactions } = useQuery<BankTransaction[]>({
-    queryKey: [`/api/bank-transactions?bankAccountId=${accountId}`],
+    queryKey: [`/api/bank-accounts/${accountId}/transactions`],
     enabled: !!accountId,
   });
 
@@ -71,17 +71,29 @@ export default function BankAccountDetail() {
     );
   }
 
-  const sortedTransactions = [...(transactions || [])]
-    .sort((a, b) => (parseLocalDateFromISO(b.transactionDate)?.getTime() || 0) - (parseLocalDateFromISO(a.transactionDate)?.getTime() || 0))
-    .slice(0, 20);
+  const openingBalance = parseFloat(account.openingBalance || "0");
 
-  const allTransactions = transactions || [];
-  const totalDeposits = allTransactions
+  const sortedTransactions = [...(transactions || [])]
+    .sort((a, b) => (parseLocalDateFromISO(a.transactionDate)?.getTime() || 0) - (parseLocalDateFromISO(b.transactionDate)?.getTime() || 0));
+
+  const totalDeposits = sortedTransactions
     .filter((t) => t.transactionType === "deposit")
     .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
-  const totalWithdrawals = allTransactions
+  const totalWithdrawals = sortedTransactions
     .filter((t) => t.transactionType !== "deposit")
     .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+
+  const computedBalance = openingBalance + totalDeposits - totalWithdrawals;
+
+  let runningBalance = openingBalance;
+  const transactionsWithBalance = sortedTransactions.map((txn) => {
+    if (txn.transactionType === "deposit") {
+      runningBalance += parseFloat(txn.amount || "0");
+    } else {
+      runningBalance -= parseFloat(txn.amount || "0");
+    }
+    return { ...txn, balance: runningBalance };
+  });
 
   return (
     <div className="space-y-6">
@@ -165,7 +177,7 @@ export default function BankAccountDetail() {
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Current Balance</p>
               <p className="font-medium" data-testid="text-current-balance">
-                {formatCurrency(account.currentBalance)}
+                {formatCurrency(computedBalance)}
               </p>
             </div>
             <div>
@@ -187,17 +199,18 @@ export default function BankAccountDetail() {
                   <th className="text-left py-3 font-medium">Payee/Description</th>
                   <th className="text-left py-3 font-medium">Reference</th>
                   <th className="text-right py-3 font-medium">Amount</th>
+                  <th className="text-right py-3 font-medium">Balance</th>
                 </tr>
               </thead>
               <tbody>
-                {sortedTransactions.length === 0 ? (
+                {transactionsWithBalance.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       No transactions
                     </td>
                   </tr>
                 ) : (
-                  sortedTransactions.map((txn) => (
+                  transactionsWithBalance.map((txn) => (
                     <tr key={txn.id} className="border-b" data-testid={`row-transaction-${txn.id}`}>
                       <td className="py-3">
                         {format(parseLocalDateFromISO(txn.transactionDate)!, "MM/dd/yyyy")}
@@ -214,6 +227,9 @@ export default function BankAccountDetail() {
                       >
                         {formatCurrency(txn.amount)}
                       </td>
+                      <td className="py-3 text-right font-medium" data-testid={`text-balance-${txn.id}`}>
+                        {formatCurrency(txn.balance)}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -223,7 +239,11 @@ export default function BankAccountDetail() {
           </div>
 
           <div className="flex justify-end">
-            <div className="w-64 space-y-2">
+            <div className="w-72 space-y-2">
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Opening Balance</span>
+                <span>{formatCurrency(openingBalance)}</span>
+              </div>
               <div className="flex justify-between gap-2 text-sm">
                 <span className="text-muted-foreground">Total Deposits</span>
                 <span className="text-green-600">{formatCurrency(totalDeposits)}</span>
@@ -235,7 +255,7 @@ export default function BankAccountDetail() {
               <Separator />
               <div className="flex justify-between gap-2 text-lg font-semibold">
                 <span>Current Balance</span>
-                <span>{formatCurrency(account.currentBalance)}</span>
+                <span data-testid="text-summary-balance">{formatCurrency(computedBalance)}</span>
               </div>
             </div>
           </div>
@@ -272,9 +292,11 @@ export default function BankAccountDetail() {
           }
           table {
             border-collapse: collapse;
+            font-size: 11px;
           }
           th, td {
             border-bottom: 1px solid #ddd;
+            padding: 6px 4px;
           }
         }
       `}</style>
