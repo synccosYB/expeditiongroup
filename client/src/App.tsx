@@ -65,6 +65,7 @@ import BillDetail from "@/pages/bill-detail";
 import BankAccountDetail from "@/pages/bank-account-detail";
 import RebillCenter from "@/pages/rebill-center";
 import BankReconciliation from "@/pages/bank-reconciliation";
+import ReconciliationDetail from "@/pages/reconciliation-detail";
 import Reconciliation from "@/pages/reconciliation";
 import UndepositedFunds from "@/pages/undeposited-funds";
 import Deposits from "@/pages/deposits";
@@ -116,6 +117,7 @@ function AdminRouter() {
       <Route path="/bank-register/:id" component={BankRegister} />
       <Route path="/reconciliation" component={Reconciliation} />
       <Route path="/bank-reconciliation/:id" component={BankReconciliation} />
+      <Route path="/reconciliation-detail/:id" component={ReconciliationDetail} />
       <Route path="/undeposited-funds" component={UndepositedFunds} />
       <Route path="/deposits" component={Deposits} />
       <Route path="/expenses" component={Expenses} />

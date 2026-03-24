@@ -6238,6 +6238,24 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/reconciliations/:id/transactions", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const reconciliation = await storage.getBankReconciliation(parseInt(req.params.id));
+      if (!reconciliation) {
+        return res.status(404).json({ message: "Reconciliation not found" });
+      }
+      const transactions = await storage.getTransactionsByReconciliationId(parseInt(req.params.id));
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching reconciliation transactions:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation transactions" });
+    }
+  });
+
   app.post("/api/bank-accounts/:id/reconciliations", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

@@ -431,6 +431,7 @@ export interface IStorage {
   updateBankReconciliation(id: number, reconciliation: Partial<InsertBankReconciliation>): Promise<BankReconciliation | undefined>;
   updateBankReconciliationActivityDate(id: number): Promise<BankReconciliation | undefined>;
   completeBankReconciliation(id: number, userId: string): Promise<BankReconciliation | undefined>;
+  getTransactionsByReconciliationId(reconciliationId: number): Promise<BankTransaction[]>;
 
   // Customer Payments (Undeposited Funds)
   getPayments(): Promise<(Payment & { client: Client; invoice?: Invoice })[]>;
@@ -2863,6 +2864,14 @@ export class DatabaseStorage implements IStorage {
 
       return updated;
     });
+  }
+
+  async getTransactionsByReconciliationId(reconciliationId: number): Promise<BankTransaction[]> {
+    return await db
+      .select()
+      .from(bankTransactions)
+      .where(eq(bankTransactions.reconciliationId, reconciliationId))
+      .orderBy(bankTransactions.transactionDate);
   }
 
   // Customer Payments (Undeposited Funds)

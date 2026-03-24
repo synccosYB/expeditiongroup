@@ -544,8 +544,20 @@ export default function BankReconciliationPage() {
                   {reconciliations.slice(0, 5).map((rec) => (
                     <div
                       key={rec.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                       data-testid={`reconciliation-item-${rec.id}`}
+                      onClick={() => {
+                        if (rec.status === "completed") {
+                          setLocation(`/reconciliation-detail/${rec.id}`);
+                        } else {
+                          setActiveReconciliation(rec);
+                          setStatementDate(formatDateForInput(new Date(rec.statementDate)));
+                          setStatementEndingBalance(rec.statementEndingBalance);
+                          setNotes(rec.notes || "");
+                          setIsReconciling(true);
+                          initializeSelectedTransactions();
+                        }
+                      }}
                     >
                       <div>
                         <p className="font-medium">
