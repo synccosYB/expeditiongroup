@@ -75,6 +75,78 @@ function removeXHRInterceptor() {
   }
 }
 
+let screenshotHideState: {
+  elements: { el: HTMLElement; prevDisplay: string; prevVisibility: string; prevOpacity: string }[];
+  timeoutId: ReturnType<typeof setTimeout> | null;
+} | null = null;
+
+function hideWidgetForScreenshot() {
+  if (screenshotHideState) return;
+
+  const elements: NonNullable<typeof screenshotHideState>["elements"] = [];
+
+  document.querySelectorAll(".sdx-overlay").forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    elements.push({
+      el: htmlEl,
+      prevDisplay: htmlEl.style.display,
+      prevVisibility: htmlEl.style.visibility,
+      prevOpacity: htmlEl.style.opacity,
+    });
+    htmlEl.style.display = "none";
+    htmlEl.style.visibility = "hidden";
+  });
+
+  document.querySelectorAll(".sdx-modal").forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    elements.push({
+      el: htmlEl,
+      prevDisplay: htmlEl.style.display,
+      prevVisibility: htmlEl.style.visibility,
+      prevOpacity: htmlEl.style.opacity,
+    });
+    htmlEl.style.display = "none";
+    htmlEl.style.visibility = "hidden";
+  });
+
+  const widgetEl = document.getElementById("synkdex-widget");
+  if (widgetEl) {
+    elements.push({
+      el: widgetEl,
+      prevDisplay: widgetEl.style.display,
+      prevVisibility: widgetEl.style.visibility,
+      prevOpacity: widgetEl.style.opacity,
+    });
+    widgetEl.style.display = "none";
+    widgetEl.style.visibility = "hidden";
+  }
+
+  const timeoutId = setTimeout(() => {
+    restoreWidgetAfterScreenshot();
+  }, 30000);
+
+  screenshotHideState = { elements, timeoutId };
+}
+
+function restoreWidgetAfterScreenshot() {
+  if (!screenshotHideState) return;
+
+  if (screenshotHideState.timeoutId) {
+    clearTimeout(screenshotHideState.timeoutId);
+  }
+
+  for (const { el, prevDisplay, prevVisibility, prevOpacity } of screenshotHideState.elements) {
+    if (el.isConnected) {
+      el.style.display = prevDisplay;
+      el.style.visibility = prevVisibility;
+      el.style.opacity = prevOpacity;
+    }
+  }
+
+  screenshotHideState = null;
+}
+
+
 function removeSynkdex() {
   const scripts = document.querySelectorAll('script[data-api-key]');
   scripts.forEach((el) => el.remove());
@@ -359,6 +431,18 @@ export function SynkdexWidget() {
             if (inOverlay) {
               const className = node.className?.toString?.() || "";
               const textContent = node.textContent?.toLowerCase() || "";
+
+              if (
+                textContent.includes("capturing your screen") ||
+                textContent.includes("screen capture") ||
+                className.includes("capture") ||
+                className.includes("screenshot")
+              ) {
+                if (!screenshotHideState) {
+                  setTimeout(() => hideWidgetForScreenshot(), 50);
+                }
+              }
+
               if (
                 className.includes("success") ||
                 className.includes("thank") ||
@@ -369,6 +453,36 @@ export function SynkdexWidget() {
                 setTimeout(() => {
                   dismissWidgetOverlay();
                 }, 3000);
+              }
+            }
+
+            const inWidget = node.closest("#synkdex-widget");
+            if (inWidget) {
+              const textContent = node.textContent?.toLowerCase() || "";
+              const className = node.className?.toString?.() || "";
+              if (
+                textContent.includes("capturing your screen") ||
+                textContent.includes("screen capture") ||
+                className.includes("capture") ||
+                className.includes("screenshot")
+              ) {
+                if (!screenshotHideState) {
+                  setTimeout(() => hideWidgetForScreenshot(), 50);
+                }
+              }
+            }
+
+            if (screenshotHideState) {
+              const textContent = node.textContent?.toLowerCase() || "";
+              const className = node.className?.toString?.() || "";
+              if (
+                className.includes("screenshot") ||
+                className.includes("preview") ||
+                className.includes("captured") ||
+                textContent.includes("screenshot taken") ||
+                textContent.includes("screenshot captured")
+              ) {
+                setTimeout(() => restoreWidgetAfterScreenshot(), 100);
               }
             }
           }
@@ -393,6 +507,19 @@ export function SynkdexWidget() {
                 }
               }, 300);
             }
+
+            if (screenshotHideState) {
+              const textContent = node.textContent?.toLowerCase() || "";
+              const removedClassName = node.className?.toString?.() || "";
+              if (
+                textContent.includes("capturing your screen") ||
+                textContent.includes("screen capture") ||
+                removedClassName.includes("capture") ||
+                removedClassName.includes("screenshot")
+              ) {
+                setTimeout(() => restoreWidgetAfterScreenshot(), 100);
+              }
+            }
           }
         }
       }
@@ -403,6 +530,7 @@ export function SynkdexWidget() {
     return () => {
       observer.disconnect();
       removeCloseInterceptor();
+      restoreWidgetAfterScreenshot();
       removeSynkdex();
       removeFetchInterceptor();
       removeXHRInterceptor();
