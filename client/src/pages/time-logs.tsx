@@ -226,7 +226,11 @@ export default function TimeLogs() {
       isBillable: entry.isBillable ?? true,
       notes: entry.notes,
     })) || []),
-  ].sort((a, b) => (parseLocalDateFromISO(b.date)?.getTime() || 0) - (parseLocalDateFromISO(a.date)?.getTime() || 0));
+  ].sort((a, b) => {
+    const dateDiff = (parseLocalDateFromISO(b.date)?.getTime() || 0) - (parseLocalDateFromISO(a.date)?.getTime() || 0);
+    if (dateDiff !== 0) return dateDiff;
+    return (a.startTime || "").localeCompare(b.startTime || "");
+  });
 
   const filteredLogs = unifiedLogs.filter((log) => {
     const matchesSearch =

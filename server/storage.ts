@@ -124,7 +124,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 export { db };
-import { eq, desc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
+import { eq, desc, asc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -705,13 +705,13 @@ export class DatabaseStorage implements IStorage {
       .from(timeLogs)
       .leftJoin(users, eq(timeLogs.userId, users.id))
       .where(eq(timeLogs.projectId, id))
-      .orderBy(desc(timeLogs.date));
+      .orderBy(desc(timeLogs.date), asc(timeLogs.startTime));
     const projectTimeLogs = timeLogsResult.map(r => ({
       ...r.time_logs,
       user: r.users || undefined,
     }));
     
-    const projectTimeEntries = await db.select().from(timeEntries).where(eq(timeEntries.projectId, id)).orderBy(desc(timeEntries.date));
+    const projectTimeEntries = await db.select().from(timeEntries).where(eq(timeEntries.projectId, id)).orderBy(desc(timeEntries.date), asc(timeEntries.startTime));
 
     return {
       ...projectResult.projects,
@@ -957,7 +957,7 @@ export class DatabaseStorage implements IStorage {
       .from(timeEntries)
       .leftJoin(tasks, eq(timeEntries.taskId, tasks.id))
       .leftJoin(projects, eq(timeEntries.projectId, projects.id))
-      .orderBy(desc(timeEntries.date));
+      .orderBy(desc(timeEntries.date), asc(timeEntries.startTime));
     
     return result.map(r => ({
       ...r.time_entries,
@@ -967,7 +967,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTimeEntriesByTaskId(taskId: number): Promise<TimeEntry[]> {
-    return await db.select().from(timeEntries).where(eq(timeEntries.taskId, taskId)).orderBy(desc(timeEntries.date));
+    return await db.select().from(timeEntries).where(eq(timeEntries.taskId, taskId)).orderBy(desc(timeEntries.date), asc(timeEntries.startTime));
   }
 
   async getTimeEntriesByProjectId(projectId: number): Promise<(TimeEntry & { task: Task })[]> {
@@ -976,7 +976,7 @@ export class DatabaseStorage implements IStorage {
       .from(timeEntries)
       .leftJoin(tasks, eq(timeEntries.taskId, tasks.id))
       .where(eq(timeEntries.projectId, projectId))
-      .orderBy(desc(timeEntries.date));
+      .orderBy(desc(timeEntries.date), asc(timeEntries.startTime));
     
     return result.map(r => ({
       ...r.time_entries,
@@ -1009,7 +1009,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(timeLogs)
       .leftJoin(projects, eq(timeLogs.projectId, projects.id))
-      .orderBy(desc(timeLogs.date));
+      .orderBy(desc(timeLogs.date), asc(timeLogs.startTime));
     
     return result.map(r => ({
       ...r.time_logs,
@@ -1018,7 +1018,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTimeLogsByProjectId(projectId: number): Promise<TimeLog[]> {
-    return await db.select().from(timeLogs).where(eq(timeLogs.projectId, projectId)).orderBy(desc(timeLogs.date));
+    return await db.select().from(timeLogs).where(eq(timeLogs.projectId, projectId)).orderBy(desc(timeLogs.date), asc(timeLogs.startTime));
   }
 
   async createTimeLog(timeLog: InsertTimeLog): Promise<TimeLog> {
