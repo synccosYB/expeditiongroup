@@ -43,6 +43,7 @@ import {
   ChevronDown,
   Plus,
   X,
+  Check,
   Send,
   CheckCircle,
   XCircle,
@@ -82,6 +83,31 @@ export default function InvoiceDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState(false);
+  const [inlineInvoiceNumber, setInlineInvoiceNumber] = useState("");
+
+  const inlineInvoiceNumberMutation = useMutation({
+    mutationFn: async (newNumber: string) => {
+      if (!newNumber.trim()) {
+        throw new Error("Invoice number is required");
+      }
+      await apiRequest("PATCH", `/api/invoices/${invoiceId}`, {
+        invoiceNumber: newNumber.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Invoice number updated" });
+      setEditingInvoiceNumber(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.message || "Failed to update invoice number",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     const cleanup = installPrintListeners();
@@ -319,7 +345,62 @@ export default function InvoiceDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="invoice-info-grid">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice Number</p>
-              <p className="font-mono font-medium" data-testid="text-invoice-num-value">{invoice.invoiceNumber}</p>
+              {editingInvoiceNumber ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <Input
+                    value={inlineInvoiceNumber}
+                    onChange={(e) => setInlineInvoiceNumber(e.target.value)}
+                    className="text-sm font-mono font-medium"
+                    data-testid="input-inline-invoice-number"
+                    autoFocus
+                    disabled={inlineInvoiceNumberMutation.isPending}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !inlineInvoiceNumberMutation.isPending) {
+                        inlineInvoiceNumberMutation.mutate(inlineInvoiceNumber);
+                      } else if (e.key === "Escape") {
+                        setInlineInvoiceNumber(invoice.invoiceNumber || "");
+                        setEditingInvoiceNumber(false);
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => inlineInvoiceNumberMutation.mutate(inlineInvoiceNumber)}
+                    disabled={inlineInvoiceNumberMutation.isPending}
+                    data-testid="button-save-inline-invoice-number"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setInlineInvoiceNumber(invoice.invoiceNumber || "");
+                      setEditingInvoiceNumber(false);
+                    }}
+                    data-testid="button-cancel-inline-invoice-number"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 group">
+                  <p className="font-mono font-medium" data-testid="text-invoice-num-value">{invoice.invoiceNumber}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => {
+                      setInlineInvoiceNumber(invoice.invoiceNumber || "");
+                      setEditingInvoiceNumber(true);
+                    }}
+                    data-testid="button-edit-inline-invoice-number"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Invoice Date</p>
