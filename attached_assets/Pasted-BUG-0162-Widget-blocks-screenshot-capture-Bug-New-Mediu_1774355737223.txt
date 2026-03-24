@@ -1,0 +1,61 @@
+BUG-0162
+Widget blocks screenshot capture
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Unable to capture a screenshot because the widget overlays and blocks the actual content in the image.
+
+AI Analysis
+
+### Issue Analysis
+
+1. **Affected Part of the App:**
+   - The screenshot functionality of the app is being impacted. The blocking overlay is caused by a modal widget that appears to overlap the main content area.
+
+2. **Root Cause Analysis:**
+   - The screenshot shows a modal interface for reporting an issue ("Bug Report" dialog). However:
+      - The modal itself includes a section ("Capturing your screen...") that appears to visually block the actual content being captured.
+      - This might be due to a confirmation overlay or interactive widget being rendered in a way that conflicts with the capture functionality. 
+      - There's no console error provided, so it could be a UI/UX issue with z-index (CSS layering) or widget rendering.
+
+3. **Recommendations and Fix:**
+   - **Update Modal Behavior:** Ensure the modal or screenshot overlay is hidden during a screenshot capture operation to avoid interference.
+   - **Improve UI Hierarchy:** Analyze the CSS z-index and manage it so that modal elements (like the capture widget) are correctly excluded when users initiate content viewing or capture.
+   - **Testing:** Test on multiple screen sizes and resolutions to ensure the modal UI behaves consistently for all users.
+
+---
+
+### JSON Output
+```json
+{"severity": "medium", "category": "ui"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-reconciliation/1
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
