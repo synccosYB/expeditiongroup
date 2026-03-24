@@ -1,0 +1,68 @@
+FR-0015
+Improve synchronization and traceability between Invoices, Expenses, Bills, Bank Transactions, and Checks.
+Feature Request
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Invoices, expenses, and bills should be clearly synchronized with bank transactions and checks. The system should allow users to easily identify exactly when a payment was made and which transaction it corresponds to.
+
+Each invoice, expense, or bill should be linked to its related bank or check transaction. When viewing reports or transaction lists, users should be able to click on a transaction and be taken directly to the corresponding entry in the register.
+
+This functionality should work similarly to how navigation works in QuickBooks, where each transaction in a report can be opened and traced directly to the original transaction record.
+
+AI Analysis
+
+### Analysis
+
+1. **Affected Part of the App**:
+   - The issue affects the synchronization between components related to financial transactions: invoices, expenses, bills, bank transactions, and checks. Specifically, it impacts how user interaction flows between these entities while maintaining data traceability across reports and transaction lists.
+
+2. **Root Cause Analysis**:
+   - Based on the description, there is a lack of integration or navigation between financial records (e.g., invoices, bank transactions, and checks). Users are unable to trace the relationships between transactions effectively.
+   - Missing functionality could be due to a lack of proper database associations or unimplemented relational tracking in the UI to link these entities.
+   - Another issue could be that reports or transaction lists are static or non-interactive, preventing users from clicking through to the originating records.
+
+3. **Recommended Fix or Next Steps**:
+   - **Database Association**: Review the database schema to ensure relationships between invoices, bills, expenses, checks, and bank transactions are implemented correctly. For example:
+     - Invoices should have a payment transaction ID that links to the bank or check transactions.
+     - Bills should have corresponding payment entries in expenses.
+   - **Integration**: Implement navigation links in the UI:
+     - Make the transaction list and reports interactive. Add clickable links or buttons that direct users to the corresponding entities (e.g., clicking on a transaction should open the detailed view of the invoice or bill).
+   - **Testing**:
+     - Unit tests to check if records are correctly linked.
+     - UI tests to verify consistent navigation paths across reports.
+   - **UX Alignment**: Enhance the UI for clarity and ensure it mirrors traceability as described (similar to QuickBooks). If needed, consult UX research for streamlined navigation planning.
+
+Ensure the development team has access to industry-standard examples (e.g., navigation workflows from QuickBooks) as a benchmark for implementing this functionality.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/invoices/132
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (1)
+
+Yitzchock Braunclient
+12 days ago
+Checked and it doesn't work
+
+Write a reply...
