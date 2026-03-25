@@ -138,6 +138,10 @@ export async function registerRoutes(
     .then(() => console.log('[Data Fix] Linked existing transfer counterpart transactions'))
     .catch((err: any) => console.log('[Data Fix] Transfer linking skipped:', err?.message));
 
+  db.execute(sql`ALTER TABLE bank_reconciliations ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP`)
+    .then(() => console.log('[Schema] Ensured last_activity_at column exists on bank_reconciliations'))
+    .catch((err: any) => console.log('[Schema] last_activity_at column check:', err?.message));
+
   db.execute(sql`UPDATE invoices SET invoice_number = 'INV-2026-0069' WHERE invoice_number = 'INV-1772133028576'`)
     .then(() => console.log('[Data Fix] Corrected malformed invoice number INV-1772133028576 -> INV-2026-0069'))
     .catch((err: any) => console.log('[Data Fix] Invoice number fix skipped:', err?.message));
@@ -229,12 +233,6 @@ export async function registerRoutes(
       console.log('[Data Fix] Check transaction type fix error:', err?.message);
     }
   })();
-
-  db.execute(sql`
-    UPDATE bank_accounts SET opening_balance = '0.00', updated_at = NOW()
-    WHERE id = 1 AND opening_balance = '25.00'
-  `).then(() => console.log('[Data Fix] Corrected NECB bank account opening balance from $25.00 to $0.00'))
-    .catch((err: any) => console.log('[Data Fix] NECB opening balance fix skipped:', err?.message));
 
   (async () => {
     try {
