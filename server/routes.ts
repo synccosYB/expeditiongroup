@@ -74,6 +74,27 @@ const updatePaymentSchema = insertPaymentSchema.partial();
 const SYNKDEX_URL = "https://synkdex.com";
 const SYNKDEX_PROXY_API_KEY = process.env.SYNKDEX_API_KEY || "";
 
+async function recalculateAccountBalance(bankAccountId: number): Promise<void> {
+  const bankAccount = await storage.getBankAccount(bankAccountId);
+  if (!bankAccount) return;
+
+  const transactions = await storage.getBankTransactions(bankAccountId);
+  const openingBalance = parseFloat(bankAccount.openingBalance || "0");
+
+  const totalDeposits = transactions
+    .filter((t) => t.transactionType === "deposit")
+    .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+  const totalOther = transactions
+    .filter((t) => t.transactionType !== "deposit")
+    .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
+
+  const computedBalance = openingBalance + totalDeposits - totalOther;
+
+  await storage.updateBankAccount(bankAccountId, {
+    currentBalance: computedBalance.toFixed(2),
+  });
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -251,6 +272,18 @@ export async function registerRoutes(
       }
     } catch (err: any) {
       console.log('[Data Fix] Stale reconciliation cleanup skipped:', err?.message);
+    }
+  })();
+
+  (async () => {
+    try {
+      const allBankAccounts = await storage.getBankAccounts();
+      for (const account of allBankAccounts) {
+        await recalculateAccountBalance(account.id);
+      }
+      console.log(`[Data Fix] Recalculated balances for ${allBankAccounts.length} bank accounts`);
+    } catch (err: any) {
+      console.error('[Data Fix] Error recalculating bank account balances:', err?.message);
     }
   })();
 
@@ -5118,8 +5151,10 @@ export async function registerRoutes(
         });
         const counterpartTx = await storage.createBankTransaction(counterpart);
         await storage.updateBankTransaction(transaction.id, { linkedTransactionId: counterpartTx.id } as any);
+        await recalculateAccountBalance(parsed.transferToBankAccountId);
       }
 
+      await recalculateAccountBalance(parseInt(req.params.id));
       res.status(201).json(transaction);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -5158,6 +5193,17 @@ export async function registerRoutes(
         if (parsed.reference !== undefined) counterpartUpdates.reference = parsed.reference;
         if (Object.keys(counterpartUpdates).length > 0) {
           await storage.updateBankTransaction(existingTx.linkedTransactionId, counterpartUpdates);
+          const counterpartTx = await storage.getBankTransaction(existingTx.linkedTransactionId);
+          if (counterpartTx) {
+            await recalculateAccountBalance(counterpartTx.bankAccountId);
+          }
+        }
+      }
+
+      if (existingTx) {
+        await recalculateAccountBalance(existingTx.bankAccountId);
+        if (parsed.bankAccountId !== undefined && parsed.bankAccountId !== existingTx.bankAccountId) {
+          await recalculateAccountBalance(parsed.bankAccountId);
         }
       }
 
@@ -5211,7 +5257,15 @@ export async function registerRoutes(
       }
 
       const txToDelete = await storage.getBankTransaction(transactionId);
+      const affectedAccountIds: number[] = [];
+      if (txToDelete) {
+        affectedAccountIds.push(txToDelete.bankAccountId);
+      }
       if (txToDelete?.linkedTransactionId) {
+        const linkedTx = await storage.getBankTransaction(txToDelete.linkedTransactionId);
+        if (linkedTx) {
+          affectedAccountIds.push(linkedTx.bankAccountId);
+        }
         await storage.deleteBankTransaction(txToDelete.linkedTransactionId);
       }
 
@@ -5219,6 +5273,11 @@ export async function registerRoutes(
       if (!success) {
         return res.status(404).json({ message: "Bank transaction not found" });
       }
+
+      for (const accountId of affectedAccountIds) {
+        await recalculateAccountBalance(accountId);
+      }
+
       res.json({ message: "Bank transaction deleted successfully" });
     } catch (error) {
       console.error("Error deleting bank transaction:", error);
@@ -5313,18 +5372,7 @@ export async function registerRoutes(
           });
           bankTransactionId = bankTransaction.id;
           
-          // Update bank account balance
-          const currentBalance = parseFloat(bankAccount.currentBalance || "0");
-          const expenseAmount = parseFloat(parsed.amount);
-          let newBalance: number;
-          if (bankAccount.accountType === "credit_card") {
-            newBalance = currentBalance + expenseAmount;
-          } else {
-            newBalance = currentBalance - expenseAmount;
-          }
-          await storage.updateBankAccount(parsed.bankAccountId, {
-            currentBalance: newBalance.toFixed(2),
-          });
+          await recalculateAccountBalance(parsed.bankAccountId);
         }
       }
       
@@ -5410,35 +5458,24 @@ export async function registerRoutes(
           const expenseDate = parsed.expenseDate || currentExpense.expenseDate;
           const accountId = parsed.accountId !== undefined ? parsed.accountId : currentExpense.accountId;
           
-          // Step 1: Reverse old bank account balance if it had one
+          const expenseAccountsToRecalc = new Set<number>();
           if (oldBankAccountId) {
-            const oldBankAccount = await storage.getBankAccount(oldBankAccountId);
-            if (oldBankAccount) {
-              const bal = parseFloat(oldBankAccount.currentBalance || "0");
-              const reversed = oldBankAccount.accountType === "credit_card" ? bal - oldAmount : bal + oldAmount;
-              await storage.updateBankAccount(oldBankAccountId, { currentBalance: reversed.toFixed(2) });
-            }
-            // Delete old bank transaction if bank account is changing or being removed
+            expenseAccountsToRecalc.add(oldBankAccountId);
             if (currentExpense.bankTransactionId && oldBankAccountId !== newBankAccountId) {
               await storage.deleteBankTransaction(currentExpense.bankTransactionId);
               updateData.bankTransactionId = null;
             }
           }
           
-          // Step 2: Apply new bank account balance and create/update transaction
           if (newBankAccountId) {
+            expenseAccountsToRecalc.add(newBankAccountId);
             const newBankAccount = await storage.getBankAccount(newBankAccountId);
             if (newBankAccount) {
-              const bal = parseFloat(newBankAccount.currentBalance || "0");
-              const adjusted = newBankAccount.accountType === "credit_card" ? bal + newAmount : bal - newAmount;
-              await storage.updateBankAccount(newBankAccountId, { currentBalance: adjusted.toFixed(2) });
-              
               const paymentType = parsed.paymentType !== undefined ? parsed.paymentType : currentExpense.paymentType;
               const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : (paymentType === "check" ? "check" : "withdrawal");
               const checkNumber = paymentType === "check" ? (reference || null) : null;
               
               if (currentExpense.bankTransactionId && oldBankAccountId === newBankAccountId) {
-                // Same bank account - update existing transaction
                 await storage.updateBankTransaction(currentExpense.bankTransactionId, {
                   bankAccountId: newBankAccountId,
                   transactionDate: expenseDate,
@@ -5450,7 +5487,6 @@ export async function registerRoutes(
                   checkNumber,
                 });
               } else {
-                // New bank account or first time - create new transaction
                 const bankTransaction = await storage.createBankTransaction({
                   bankAccountId: newBankAccountId,
                   transactionDate: expenseDate,
@@ -5467,9 +5503,12 @@ export async function registerRoutes(
               updateData.status = "paid";
             }
           } else if (oldBankAccountId && !newBankAccountId) {
-            // Bank account removed
             updateData.bankTransactionId = null;
             updateData.status = "pending";
+          }
+
+          for (const accountId of expenseAccountsToRecalc) {
+            await recalculateAccountBalance(accountId);
           }
         } else if (oldBankAccountId && currentExpense.bankTransactionId) {
           // No balance/account change, but update transaction metadata if description, vendor, paymentType, etc changed
@@ -5576,20 +5615,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Expense not found" });
       }
       
-      // Reverse bank account balance and delete bank transaction if linked
       if (expense && expense.bankAccountId) {
-        const bankAccount = await storage.getBankAccount(expense.bankAccountId);
-        if (bankAccount) {
-          const expenseAmount = parseFloat(expense.amount);
-          const currentBalance = parseFloat(bankAccount.currentBalance || "0");
-          const reversedBalance = bankAccount.accountType === "credit_card"
-            ? currentBalance - expenseAmount
-            : currentBalance + expenseAmount;
-          await storage.updateBankAccount(expense.bankAccountId, { currentBalance: reversedBalance.toFixed(2) });
-        }
         if (expense.bankTransactionId) {
           await storage.deleteBankTransaction(expense.bankTransactionId);
         }
+        await recalculateAccountBalance(expense.bankAccountId);
       }
       
       // Revert bill status if this was a bill payment
@@ -5940,22 +5970,7 @@ export async function registerRoutes(
         amount: parsedAmount,
       });
       
-      // Update bank account balance
-      const currentBalance = parseFloat(bankAccount.currentBalance || "0");
-      const paymentAmountNum = parseFloat(parsedAmount);
-      let newBalance: number;
-      
-      if (bankAccount.accountType === "credit_card") {
-        // Credit card: payment increases the balance (owed more)
-        newBalance = currentBalance + paymentAmountNum;
-      } else {
-        // Checking/Savings: payment decreases the balance
-        newBalance = currentBalance - paymentAmountNum;
-      }
-      
-      await storage.updateBankAccount(parsedBankAccountId, {
-        currentBalance: newBalance.toFixed(2),
-      });
+      await recalculateAccountBalance(parsedBankAccountId);
       
       // Create the bill payment record
       const parsed = insertBillPaymentSchema.parse({ 
@@ -6032,50 +6047,10 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Valid payment amount is required" });
       }
 
-      // Handle balance updates - use net delta approach for same-account edits
-      if (parsedBankAccountId === existingPayment.bankAccountId && oldBankAccount) {
-        // Same account - calculate net change
-        const amountDelta = newAmount - oldAmount;
-        const currentBalance = parseFloat(oldBankAccount.currentBalance || "0");
-        let newBalance: number;
-        
-        if (oldBankAccount.accountType === "credit_card") {
-          // Credit card: positive delta increases balance
-          newBalance = currentBalance + amountDelta;
-        } else {
-          // Checking/Savings: positive delta decreases balance
-          newBalance = currentBalance - amountDelta;
-        }
-        
-        await storage.updateBankAccount(parsedBankAccountId, {
-          currentBalance: newBalance.toFixed(2),
-        });
-      } else {
-        // Different accounts - reverse old and apply new
-        if (oldBankAccount) {
-          const oldBalance = parseFloat(oldBankAccount.currentBalance || "0");
-          let reversedBalance: number;
-          if (oldBankAccount.accountType === "credit_card") {
-            reversedBalance = oldBalance - oldAmount;
-          } else {
-            reversedBalance = oldBalance + oldAmount;
-          }
-          await storage.updateBankAccount(existingPayment.bankAccountId, {
-            currentBalance: reversedBalance.toFixed(2),
-          });
-        }
-
-        // Apply new bank account balance
-        const currentNewBalance = parseFloat(newBankAccount.currentBalance || "0");
-        let updatedNewBalance: number;
-        if (newBankAccount.accountType === "credit_card") {
-          updatedNewBalance = currentNewBalance + newAmount;
-        } else {
-          updatedNewBalance = currentNewBalance - newAmount;
-        }
-        await storage.updateBankAccount(parsedBankAccountId, {
-          currentBalance: updatedNewBalance.toFixed(2),
-        });
+      const accountsToRecalculate = new Set<number>();
+      accountsToRecalculate.add(parsedBankAccountId);
+      if (parsedBankAccountId !== existingPayment.bankAccountId) {
+        accountsToRecalculate.add(existingPayment.bankAccountId);
       }
 
       // Update the bank transaction if it exists
@@ -6121,6 +6096,10 @@ export async function registerRoutes(
         });
       }
 
+      for (const accountId of accountsToRecalculate) {
+        await recalculateAccountBalance(accountId);
+      }
+
       res.json(updatedPayment);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -6144,30 +6123,11 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Bill payment not found" });
       }
 
-      // Reverse the bank account balance
-      const bankAccount = await storage.getBankAccount(payment.bankAccountId);
-      if (bankAccount) {
-        const currentBalance = parseFloat(bankAccount.currentBalance || "0");
-        const paymentAmount = parseFloat(payment.amount);
-        let reversedBalance: number;
-
-        if (bankAccount.accountType === "credit_card") {
-          // Credit card: payment was a charge, so reduce the balance
-          reversedBalance = currentBalance - paymentAmount;
-        } else {
-          // Checking/Savings: payment reduced balance, so add it back
-          reversedBalance = currentBalance + paymentAmount;
-        }
-
-        await storage.updateBankAccount(payment.bankAccountId, {
-          currentBalance: reversedBalance.toFixed(2),
-        });
-      }
-
-      // Delete the associated bank transaction if it exists
       if (payment.bankTransactionId) {
         await storage.deleteBankTransaction(payment.bankTransactionId);
       }
+
+      await recalculateAccountBalance(payment.bankAccountId);
 
       // Update bill's amountPaid and status
       const bill = await storage.getBill(payment.billId);
@@ -6729,15 +6689,7 @@ export async function registerRoutes(
         amount: parsed.totalAmount,
       });
       
-      // Update the bank account balance
-      const bankAccount = await storage.getBankAccount(parsed.bankAccountId);
-      if (bankAccount) {
-        const currentBalance = parseFloat(bankAccount.currentBalance || '0');
-        const depositAmount = parseFloat(parsed.totalAmount);
-        await storage.updateBankAccount(parsed.bankAccountId, {
-          currentBalance: (currentBalance + depositAmount).toFixed(2),
-        });
-      }
+      await recalculateAccountBalance(parsed.bankAccountId);
       
       res.status(201).json(deposit);
     } catch (error) {
@@ -6762,17 +6714,6 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Deposit not found" });
       }
       
-      // Reverse the bank account balance
-      const bankAccount = await storage.getBankAccount(deposit.bankAccountId);
-      if (bankAccount) {
-        const currentBalance = parseFloat(bankAccount.currentBalance || '0');
-        const depositAmount = parseFloat(deposit.totalAmount);
-        await storage.updateBankAccount(deposit.bankAccountId, {
-          currentBalance: (currentBalance - depositAmount).toFixed(2),
-        });
-      }
-      
-      // Delete the associated bank transaction (find by matching criteria)
       const transactions = await storage.getBankTransactions(deposit.bankAccountId);
       const depositTransaction = transactions.find(t => 
         t.transactionType === 'deposit' && 
@@ -6785,6 +6726,8 @@ export async function registerRoutes(
       }
       
       const deleted = await storage.deleteDeposit(parseInt(req.params.id));
+
+      await recalculateAccountBalance(deposit.bankAccountId);
       if (!deleted) {
         return res.status(404).json({ message: "Deposit not found" });
       }
