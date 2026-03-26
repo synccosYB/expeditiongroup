@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { formatLocalDate } from "@/lib/dateUtils";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
 import type { TimeLog, TimeEntry, Project, Client } from "@shared/schema";
 
 interface InvoiceGenerationDialogProps {
@@ -71,20 +71,22 @@ export function InvoiceGenerationDialog({
     }
   }, [isOpen, refetchNextNumber]);
 
-  const { data: billedItems } = useQuery<BilledItems>({
+  const { data: billedItems, isLoading: isBilledItemsLoading, isError: isBilledItemsError, refetch: refetchBilledItems } = useQuery<BilledItems>({
     queryKey: ["/api/projects", project.id, "billed-items"],
     enabled: isOpen,
     staleTime: 0,
     gcTime: 0,
   });
 
+  const isBilledItemsReady = !!billedItems && !isBilledItemsLoading && !isBilledItemsError;
+
   const unbilledTimeLogs = useMemo(() => {
-    if (!billedItems) return timeLogs;
+    if (!billedItems) return [];
     return timeLogs.filter((log) => !billedItems.timeLogIds.includes(log.id));
   }, [timeLogs, billedItems]);
 
   const unbilledTimeEntries = useMemo(() => {
-    if (!billedItems) return timeEntries;
+    if (!billedItems) return [];
     return timeEntries.filter((entry) => !billedItems.timeEntryIds.includes(entry.id));
   }, [timeEntries, billedItems]);
 
@@ -288,7 +290,22 @@ export function InvoiceGenerationDialog({
             </div>
           </div>
 
-          {(hasUnbilledTimeLogs || hasUnbilledTimeEntries) ? (
+          {isBilledItemsLoading || (!isBilledItemsReady && !isBilledItemsError) ? (
+            <div className="p-6 border rounded-md bg-muted/50 flex flex-col items-center justify-center gap-2" data-testid="loading-billed-items">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Loading time entries...</p>
+            </div>
+          ) : isBilledItemsError ? (
+            <div className="p-4 border rounded-md bg-destructive/10 flex flex-col items-center gap-2" data-testid="error-billed-items">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <p className="text-sm text-destructive">Failed to load billed items.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetchBilledItems()} data-testid="button-retry-billed-items">
+                Try Again
+              </Button>
+            </div>
+          ) : (hasUnbilledTimeLogs || hasUnbilledTimeEntries) ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Select Time Entries</Label>
