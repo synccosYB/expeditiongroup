@@ -1093,6 +1093,8 @@ export default function ProjectDetail() {
   const { data: project, isLoading, isPlaceholderData } = useQuery<ProjectWithRelations>({
     queryKey: ["/api/projects", id],
     placeholderData: (prev) => prev,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   const { data: associates } = useQuery<Associate[]>({
@@ -1958,10 +1960,16 @@ export default function ProjectDetail() {
             <EmptyState
               icon={ClipboardList}
               title="Project not found"
-              description="The project you're looking for doesn't exist"
+              description="The project you're looking for doesn't exist or may have been deleted."
               actionLabel="View All Projects"
               onAction={() => window.location.href = "/projects"}
             />
+            <div className="flex justify-center pb-6">
+              <Button variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/projects"} data-testid="button-go-back">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Go Back
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

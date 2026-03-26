@@ -437,21 +437,27 @@ export default function InvoiceDetail() {
             </div>
           </div>
 
-          {invoice.project && (
+          {(invoice.project || invoice.projectId) && (
             <div className="mb-8 p-4 border rounded-md" data-testid="invoice-project-box">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-medium">Project</p>
               </div>
-              <Link 
-                href={`/projects/${invoice.project.id}`} 
-                className="text-sm hover:underline print:no-underline"
-                data-testid="link-project"
-              >
-                {invoice.project.name}
-              </Link>
-              {invoice.project.address && (
-                <p className="text-xs text-muted-foreground mt-1">{invoice.project.address}</p>
+              {invoice.project ? (
+                <>
+                  <Link 
+                    href={`/projects/${invoice.project.id}`} 
+                    className="text-sm hover:underline print:no-underline"
+                    data-testid="link-project"
+                  >
+                    {invoice.project.name}
+                  </Link>
+                  {invoice.project.address && (
+                    <p className="text-xs text-muted-foreground mt-1">{invoice.project.address}</p>
+                  )}
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground italic" data-testid="text-project-deleted">Deleted project</span>
               )}
             </div>
           )}

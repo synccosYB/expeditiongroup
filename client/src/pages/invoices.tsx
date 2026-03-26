@@ -271,6 +271,8 @@ export default function Invoices() {
                         <Link href={`/projects/${invoice.projectId}`} className="hover:underline" data-testid={`link-project-${invoice.id}`}>
                           {invoice.project.name}
                         </Link>
+                      ) : invoice.projectId && !invoice.project ? (
+                        <span className="text-muted-foreground italic" data-testid={`text-project-deleted-${invoice.id}`}>Deleted project</span>
                       ) : (
                         <span className="text-muted-foreground" data-testid={`text-project-${invoice.id}`}>-</span>
                       )}
