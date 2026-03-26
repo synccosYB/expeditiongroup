@@ -158,6 +158,8 @@ export default function InvoiceDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rebill-center"] });
       toast({ title: "Invoice deleted successfully" });
       setLocation(invoice?.clientId ? `/clients/${invoice.clientId}` : "/invoices");
     },
@@ -178,6 +180,8 @@ export default function InvoiceDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "balance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "payments"] });
       toast({ title: "Invoice status updated" });
     },
     onError: () => {
@@ -739,6 +743,7 @@ function EditInvoiceDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "balance"] });
       toast({ title: "Invoice updated successfully" });
       onOpenChange(false);
     },

@@ -390,6 +390,7 @@ export default function Expenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       toast({ title: "Expense created successfully" });
       setIsDialogOpen(false);
       form.reset();
@@ -438,6 +439,7 @@ export default function Expenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       toast({ title: "Expense updated successfully" });
       setIsDialogOpen(false);
       setEditingExpense(null);
@@ -470,6 +472,7 @@ export default function Expenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       toast({ title: "Expense deleted successfully" });
       setDeletingExpense(null);
     },

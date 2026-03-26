@@ -209,6 +209,10 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      if (task?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
+      }
       if ("internalNotes" in variables) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "notes-history"] });
       }
@@ -239,6 +243,10 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      if (task?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
+      }
       toast({ title: "Time entry logged successfully" });
       timeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), isBillable: true });
     },

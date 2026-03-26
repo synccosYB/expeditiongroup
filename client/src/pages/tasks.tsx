@@ -241,6 +241,9 @@ function TaskDetailDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      if (task?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
+      }
       toast({ title: "Task updated successfully" });
       setIsEditing(false);
     },
@@ -1016,6 +1019,7 @@ export default function Tasks() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

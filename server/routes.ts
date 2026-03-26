@@ -642,12 +642,10 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateProjectSchema.parse(req.body);
-      console.log("[DEBUG] Updating project:", req.params.id, "with data:", JSON.stringify(parsed));
       const project = await storage.updateProject(parseInt(req.params.id), parsed);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
-      console.log("[DEBUG] Project updated, isVisibleToClient:", project.isVisibleToClient);
       sendWebhook("project.updated", { project, changes: parsed }, { id: req.session.userId!, email: user?.email });
       res.json(project);
     } catch (error) {
@@ -1212,20 +1210,15 @@ export async function registerRoutes(
   app.get("/api/client/projects", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      console.log("[DEBUG] Client projects - user:", user?.email, "clientId:", user?.clientId);
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
       const settings = await storage.getClientPortalSettings(user.clientId);
-      console.log("[DEBUG] Portal settings:", settings);
       if (!settings?.showProjects) {
-        console.log("[DEBUG] showProjects is false, returning empty array");
         return res.json([]);
       }
       const allProjects = await storage.getProjectsByClientId(user.clientId);
-      console.log("[DEBUG] All projects for client:", allProjects.length, allProjects.map(p => ({ id: p.id, name: p.name, visible: p.isVisibleToClient })));
       const visibleProjects = allProjects.filter(p => p.isVisibleToClient);
-      console.log("[DEBUG] Visible projects:", visibleProjects.length);
       
       const projectsWithRelations = await Promise.all(
         visibleProjects.map(async (project) => {
@@ -1238,7 +1231,6 @@ export async function registerRoutes(
         })
       );
       
-      console.log("[DEBUG] Returning projects with relations:", projectsWithRelations.length);
       res.json(projectsWithRelations);
     } catch (error) {
       console.error("Error fetching client projects:", error);

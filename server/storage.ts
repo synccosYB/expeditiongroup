@@ -3091,7 +3091,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUndepositedFundsTotal(): Promise<number> {
     const result = await db
-      .select({ total: sql<string>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)` })
+      .select({ total: sql<string>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL(12,2))), 0)` })
       .from(payments)
       .where(eq(payments.isDeposited, false));
     
