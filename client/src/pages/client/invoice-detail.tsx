@@ -365,6 +365,27 @@ export default function ClientInvoiceDetail() {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
+          .sdx-widget-btn,
+          .sdx-overlay,
+          #synkdex-widget,
+          [class*='sdx-'],
+          [id*='synkdex'],
+          iframe[src*='synkdex'],
+          iframe[id*='synkdex'],
+          iframe[id*='sdx'],
+          iframe[class*='sdx'],
+          img[src*='synkdex'],
+          img[src*='Synkdex'],
+          img[alt*='synkdex'],
+          img[alt*='Synkdex'] {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            position: absolute !important;
+            left: -9999px !important;
+          }
         }
       `}</style>
     </div>

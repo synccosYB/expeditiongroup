@@ -352,7 +352,11 @@
   iframe[src*="synkdex"],
   iframe[id*="synkdex"],
   iframe[id*="sdx"],
-  iframe[class*="sdx"] {
+  iframe[class*="sdx"],
+  img[src*="synkdex"],
+  img[src*="Synkdex"],
+  img[alt*="synkdex"],
+  img[alt*="Synkdex"] {
     display: none !important;
     visibility: hidden !important;
     width: 0 !important;
