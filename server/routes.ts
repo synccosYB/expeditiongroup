@@ -6,8 +6,8 @@ import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
-import { eq, sql } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts } from "@shared/schema";
+import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
+import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -6962,6 +6962,311 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("AI text improvement error:", error);
       res.status(500).json({ error: "Failed to improve text" });
+    }
+  });
+
+  app.get("/api/admin/export-data", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const [
+        allClients,
+        allProjects,
+        allTasksList,
+        allTimeLogs,
+        allTimeEntries,
+        allInvoicesList,
+        allNotesList,
+        allDocumentsList,
+        allDailyLogs,
+        allAssociates,
+      ] = await Promise.all([
+        storage.getClients(),
+        db.select().from(projects),
+        db.select().from(tasks),
+        db.select().from(timeLogs),
+        db.select().from(timeEntries),
+        db.select().from(invoices),
+        db.select().from(notes),
+        db.select().from(documents),
+        storage.getDailyActivityLogs(),
+        storage.getAssociates(),
+      ]);
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        counts: {
+          clients: allClients.length,
+          projects: allProjects.length,
+          tasks: allTasksList.length,
+          timeLogs: allTimeLogs.length,
+          timeEntries: allTimeEntries.length,
+          invoices: allInvoicesList.length,
+          notes: allNotesList.length,
+          documents: allDocumentsList.length,
+          dailyActivityLogs: allDailyLogs.length,
+          associates: allAssociates.length,
+        },
+        clients: allClients,
+        projects: allProjects,
+        tasks: allTasksList,
+        timeLogs: allTimeLogs,
+        timeEntries: allTimeEntries,
+        invoices: allInvoicesList,
+        notes: allNotesList,
+        documents: allDocumentsList,
+        dailyActivityLogs: allDailyLogs,
+        associates: allAssociates,
+      };
+
+      const fileName = `data-backup-${new Date().toISOString().split("T")[0]}.json`;
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      res.status(500).json({ message: "Failed to export data" });
+    }
+  });
+
+  app.post("/api/admin/regenerate-activity-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      if (process.env.ENABLE_LOG_REGENERATION !== "true") {
+        return res.status(403).json({ message: "Log regeneration is disabled. Set ENABLE_LOG_REGENERATION=true to enable." });
+      }
+
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const confirmKey = req.body?.confirmKey;
+      if (confirmKey !== "REGENERATE_LOGS_2026") {
+        return res.status(400).json({ message: "Missing or invalid confirmKey. Send { \"confirmKey\": \"REGENERATE_LOGS_2026\" } to execute." });
+      }
+
+      const REGEN_MARKER = { source: "regen_2026" };
+      const targetUserId = "7aa727e0-4dff-4936-a194-e6c490f63740";
+      const startDate = new Date(2025, 9, 28);
+      const endDate = new Date();
+      const results: { date: string; summary: string; hoursWorked: string }[] = [];
+      let auditLogsCreated = 0;
+
+      await db.delete(dailyActivityLogs).where(
+        and(
+          eq(dailyActivityLogs.userId, targetUserId),
+          gte(dailyActivityLogs.date, startDate),
+          lte(dailyActivityLogs.date, endDate)
+        )
+      );
+
+      await db.delete(auditLogs).where(
+        sql`${auditLogs.metadata}::jsonb @> '{"source":"regen_2026"}'::jsonb`
+      );
+
+      const allDocuments = await db.select().from(documents).where(
+        and(isNotNull(documents.createdAt), gte(documents.createdAt, startDate), lte(documents.createdAt, endDate))
+      );
+      for (const doc of allDocuments) {
+        await db.insert(auditLogs).values({
+          userId: doc.uploadedByUserId || targetUserId,
+          action: "upload",
+          entityType: "document",
+          entityId: String(doc.id),
+          description: `Document uploaded: ${doc.fileName}`,
+          metadata: REGEN_MARKER,
+          createdAt: doc.createdAt,
+        });
+        auditLogsCreated++;
+      }
+
+      const allTasks = await db.select().from(tasks).where(
+        and(isNotNull(tasks.completedAt), gte(tasks.completedAt, startDate), lte(tasks.completedAt, endDate))
+      );
+      for (const task of allTasks) {
+        await db.insert(auditLogs).values({
+          userId: task.assigneeId || targetUserId,
+          action: "status_change",
+          entityType: "task",
+          entityId: String(task.id),
+          description: `Task completed: ${task.title}`,
+          metadata: REGEN_MARKER,
+          createdAt: task.completedAt,
+        });
+        auditLogsCreated++;
+      }
+
+      const allNotes = await db.select().from(notes).where(
+        and(isNotNull(notes.createdAt), gte(notes.createdAt, startDate), lte(notes.createdAt, endDate))
+      );
+      for (const note of allNotes) {
+        await db.insert(auditLogs).values({
+          userId: note.userId || targetUserId,
+          action: "create",
+          entityType: "note",
+          entityId: String(note.id),
+          description: `Note created: ${note.content.substring(0, 80)}`,
+          metadata: REGEN_MARKER,
+          createdAt: note.createdAt,
+        });
+        auditLogsCreated++;
+      }
+
+      const allInvoices = await db.select().from(invoices).where(
+        and(isNotNull(invoices.createdAt), gte(invoices.createdAt, startDate), lte(invoices.createdAt, endDate))
+      );
+      for (const invoice of allInvoices) {
+        await db.insert(auditLogs).values({
+          userId: targetUserId,
+          action: "create",
+          entityType: "invoice",
+          entityId: String(invoice.id),
+          description: `Invoice created: ${invoice.invoiceNumber}`,
+          metadata: REGEN_MARKER,
+          createdAt: invoice.createdAt,
+        });
+        auditLogsCreated++;
+      }
+
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const day = currentDate.getDate();
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+        const [timeEntries, timeLogs, notesCreated, documentsProcessed, tasksCompleted, auditLogEntries] = await Promise.all([
+          storage.getTimeEntriesForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getTimeLogsForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getNotesCreatedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getDocumentsProcessedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getTasksCompletedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getAuditLogsForDateRange(targetUserId, startOfDay, endOfDay),
+        ]);
+
+        const hasActivity = timeEntries.length > 0 || timeLogs.length > 0 || notesCreated.length > 0 || documentsProcessed.length > 0 || tasksCompleted.length > 0;
+
+        if (hasActivity) {
+          let totalMinutes = 0;
+          timeEntries.forEach((entry: any) => {
+            totalMinutes += entry.totalMinutes || 0;
+          });
+          timeLogs.forEach((log: any) => {
+            const hours = parseFloat(log.totalHours || "0");
+            totalMinutes += hours * 60;
+          });
+          const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
+
+          const summaryParts: string[] = [];
+          if (timeEntries.length > 0 || timeLogs.length > 0) {
+            summaryParts.push(`Logged ${(timeEntries.length + timeLogs.length)} time entries`);
+          }
+          if (tasksCompleted.length > 0) {
+            summaryParts.push(`Completed ${tasksCompleted.length} tasks`);
+          }
+          if (documentsProcessed.length > 0) {
+            summaryParts.push(`Processed ${documentsProcessed.length} documents`);
+          }
+          if (notesCreated.length > 0) {
+            summaryParts.push(`Added ${notesCreated.length} notes`);
+          }
+          const summary = summaryParts.join(", ");
+
+          const detailLines: string[] = [];
+
+          if (timeEntries.length > 0) {
+            detailLines.push("TIME ENTRIES:");
+            for (const entry of timeEntries) {
+              const task = await storage.getTask(entry.taskId);
+              const project = await storage.getProject(entry.projectId);
+              const minutes = entry.totalMinutes || 0;
+              const hrs = Math.floor(minutes / 60);
+              const mins = minutes % 60;
+              const duration = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+              detailLines.push(`• ${project?.name || "Unknown Project"} - ${task?.title || "Task"}: ${duration}${entry.notes ? ` (${entry.notes})` : ""}`);
+            }
+          }
+
+          if (timeLogs.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("TIME LOGS:");
+            for (const log of timeLogs) {
+              const project = await storage.getProject(log.projectId);
+              detailLines.push(`• ${project?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+            }
+          }
+
+          if (tasksCompleted.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("TASKS COMPLETED:");
+            for (const task of tasksCompleted) {
+              const project = await storage.getProject(task.projectId);
+              detailLines.push(`• ${project?.name || "Unknown"}: ${task.title}`);
+            }
+          }
+
+          if (documentsProcessed.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("DOCUMENTS PROCESSED:");
+            for (const doc of documentsProcessed) {
+              const project = await storage.getProject(doc.projectId);
+              const status = doc.documentStatus || "uploaded";
+              detailLines.push(`• ${project?.name || "Unknown"}: ${doc.fileName} (${status})`);
+            }
+          }
+
+          if (notesCreated.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("NOTES ADDED:");
+            for (const note of notesCreated) {
+              const preview = note.content.substring(0, 60) + (note.content.length > 60 ? "..." : "");
+              detailLines.push(`• ${preview}`);
+            }
+          }
+
+          const significantActions = auditLogEntries.filter((log: any) =>
+            ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
+          );
+          if (significantActions.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("KEY ACTIONS:");
+            for (const action of significantActions.slice(0, 10)) {
+              if (action.description) {
+                detailLines.push(`• ${action.description}`);
+              }
+            }
+          }
+
+          const details = detailLines.join("\n");
+
+          await storage.createDailyActivityLog({
+            userId: targetUserId,
+            date: startOfDay,
+            summary,
+            details,
+            hoursWorked,
+          });
+
+          results.push({ date: dateStr, summary, hoursWorked });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      res.json({
+        message: "Activity logs regenerated successfully",
+        dailyLogsCreated: results.length,
+        auditLogsCreated,
+        dailyLogs: results,
+      });
+    } catch (error) {
+      console.error("Error regenerating activity logs:", error);
+      res.status(500).json({ message: "Failed to regenerate activity logs", error: String(error) });
     }
   });
 

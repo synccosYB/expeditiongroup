@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Settings, Users, Key, Loader2, UserCog, UserPlus, Mail, Check, Clock, X } from "lucide-react";
+import { Settings, Users, Key, Loader2, UserCog, UserPlus, Mail, Check, Clock, X, Download, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -383,6 +383,33 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Data Backup
+          </CardTitle>
+          <CardDescription>
+            Download a complete backup of all your data including clients, projects, tasks, time entries, invoices, notes, documents, and activity logs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => {
+              window.open("/api/admin/export-data", "_blank");
+              toast({
+                title: "Export started",
+                description: "Your data backup file will download shortly",
+              });
+            }}
+            data-testid="button-export-data"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download Data Backup
+          </Button>
         </CardContent>
       </Card>
 
