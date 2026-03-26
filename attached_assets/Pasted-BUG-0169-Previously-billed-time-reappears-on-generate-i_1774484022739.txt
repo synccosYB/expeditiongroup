@@ -1,0 +1,73 @@
+BUG-0169
+Previously billed time reappears on generate invoice
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When creating an invoice, the system shows time entries that were already billed and included in a prior invoice. These should not appear again and need to be removed automatically. 
+
+AI Analysis
+
+### Bug Analysis
+
+#### Affected Part of the App
+The issue occurs in the **Invoice Generation** module, specifically when attempting to generate invoices with time entries. Time logs that should be excluded as they were part of prior invoices reappear in the invoice creation process.
+
+#### Root Cause Analysis
+Based on the information from the screenshot, along with the observed issue:
+1. Time entries that have already been billed are not being flagged correctly in the database as "billed."
+2. The filtering logic in the "Generate Invoice" function might not be designed to exclude previously billed entries.
+3. Data issues (e.g., incorrect status or missing identifiers) could result in such time logs being reintroduced to the invoice generation list.
+
+#### Screenshot Analysis
+The UI shows a modal with the description of the bug report, but there is no visible selection of the "Time Logs." The absence of the filtering step while generating invoices could be an indication that the backend or business logic does not account for excluding already-billed items.
+
+#### Recommended Fix or Next Steps
+1. **Database Update:**
+   - Ensure that billed time entries are marked appropriately, e.g., with a flag (`is_billed = true`).
+   - Consider a review of the database table where the time logs are maintained.
+
+2. **Invoice Filtering Logic:**
+   - Adjust the logic in the backend services to exclude any `is_billed = true` entries explicitly when generating invoices.
+   - Verify the database query (endpoint or service) that fetches the list of time entries during invoice creation.
+
+3. **Testing and Validation:**
+   - Conduct automated and manual testing on the invoice generation process to verify that no previously billed entries appear.
+   - Review the status of already-billed entries to ensure consistency and integrity in data.
+
+4. **Error Handling:**
+   - Add fallback error handling to ensure no re-processed entries result in financial discrepancies.
+
+---
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/40
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
