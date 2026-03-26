@@ -296,12 +296,17 @@ export async function registerRoutes(
       }
       console.log('[Data Fix] No daily activity logs found, regenerating from source data...');
 
-      const admins = await db.select({ id: users.id }).from(users).where(sql`${users.role} IN ('admin', 'super_admin')`).limit(1);
-      const targetUserId = admins[0]?.id;
-      if (!targetUserId) {
+      const allAdmins = await db.select({ id: users.id }).from(users).where(sql`${users.role} IN ('admin', 'super_admin')`);
+      if (allAdmins.length === 0) {
         console.log('[Data Fix] No admin user found, skipping activity log regeneration');
         return;
       }
+      const adminIds = allAdmins.map(a => a.id);
+
+      await db.delete(auditLogs).where(
+        sql`${auditLogs.metadata}::jsonb @> '{"source":"regen_2026"}'::jsonb`
+      );
+
       const REGEN_MARKER = { source: "regen_2026" };
       const startDate = new Date(2025, 9, 28);
       const endDate = new Date();
@@ -310,8 +315,9 @@ export async function registerRoutes(
         and(isNotNull(documents.createdAt), gte(documents.createdAt, startDate), lte(documents.createdAt, endDate))
       );
       for (const doc of allDocuments) {
+        const ownerId = doc.uploadedByUserId && adminIds.includes(doc.uploadedByUserId) ? doc.uploadedByUserId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: doc.uploadedByUserId || targetUserId,
+          userId: ownerId,
           action: "upload",
           entityType: "document",
           entityId: String(doc.id),
@@ -325,8 +331,9 @@ export async function registerRoutes(
         and(isNotNull(tasks.completedAt), gte(tasks.completedAt, startDate), lte(tasks.completedAt, endDate))
       );
       for (const task of allTasks) {
+        const ownerId = task.assigneeId && adminIds.includes(task.assigneeId) ? task.assigneeId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: task.assigneeId || targetUserId,
+          userId: ownerId,
           action: "status_change",
           entityType: "task",
           entityId: String(task.id),
@@ -340,12 +347,13 @@ export async function registerRoutes(
         and(isNotNull(notes.createdAt), gte(notes.createdAt, startDate), lte(notes.createdAt, endDate))
       );
       for (const note of allNotes) {
+        const ownerId = note.userId && adminIds.includes(note.userId) ? note.userId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: note.userId || targetUserId,
+          userId: ownerId,
           action: "create",
           entityType: "note",
           entityId: String(note.id),
-          description: `Note created: ${note.content.substring(0, 80)}`,
+          description: `Note created: ${note.content?.substring(0, 80) || ""}`,
           metadata: REGEN_MARKER,
           createdAt: note.createdAt,
         });
@@ -356,7 +364,7 @@ export async function registerRoutes(
       );
       for (const invoice of allInvoices) {
         await db.insert(auditLogs).values({
-          userId: targetUserId,
+          userId: adminIds[0],
           action: "create",
           entityType: "invoice",
           entityId: String(invoice.id),
@@ -366,103 +374,107 @@ export async function registerRoutes(
         });
       }
 
+      console.log(`[Data Fix] Created audit log entries for ${allDocuments.length} docs, ${allTasks.length} tasks, ${allNotes.length} notes, ${allInvoices.length} invoices`);
+
       let logsCreated = 0;
-      const currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const day = currentDate.getDate();
-        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
-        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+      for (const targetUserId of adminIds) {
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          const day = currentDate.getDate();
+          const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+          const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
 
-        const [dateTimeEntries, dateTimeLogs, dateNotes, dateDocs, dateTasks, dateAudit] = await Promise.all([
-          storage.getTimeEntriesForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getTimeLogsForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getNotesCreatedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getDocumentsProcessedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getTasksCompletedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getAuditLogsForDateRange(targetUserId, startOfDay, endOfDay),
-        ]);
+          const [dateTimeEntries, dateTimeLogs, dateNotes, dateDocs, dateTasks, dateAudit] = await Promise.all([
+            storage.getTimeEntriesForDateRange(targetUserId, startOfDay, endOfDay),
+            storage.getTimeLogsForDateRange(targetUserId, startOfDay, endOfDay),
+            storage.getNotesCreatedForDateRange(targetUserId, startOfDay, endOfDay),
+            storage.getDocumentsProcessedForDateRange(targetUserId, startOfDay, endOfDay),
+            storage.getTasksCompletedForDateRange(targetUserId, startOfDay, endOfDay),
+            storage.getAuditLogsForDateRange(targetUserId, startOfDay, endOfDay),
+          ]);
 
-        const hasActivity = dateTimeEntries.length > 0 || dateTimeLogs.length > 0 || dateNotes.length > 0 || dateDocs.length > 0 || dateTasks.length > 0;
+          const hasActivity = dateTimeEntries.length > 0 || dateTimeLogs.length > 0 || dateNotes.length > 0 || dateDocs.length > 0 || dateTasks.length > 0;
 
-        if (hasActivity) {
-          let totalMinutes = 0;
-          dateTimeEntries.forEach((entry: any) => { totalMinutes += entry.totalMinutes || 0; });
-          dateTimeLogs.forEach((log: any) => { totalMinutes += parseFloat(log.totalHours || "0") * 60; });
-          const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
+          if (hasActivity) {
+            let totalMinutes = 0;
+            dateTimeEntries.forEach((entry: any) => { totalMinutes += entry.totalMinutes || 0; });
+            dateTimeLogs.forEach((log: any) => { totalMinutes += parseFloat(log.totalHours || "0") * 60; });
+            const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
 
-          const summaryParts: string[] = [];
-          if (dateTimeEntries.length > 0 || dateTimeLogs.length > 0) summaryParts.push(`Logged ${dateTimeEntries.length + dateTimeLogs.length} time entries`);
-          if (dateTasks.length > 0) summaryParts.push(`Completed ${dateTasks.length} tasks`);
-          if (dateDocs.length > 0) summaryParts.push(`Processed ${dateDocs.length} documents`);
-          if (dateNotes.length > 0) summaryParts.push(`Added ${dateNotes.length} notes`);
-          const summary = summaryParts.join(", ");
+            const summaryParts: string[] = [];
+            if (dateTimeEntries.length > 0 || dateTimeLogs.length > 0) summaryParts.push(`Logged ${dateTimeEntries.length + dateTimeLogs.length} time entries`);
+            if (dateTasks.length > 0) summaryParts.push(`Completed ${dateTasks.length} tasks`);
+            if (dateDocs.length > 0) summaryParts.push(`Processed ${dateDocs.length} documents`);
+            if (dateNotes.length > 0) summaryParts.push(`Added ${dateNotes.length} notes`);
+            const summary = summaryParts.join(", ");
 
-          const detailLines: string[] = [];
-          if (dateTimeEntries.length > 0) {
-            detailLines.push("TIME ENTRIES:");
-            for (const entry of dateTimeEntries) {
-              const t = await storage.getTask(entry.taskId);
-              const p = await storage.getProject(entry.projectId);
-              const mins = entry.totalMinutes || 0;
-              const h = Math.floor(mins / 60);
-              const m = mins % 60;
-              detailLines.push(`• ${p?.name || "Unknown Project"} - ${t?.title || "Task"}: ${h > 0 ? `${h}h ${m}m` : `${m}m`}${entry.notes ? ` (${entry.notes})` : ""}`);
+            const detailLines: string[] = [];
+            if (dateTimeEntries.length > 0) {
+              detailLines.push("TIME ENTRIES:");
+              for (const entry of dateTimeEntries) {
+                const t = await storage.getTask(entry.taskId);
+                const p = await storage.getProject(entry.projectId);
+                const mins = entry.totalMinutes || 0;
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                detailLines.push(`• ${p?.name || "Unknown Project"} - ${t?.title || "Task"}: ${h > 0 ? `${h}h ${m}m` : `${m}m`}${entry.notes ? ` (${entry.notes})` : ""}`);
+              }
             }
-          }
-          if (dateTimeLogs.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("TIME LOGS:");
-            for (const log of dateTimeLogs) {
-              const p = await storage.getProject(log.projectId);
-              detailLines.push(`• ${p?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+            if (dateTimeLogs.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("TIME LOGS:");
+              for (const log of dateTimeLogs) {
+                const p = await storage.getProject(log.projectId);
+                detailLines.push(`• ${p?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+              }
             }
-          }
-          if (dateTasks.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("TASKS COMPLETED:");
-            for (const t of dateTasks) {
-              const p = await storage.getProject(t.projectId);
-              detailLines.push(`• ${p?.name || "Unknown"}: ${t.title}`);
+            if (dateTasks.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("TASKS COMPLETED:");
+              for (const t of dateTasks) {
+                const p = await storage.getProject(t.projectId);
+                detailLines.push(`• ${p?.name || "Unknown"}: ${t.title}`);
+              }
             }
-          }
-          if (dateDocs.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("DOCUMENTS PROCESSED:");
-            for (const doc of dateDocs) {
-              const p = await storage.getProject(doc.projectId);
-              detailLines.push(`• ${p?.name || "Unknown"}: ${doc.fileName} (${doc.documentStatus || "uploaded"})`);
+            if (dateDocs.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("DOCUMENTS PROCESSED:");
+              for (const doc of dateDocs) {
+                const p = await storage.getProject(doc.projectId);
+                detailLines.push(`• ${p?.name || "Unknown"}: ${doc.fileName} (${doc.documentStatus || "uploaded"})`);
+              }
             }
-          }
-          if (dateNotes.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("NOTES ADDED:");
-            for (const note of dateNotes) {
-              detailLines.push(`• ${note.content.substring(0, 60)}${note.content.length > 60 ? "..." : ""}`);
+            if (dateNotes.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("NOTES ADDED:");
+              for (const note of dateNotes) {
+                detailLines.push(`• ${note.content?.substring(0, 60)}${(note.content?.length || 0) > 60 ? "..." : ""}`);
+              }
             }
-          }
-          const significantActions = dateAudit.filter((log: any) =>
-            ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
-          );
-          if (significantActions.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("KEY ACTIONS:");
-            for (const action of significantActions.slice(0, 10)) {
-              if (action.description) detailLines.push(`• ${action.description}`);
+            const significantActions = dateAudit.filter((log: any) =>
+              ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
+            );
+            if (significantActions.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("KEY ACTIONS:");
+              for (const action of significantActions.slice(0, 10)) {
+                if (action.description) detailLines.push(`• ${action.description}`);
+              }
             }
-          }
 
-          await storage.createDailyActivityLog({
-            userId: targetUserId,
-            date: startOfDay,
-            summary,
-            details: detailLines.join("\n"),
-            hoursWorked,
-          });
-          logsCreated++;
+            await storage.createDailyActivityLog({
+              userId: targetUserId,
+              date: startOfDay,
+              summary,
+              details: detailLines.join("\n"),
+              hoursWorked,
+            });
+            logsCreated++;
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
         }
-        currentDate.setDate(currentDate.getDate() + 1);
       }
       console.log(`[Data Fix] Regenerated ${logsCreated} daily activity logs`);
     } catch (err: any) {
@@ -7230,19 +7242,18 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Missing or invalid confirmKey. Send { \"confirmKey\": \"REGENERATE_LOGS_2026\" } to execute." });
       }
 
+      const targetUserId = req.session.userId!;
       const REGEN_MARKER = { source: "regen_2026" };
-      const targetUserId = "7aa727e0-4dff-4936-a194-e6c490f63740";
       const startDate = new Date(2025, 9, 28);
       const endDate = new Date();
       const results: { date: string; summary: string; hoursWorked: string }[] = [];
       let auditLogsCreated = 0;
 
+      const allAdmins = await db.select({ id: users.id }).from(users).where(sql`${users.role} IN ('admin', 'super_admin')`);
+      const adminIds = allAdmins.map(a => a.id);
+
       await db.delete(dailyActivityLogs).where(
-        and(
-          eq(dailyActivityLogs.userId, targetUserId),
-          gte(dailyActivityLogs.date, startDate),
-          lte(dailyActivityLogs.date, endDate)
-        )
+        gte(dailyActivityLogs.date, startDate)
       );
 
       await db.delete(auditLogs).where(
@@ -7253,8 +7264,9 @@ export async function registerRoutes(
         and(isNotNull(documents.createdAt), gte(documents.createdAt, startDate), lte(documents.createdAt, endDate))
       );
       for (const doc of allDocuments) {
+        const ownerId = doc.uploadedByUserId && adminIds.includes(doc.uploadedByUserId) ? doc.uploadedByUserId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: doc.uploadedByUserId || targetUserId,
+          userId: ownerId,
           action: "upload",
           entityType: "document",
           entityId: String(doc.id),
@@ -7269,8 +7281,9 @@ export async function registerRoutes(
         and(isNotNull(tasks.completedAt), gte(tasks.completedAt, startDate), lte(tasks.completedAt, endDate))
       );
       for (const task of allTasks) {
+        const ownerId = task.assigneeId && adminIds.includes(task.assigneeId) ? task.assigneeId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: task.assigneeId || targetUserId,
+          userId: ownerId,
           action: "status_change",
           entityType: "task",
           entityId: String(task.id),
@@ -7285,12 +7298,13 @@ export async function registerRoutes(
         and(isNotNull(notes.createdAt), gte(notes.createdAt, startDate), lte(notes.createdAt, endDate))
       );
       for (const note of allNotes) {
+        const ownerId = note.userId && adminIds.includes(note.userId) ? note.userId : adminIds[0];
         await db.insert(auditLogs).values({
-          userId: note.userId || targetUserId,
+          userId: ownerId,
           action: "create",
           entityType: "note",
           entityId: String(note.id),
-          description: `Note created: ${note.content.substring(0, 80)}`,
+          description: `Note created: ${note.content?.substring(0, 80) || ""}`,
           metadata: REGEN_MARKER,
           createdAt: note.createdAt,
         });
@@ -7302,7 +7316,7 @@ export async function registerRoutes(
       );
       for (const invoice of allInvoices) {
         await db.insert(auditLogs).values({
-          userId: targetUserId,
+          userId: adminIds[0],
           action: "create",
           entityType: "invoice",
           entityId: String(invoice.id),
@@ -7313,131 +7327,107 @@ export async function registerRoutes(
         auditLogsCreated++;
       }
 
-      const currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const day = currentDate.getDate();
-        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
-        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
-        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      for (const adminId of adminIds) {
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          const day = currentDate.getDate();
+          const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+          const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-        const [timeEntries, timeLogs, notesCreated, documentsProcessed, tasksCompleted, auditLogEntries] = await Promise.all([
-          storage.getTimeEntriesForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getTimeLogsForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getNotesCreatedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getDocumentsProcessedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getTasksCompletedForDateRange(targetUserId, startOfDay, endOfDay),
-          storage.getAuditLogsForDateRange(targetUserId, startOfDay, endOfDay),
-        ]);
+          const [timeEntriesData, timeLogsData, notesCreated, documentsProcessed, tasksCompleted, auditLogEntries] = await Promise.all([
+            storage.getTimeEntriesForDateRange(adminId, startOfDay, endOfDay),
+            storage.getTimeLogsForDateRange(adminId, startOfDay, endOfDay),
+            storage.getNotesCreatedForDateRange(adminId, startOfDay, endOfDay),
+            storage.getDocumentsProcessedForDateRange(adminId, startOfDay, endOfDay),
+            storage.getTasksCompletedForDateRange(adminId, startOfDay, endOfDay),
+            storage.getAuditLogsForDateRange(adminId, startOfDay, endOfDay),
+          ]);
 
-        const hasActivity = timeEntries.length > 0 || timeLogs.length > 0 || notesCreated.length > 0 || documentsProcessed.length > 0 || tasksCompleted.length > 0;
+          const hasActivity = timeEntriesData.length > 0 || timeLogsData.length > 0 || notesCreated.length > 0 || documentsProcessed.length > 0 || tasksCompleted.length > 0;
 
-        if (hasActivity) {
-          let totalMinutes = 0;
-          timeEntries.forEach((entry: any) => {
-            totalMinutes += entry.totalMinutes || 0;
-          });
-          timeLogs.forEach((log: any) => {
-            const hours = parseFloat(log.totalHours || "0");
-            totalMinutes += hours * 60;
-          });
-          const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
+          if (hasActivity) {
+            let totalMinutes = 0;
+            timeEntriesData.forEach((entry: any) => { totalMinutes += entry.totalMinutes || 0; });
+            timeLogsData.forEach((log: any) => { totalMinutes += parseFloat(log.totalHours || "0") * 60; });
+            const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
 
-          const summaryParts: string[] = [];
-          if (timeEntries.length > 0 || timeLogs.length > 0) {
-            summaryParts.push(`Logged ${(timeEntries.length + timeLogs.length)} time entries`);
-          }
-          if (tasksCompleted.length > 0) {
-            summaryParts.push(`Completed ${tasksCompleted.length} tasks`);
-          }
-          if (documentsProcessed.length > 0) {
-            summaryParts.push(`Processed ${documentsProcessed.length} documents`);
-          }
-          if (notesCreated.length > 0) {
-            summaryParts.push(`Added ${notesCreated.length} notes`);
-          }
-          const summary = summaryParts.join(", ");
+            const summaryParts: string[] = [];
+            if (timeEntriesData.length > 0 || timeLogsData.length > 0) summaryParts.push(`Logged ${timeEntriesData.length + timeLogsData.length} time entries`);
+            if (tasksCompleted.length > 0) summaryParts.push(`Completed ${tasksCompleted.length} tasks`);
+            if (documentsProcessed.length > 0) summaryParts.push(`Processed ${documentsProcessed.length} documents`);
+            if (notesCreated.length > 0) summaryParts.push(`Added ${notesCreated.length} notes`);
+            const summary = summaryParts.join(", ");
 
-          const detailLines: string[] = [];
-
-          if (timeEntries.length > 0) {
-            detailLines.push("TIME ENTRIES:");
-            for (const entry of timeEntries) {
-              const task = await storage.getTask(entry.taskId);
-              const project = await storage.getProject(entry.projectId);
-              const minutes = entry.totalMinutes || 0;
-              const hrs = Math.floor(minutes / 60);
-              const mins = minutes % 60;
-              const duration = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-              detailLines.push(`• ${project?.name || "Unknown Project"} - ${task?.title || "Task"}: ${duration}${entry.notes ? ` (${entry.notes})` : ""}`);
-            }
-          }
-
-          if (timeLogs.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("TIME LOGS:");
-            for (const log of timeLogs) {
-              const project = await storage.getProject(log.projectId);
-              detailLines.push(`• ${project?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
-            }
-          }
-
-          if (tasksCompleted.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("TASKS COMPLETED:");
-            for (const task of tasksCompleted) {
-              const project = await storage.getProject(task.projectId);
-              detailLines.push(`• ${project?.name || "Unknown"}: ${task.title}`);
-            }
-          }
-
-          if (documentsProcessed.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("DOCUMENTS PROCESSED:");
-            for (const doc of documentsProcessed) {
-              const project = await storage.getProject(doc.projectId);
-              const status = doc.documentStatus || "uploaded";
-              detailLines.push(`• ${project?.name || "Unknown"}: ${doc.fileName} (${status})`);
-            }
-          }
-
-          if (notesCreated.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("NOTES ADDED:");
-            for (const note of notesCreated) {
-              const preview = note.content.substring(0, 60) + (note.content.length > 60 ? "..." : "");
-              detailLines.push(`• ${preview}`);
-            }
-          }
-
-          const significantActions = auditLogEntries.filter((log: any) =>
-            ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
-          );
-          if (significantActions.length > 0) {
-            if (detailLines.length > 0) detailLines.push("");
-            detailLines.push("KEY ACTIONS:");
-            for (const action of significantActions.slice(0, 10)) {
-              if (action.description) {
-                detailLines.push(`• ${action.description}`);
+            const detailLines: string[] = [];
+            if (timeEntriesData.length > 0) {
+              detailLines.push("TIME ENTRIES:");
+              for (const entry of timeEntriesData) {
+                const task = await storage.getTask(entry.taskId);
+                const project = await storage.getProject(entry.projectId);
+                const minutes = entry.totalMinutes || 0;
+                const hrs = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                const duration = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                detailLines.push(`• ${project?.name || "Unknown Project"} - ${task?.title || "Task"}: ${duration}${entry.notes ? ` (${entry.notes})` : ""}`);
               }
             }
+            if (timeLogsData.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("TIME LOGS:");
+              for (const log of timeLogsData) {
+                const project = await storage.getProject(log.projectId);
+                detailLines.push(`• ${project?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+              }
+            }
+            if (tasksCompleted.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("TASKS COMPLETED:");
+              for (const task of tasksCompleted) {
+                const project = await storage.getProject(task.projectId);
+                detailLines.push(`• ${project?.name || "Unknown"}: ${task.title}`);
+              }
+            }
+            if (documentsProcessed.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("DOCUMENTS PROCESSED:");
+              for (const doc of documentsProcessed) {
+                const project = await storage.getProject(doc.projectId);
+                detailLines.push(`• ${project?.name || "Unknown"}: ${doc.fileName} (${doc.documentStatus || "uploaded"})`);
+              }
+            }
+            if (notesCreated.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("NOTES ADDED:");
+              for (const note of notesCreated) {
+                const preview = (note.content?.substring(0, 60) || "") + ((note.content?.length || 0) > 60 ? "..." : "");
+                detailLines.push(`• ${preview}`);
+              }
+            }
+            const significantActions = auditLogEntries.filter((log: any) =>
+              ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
+            );
+            if (significantActions.length > 0) {
+              if (detailLines.length > 0) detailLines.push("");
+              detailLines.push("KEY ACTIONS:");
+              for (const action of significantActions.slice(0, 10)) {
+                if (action.description) detailLines.push(`• ${action.description}`);
+              }
+            }
+
+            await storage.createDailyActivityLog({
+              userId: adminId,
+              date: startOfDay,
+              summary,
+              details: detailLines.join("\n"),
+              hoursWorked,
+            });
+            results.push({ date: dateStr, summary, hoursWorked });
           }
-
-          const details = detailLines.join("\n");
-
-          await storage.createDailyActivityLog({
-            userId: targetUserId,
-            date: startOfDay,
-            summary,
-            details,
-            hoursWorked,
-          });
-
-          results.push({ date: dateStr, summary, hoursWorked });
+          currentDate.setDate(currentDate.getDate() + 1);
         }
-
-        currentDate.setDate(currentDate.getDate() + 1);
       }
 
       res.json({
