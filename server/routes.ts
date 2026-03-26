@@ -81,14 +81,15 @@ async function recalculateAccountBalance(bankAccountId: number): Promise<void> {
   const transactions = await storage.getBankTransactions(bankAccountId);
   const openingBalance = parseFloat(bankAccount.openingBalance || "0");
 
-  const totalDeposits = transactions
-    .filter((t) => t.transactionType === "deposit")
+  const creditTypes = ["deposit", "refund"];
+  const totalCredits = transactions
+    .filter((t) => creditTypes.includes(t.transactionType))
     .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
-  const totalOther = transactions
-    .filter((t) => t.transactionType !== "deposit")
+  const totalDebits = transactions
+    .filter((t) => !creditTypes.includes(t.transactionType))
     .reduce((sum, t) => sum + parseFloat(t.amount || "0"), 0);
 
-  const computedBalance = openingBalance + totalDeposits - totalOther;
+  const computedBalance = openingBalance + totalCredits - totalDebits;
 
   await storage.updateBankAccount(bankAccountId, {
     currentBalance: computedBalance.toFixed(2),
@@ -5930,10 +5931,31 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const success = await storage.deleteBill(parseInt(req.params.id));
+      const billId = parseInt(req.params.id);
+
+      const associatedPayments = await db
+        .select()
+        .from(billPayments)
+        .where(eq(billPayments.billId, billId));
+      
+      const accountsToRecalc = new Set<number>();
+      for (const payment of associatedPayments) {
+        if (payment.bankTransactionId) {
+          await storage.deleteBankTransaction(payment.bankTransactionId);
+        }
+        accountsToRecalc.add(payment.bankAccountId);
+        await storage.deleteBillPayment(payment.id);
+      }
+
+      const success = await storage.deleteBill(billId);
       if (!success) {
         return res.status(404).json({ message: "Bill not found" });
       }
+
+      for (const accountId of accountsToRecalc) {
+        await recalculateAccountBalance(accountId);
+      }
+
       res.json({ message: "Bill deleted successfully" });
     } catch (error) {
       console.error("Error deleting bill:", error);
@@ -6008,7 +6030,7 @@ export async function registerRoutes(
       
       // Update bill's amountPaid and status
       const previousPaid = parseFloat(bill.amountPaid || "0");
-      const newPaid = previousPaid + paymentAmountNum;
+      const newPaid = previousPaid + parseFloat(parsedAmount);
       const total = parseFloat(bill.total || "0");
       
       let newStatus: "pending" | "partial" | "paid" = "pending";
@@ -6701,7 +6723,6 @@ export async function registerRoutes(
       const parsed = insertDepositSchema.parse({ ...depositData, createdByUserId: req.session.userId });
       const deposit = await storage.createDeposit(parsed, paymentIds);
       
-      // Create a bank transaction for this deposit
       const bankTransaction = await storage.createBankTransaction({
         bankAccountId: parsed.bankAccountId,
         transactionDate: parsed.depositDate,
@@ -6711,9 +6732,11 @@ export async function registerRoutes(
         amount: parsed.totalAmount,
       });
       
+      await storage.updateDeposit(deposit.id, { bankTransactionId: bankTransaction.id });
+      
       await recalculateAccountBalance(parsed.bankAccountId);
       
-      res.status(201).json(deposit);
+      res.status(201).json({ ...deposit, bankTransactionId: bankTransaction.id });
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -6736,15 +6759,19 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Deposit not found" });
       }
       
-      const transactions = await storage.getBankTransactions(deposit.bankAccountId);
-      const depositTransaction = transactions.find(t => 
-        t.transactionType === 'deposit' && 
-        t.amount === deposit.totalAmount &&
-        t.transactionDate && deposit.depositDate &&
-        new Date(t.transactionDate).toDateString() === new Date(deposit.depositDate).toDateString()
-      );
-      if (depositTransaction) {
-        await storage.deleteBankTransaction(depositTransaction.id);
+      if (deposit.bankTransactionId) {
+        await storage.deleteBankTransaction(deposit.bankTransactionId);
+      } else {
+        const transactions = await storage.getBankTransactions(deposit.bankAccountId);
+        const depositTransaction = transactions.find(t => 
+          t.transactionType === 'deposit' && 
+          t.amount === deposit.totalAmount &&
+          t.transactionDate && deposit.depositDate &&
+          new Date(t.transactionDate).toDateString() === new Date(deposit.depositDate).toDateString()
+        );
+        if (depositTransaction) {
+          await storage.deleteBankTransaction(depositTransaction.id);
+        }
       }
       
       const deleted = await storage.deleteDeposit(parseInt(req.params.id));

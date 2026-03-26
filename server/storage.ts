@@ -455,6 +455,7 @@ export interface IStorage {
   getDeposits(): Promise<(Deposit & { bankAccount: BankAccount; payments: Payment[] })[]>;
   getDeposit(id: number): Promise<(Deposit & { bankAccount: BankAccount; payments: (Payment & { client: Client; invoice?: Invoice })[] }) | undefined>;
   createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }>;
+  updateDeposit(id: number, data: Partial<InsertDeposit>): Promise<Deposit | undefined>;
   deleteDeposit(id: number): Promise<boolean>;
 
   // General Journal Entries
@@ -3337,6 +3338,15 @@ export class DatabaseStorage implements IStorage {
       ...newDeposit,
       payments: depositPayments,
     };
+  }
+
+  async updateDeposit(id: number, data: Partial<InsertDeposit>): Promise<Deposit | undefined> {
+    const [updated] = await db
+      .update(deposits)
+      .set(data)
+      .where(eq(deposits.id, id))
+      .returning();
+    return updated;
   }
 
   async deleteDeposit(id: number): Promise<boolean> {
