@@ -74,6 +74,8 @@ export function InvoiceGenerationDialog({
   const { data: billedItems } = useQuery<BilledItems>({
     queryKey: ["/api/projects", project.id, "billed-items"],
     enabled: isOpen,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const unbilledTimeLogs = useMemo(() => {
@@ -143,7 +145,7 @@ export function InvoiceGenerationDialog({
     let timeTotal = 0;
     const items: any[] = [];
 
-    timeLogs.forEach((log) => {
+    unbilledTimeLogs.forEach((log) => {
       if (selectedTimeLogs.has(log.id)) {
         const hours = parseFloat(log.totalHours) || 0;
         const amount = hours * rate;
@@ -159,7 +161,7 @@ export function InvoiceGenerationDialog({
       }
     });
 
-    timeEntries.forEach((entry) => {
+    unbilledTimeEntries.forEach((entry) => {
       if (selectedTimeEntries.has(entry.id)) {
         const hours = (entry.totalMinutes || 0) / 60;
         const amount = hours * rate;
@@ -198,7 +200,7 @@ export function InvoiceGenerationDialog({
       grandTotal: timeTotal + customTotal,
       lineItems: items,
     };
-  }, [selectedTimeLogs, selectedTimeEntries, customItems, hourlyRate, timeLogs, timeEntries]);
+  }, [selectedTimeLogs, selectedTimeEntries, customItems, hourlyRate, unbilledTimeLogs, unbilledTimeEntries]);
 
   const handleSubmit = () => {
     if (lineItems.length === 0) {

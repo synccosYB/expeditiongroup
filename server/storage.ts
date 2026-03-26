@@ -290,6 +290,8 @@ export interface IStorage {
   getNextInvoiceNumber(): Promise<string>;
   getInvoiceStats(): Promise<{ totalInvoiced: number; totalPaid: number; totalUnpaid: number; totalUnbilled: number }>;
   getUnbilledTimeEntries(): Promise<{ projectId: number; projectName: string; clientName: string; totalMinutes: number; estimatedAmount: number }[]>;
+  getBilledItemIds(projectId: number): Promise<{ timeLogIds: number[]; timeEntryIds: number[] }>;
+  repairOrphanedInvoiceItems(): Promise<number>;
   
   // Daily Activity Logs
   getDailyActivityLogs(userId?: string): Promise<DailyActivityLog[]>;
@@ -1759,14 +1761,119 @@ export class DatabaseStorage implements IStorage {
       .from(invoiceItems)
       .where(inArray(invoiceItems.invoiceId, invoiceIds));
 
-    const timeLogIds = items
+    const timeLogIds = [...new Set(items
       .filter(item => item.timeLogId !== null)
-      .map(item => item.timeLogId as number);
-    const timeEntryIds = items
+      .map(item => item.timeLogId as number))];
+    const timeEntryIds = [...new Set(items
       .filter(item => item.timeEntryId !== null)
-      .map(item => item.timeEntryId as number);
+      .map(item => item.timeEntryId as number))];
 
     return { timeLogIds, timeEntryIds };
+  }
+
+  async repairOrphanedInvoiceItems(): Promise<number> {
+    const orphanedItems = await db
+      .select({
+        id: invoiceItems.id,
+        description: invoiceItems.description,
+        invoiceId: invoiceItems.invoiceId,
+      })
+      .from(invoiceItems)
+      .where(
+        and(
+          isNull(invoiceItems.timeLogId),
+          isNull(invoiceItems.timeEntryId)
+        )
+      );
+
+    if (orphanedItems.length === 0) return 0;
+
+    let repaired = 0;
+
+    const alreadyLinkedLogIds = await db
+      .select({ timeLogId: invoiceItems.timeLogId })
+      .from(invoiceItems)
+      .where(isNotNull(invoiceItems.timeLogId));
+    const usedLogIds = new Set(alreadyLinkedLogIds.map(r => r.timeLogId));
+
+    const alreadyLinkedEntryIds = await db
+      .select({ timeEntryId: invoiceItems.timeEntryId })
+      .from(invoiceItems)
+      .where(isNotNull(invoiceItems.timeEntryId));
+    const usedEntryIds = new Set(alreadyLinkedEntryIds.map(r => r.timeEntryId));
+
+    for (const item of orphanedItems) {
+      const match = item.description.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(.+)$/);
+      if (!match) continue;
+
+      const [, month, day, year, descText] = match;
+      const descTrimmed = descText.trim();
+
+      const invoice = await db
+        .select({ projectId: invoices.projectId })
+        .from(invoices)
+        .where(eq(invoices.id, item.invoiceId))
+        .limit(1);
+
+      if (invoice.length === 0 || !invoice[0].projectId) continue;
+      const projectId = invoice[0].projectId;
+
+      const dateStart = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0);
+      const dateEnd = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59);
+
+      const matchingLogs = await db
+        .select({ id: timeLogs.id })
+        .from(timeLogs)
+        .where(
+          and(
+            eq(timeLogs.projectId, projectId),
+            eq(timeLogs.taskDescription, descTrimmed),
+            gte(timeLogs.date, dateStart),
+            lte(timeLogs.date, dateEnd)
+          )
+        );
+
+      const unusedLog = matchingLogs.find(l => !usedLogIds.has(l.id));
+      if (unusedLog) {
+        await db
+          .update(invoiceItems)
+          .set({ timeLogId: unusedLog.id, isCustom: false })
+          .where(eq(invoiceItems.id, item.id));
+        usedLogIds.add(unusedLog.id);
+        repaired++;
+        continue;
+      }
+
+      const matchingEntries = await db
+        .select({ id: timeEntries.id })
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.projectId, projectId),
+            or(
+              eq(timeEntries.notes, descTrimmed),
+              and(
+                isNull(timeEntries.notes),
+                sql`${descTrimmed} = 'Task work'`
+              )
+            ),
+            gte(timeEntries.date, dateStart),
+            lte(timeEntries.date, dateEnd)
+          )
+        );
+
+      const unusedEntry = matchingEntries.find(e => !usedEntryIds.has(e.id));
+      if (unusedEntry) {
+        await db
+          .update(invoiceItems)
+          .set({ timeEntryId: unusedEntry.id, isCustom: false })
+          .where(eq(invoiceItems.id, item.id));
+        usedEntryIds.add(unusedEntry.id);
+        repaired++;
+      }
+    }
+
+    return repaired;
   }
 
   // Daily Activity Logs

@@ -3622,6 +3622,8 @@ export async function registerRoutes(
           unitPrice: z.string(),
           amount: z.string(),
           isCustom: z.boolean().optional(),
+          timeLogId: z.number().nullable().optional(),
+          timeEntryId: z.number().nullable().optional(),
         })).optional(),
       });
       

@@ -78,6 +78,9 @@ interface LineItem {
   quantity: string;
   unitPrice: string;
   amount: string;
+  timeLogId?: number | null;
+  timeEntryId?: number | null;
+  isCustom?: boolean;
 }
 
 const invoiceStatusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
@@ -673,12 +676,15 @@ function EditInvoiceDialog({
           quantity: i.quantity?.toString() || "1",
           unitPrice: i.unitPrice || "0",
           amount: i.amount || "0",
+          timeLogId: i.timeLogId ?? null,
+          timeEntryId: i.timeEntryId ?? null,
+          isCustom: i.isCustom ?? false,
         }))
-      : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0" }]
+      : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0", isCustom: true }]
   );
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0" }]);
+    setLineItems([...lineItems, { _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0", isCustom: true }]);
   };
 
   const removeLineItem = (index: number) => {
@@ -723,7 +729,9 @@ function EditInvoiceDialog({
           quantity: i.quantity,
           unitPrice: i.unitPrice,
           amount: i.amount,
-          isCustom: true,
+          isCustom: i.isCustom ?? true,
+          timeLogId: i.timeLogId ?? null,
+          timeEntryId: i.timeEntryId ?? null,
         })),
       };
       await apiRequest("PATCH", `/api/invoices/${invoiceId}`, body);
