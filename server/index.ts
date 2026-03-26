@@ -72,13 +72,16 @@ app.use((req, res, next) => {
     log(`Failed to repair orphaned invoice items: ${err.message}`);
   });
 
-  storage.migrateInvoiceIdToTimeEntries().then((count) => {
+  try {
+    await storage.ensureInvoiceIdColumns();
+    log(`Ensured invoice_id columns exist on time_entries and time_logs`);
+    const count = await storage.migrateInvoiceIdToTimeEntries();
     if (count > 0) {
       log(`Migrated invoiceId to ${count} time logs/entries`);
     }
-  }).catch((err) => {
-    log(`Failed to migrate invoiceId to time entries: ${err.message}`);
-  });
+  } catch (err: any) {
+    log(`Failed to ensure invoice_id columns or migrate: ${err.message}`);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -295,6 +295,7 @@ export interface IStorage {
   markTimeEntriesBilled(invoiceId: number, timeLogIds: number[], timeEntryIds: number[]): Promise<void>;
   clearTimeEntriesBilledByInvoice(invoiceId: number): Promise<void>;
   remarkTimeEntriesBilledFromInvoiceItems(invoiceId: number): Promise<void>;
+  ensureInvoiceIdColumns(): Promise<void>;
   migrateInvoiceIdToTimeEntries(): Promise<number>;
   
   // Daily Activity Logs
@@ -1944,6 +1945,28 @@ export class DatabaseStorage implements IStorage {
     if (logIds.length > 0 || entryIds.length > 0) {
       await this.markTimeEntriesBilled(invoiceId, logIds, entryIds);
     }
+  }
+
+  async ensureInvoiceIdColumns(): Promise<void> {
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'time_entries' AND column_name = 'invoice_id'
+        ) THEN
+          ALTER TABLE time_entries ADD COLUMN invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'time_logs' AND column_name = 'invoice_id'
+        ) THEN
+          ALTER TABLE time_logs ADD COLUMN invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL;
+        END IF;
+      END
+      $$;
+    `);
   }
 
   async migrateInvoiceIdToTimeEntries(): Promise<number> {
