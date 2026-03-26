@@ -206,6 +206,7 @@ export const timeEntries = pgTable("time_entries", {
   totalMinutes: integer("total_minutes").notNull(),
   isBillable: boolean("is_billable").default(true),
   notes: text("notes"),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -221,6 +222,7 @@ export const timeLogs = pgTable("time_logs", {
   totalHours: varchar("total_hours", { length: 10 }).notNull(),
   type: taskLocationEnum("type").default("office").notNull(),
   notes: text("notes"),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

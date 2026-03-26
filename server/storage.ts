@@ -292,6 +292,10 @@ export interface IStorage {
   getUnbilledTimeEntries(): Promise<{ projectId: number; projectName: string; clientName: string; totalMinutes: number; estimatedAmount: number }[]>;
   getBilledItemIds(projectId: number): Promise<{ timeLogIds: number[]; timeEntryIds: number[] }>;
   repairOrphanedInvoiceItems(): Promise<number>;
+  markTimeEntriesBilled(invoiceId: number, timeLogIds: number[], timeEntryIds: number[]): Promise<void>;
+  clearTimeEntriesBilledByInvoice(invoiceId: number): Promise<void>;
+  remarkTimeEntriesBilledFromInvoiceItems(invoiceId: number): Promise<void>;
+  migrateInvoiceIdToTimeEntries(): Promise<number>;
   
   // Daily Activity Logs
   getDailyActivityLogs(userId?: string): Promise<DailyActivityLog[]>;
@@ -1750,25 +1754,50 @@ export class DatabaseStorage implements IStorage {
         eq(invoices.projectId, projectId),
         ne(invoices.status, 'cancelled')
       ));
-    
-    if (projectInvoices.length === 0) {
-      return { timeLogIds: [], timeEntryIds: [] };
+
+    const timeLogIdSet = new Set<number>();
+    const timeEntryIdSet = new Set<number>();
+
+    if (projectInvoices.length > 0) {
+      const invoiceIds = projectInvoices.map(i => i.id);
+      const items = await db
+        .select({ timeLogId: invoiceItems.timeLogId, timeEntryId: invoiceItems.timeEntryId })
+        .from(invoiceItems)
+        .where(inArray(invoiceItems.invoiceId, invoiceIds));
+
+      for (const item of items) {
+        if (item.timeLogId !== null) timeLogIdSet.add(item.timeLogId);
+        if (item.timeEntryId !== null) timeEntryIdSet.add(item.timeEntryId);
+      }
     }
 
-    const invoiceIds = projectInvoices.map(i => i.id);
-    const items = await db
-      .select({ timeLogId: invoiceItems.timeLogId, timeEntryId: invoiceItems.timeEntryId })
-      .from(invoiceItems)
-      .where(inArray(invoiceItems.invoiceId, invoiceIds));
+    const directlyLinkedLogs = await db
+      .select({ id: timeLogs.id })
+      .from(timeLogs)
+      .innerJoin(invoices, eq(timeLogs.invoiceId, invoices.id))
+      .where(and(
+        eq(timeLogs.projectId, projectId),
+        isNotNull(timeLogs.invoiceId),
+        ne(invoices.status, 'cancelled')
+      ));
+    for (const log of directlyLinkedLogs) {
+      timeLogIdSet.add(log.id);
+    }
 
-    const timeLogIds = [...new Set(items
-      .filter(item => item.timeLogId !== null)
-      .map(item => item.timeLogId as number))];
-    const timeEntryIds = [...new Set(items
-      .filter(item => item.timeEntryId !== null)
-      .map(item => item.timeEntryId as number))];
+    const directlyLinkedEntries = await db
+      .select({ id: timeEntries.id })
+      .from(timeEntries)
+      .innerJoin(invoices, eq(timeEntries.invoiceId, invoices.id))
+      .where(and(
+        eq(timeEntries.projectId, projectId),
+        isNotNull(timeEntries.invoiceId),
+        ne(invoices.status, 'cancelled')
+      ));
+    for (const entry of directlyLinkedEntries) {
+      timeEntryIdSet.add(entry.id);
+    }
 
-    return { timeLogIds, timeEntryIds };
+    return { timeLogIds: [...timeLogIdSet], timeEntryIds: [...timeEntryIdSet] };
   }
 
   async repairOrphanedInvoiceItems(): Promise<number> {
@@ -1874,6 +1903,139 @@ export class DatabaseStorage implements IStorage {
     }
 
     return repaired;
+  }
+
+  async markTimeEntriesBilled(invoiceId: number, timeLogIds: number[], timeEntryIds: number[]): Promise<void> {
+    if (timeLogIds.length > 0) {
+      await db
+        .update(timeLogs)
+        .set({ invoiceId })
+        .where(inArray(timeLogs.id, timeLogIds));
+    }
+    if (timeEntryIds.length > 0) {
+      await db
+        .update(timeEntries)
+        .set({ invoiceId })
+        .where(inArray(timeEntries.id, timeEntryIds));
+    }
+  }
+
+  async clearTimeEntriesBilledByInvoice(invoiceId: number): Promise<void> {
+    await db
+      .update(timeLogs)
+      .set({ invoiceId: null })
+      .where(eq(timeLogs.invoiceId, invoiceId));
+    await db
+      .update(timeEntries)
+      .set({ invoiceId: null })
+      .where(eq(timeEntries.invoiceId, invoiceId));
+  }
+
+  async remarkTimeEntriesBilledFromInvoiceItems(invoiceId: number): Promise<void> {
+    const items = await db
+      .select({ timeLogId: invoiceItems.timeLogId, timeEntryId: invoiceItems.timeEntryId })
+      .from(invoiceItems)
+      .where(eq(invoiceItems.invoiceId, invoiceId));
+
+    const logIds = items.filter(i => i.timeLogId !== null).map(i => i.timeLogId as number);
+    const entryIds = items.filter(i => i.timeEntryId !== null).map(i => i.timeEntryId as number);
+
+    if (logIds.length > 0 || entryIds.length > 0) {
+      await this.markTimeEntriesBilled(invoiceId, logIds, entryIds);
+    }
+  }
+
+  async migrateInvoiceIdToTimeEntries(): Promise<number> {
+    let migrated = 0;
+
+    const nonCancelledInvoices = await db
+      .select({ id: invoices.id, projectId: invoices.projectId })
+      .from(invoices)
+      .where(ne(invoices.status, 'cancelled'));
+
+    for (const inv of nonCancelledInvoices) {
+      if (!inv.projectId) continue;
+
+      const items = await db
+        .select({
+          id: invoiceItems.id,
+          timeLogId: invoiceItems.timeLogId,
+          timeEntryId: invoiceItems.timeEntryId,
+          description: invoiceItems.description,
+          isCustom: invoiceItems.isCustom,
+        })
+        .from(invoiceItems)
+        .where(eq(invoiceItems.invoiceId, inv.id));
+
+      for (const item of items) {
+        if (item.timeLogId) {
+          const existing = await db.select({ invoiceId: timeLogs.invoiceId }).from(timeLogs).where(eq(timeLogs.id, item.timeLogId)).limit(1);
+          if (existing.length > 0 && existing[0].invoiceId === null) {
+            await db.update(timeLogs).set({ invoiceId: inv.id }).where(eq(timeLogs.id, item.timeLogId));
+            migrated++;
+          }
+        } else if (item.timeEntryId) {
+          const existing = await db.select({ invoiceId: timeEntries.invoiceId }).from(timeEntries).where(eq(timeEntries.id, item.timeEntryId)).limit(1);
+          if (existing.length > 0 && existing[0].invoiceId === null) {
+            await db.update(timeEntries).set({ invoiceId: inv.id }).where(eq(timeEntries.id, item.timeEntryId));
+            migrated++;
+          }
+        } else if (item.isCustom) {
+          const match = item.description.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s*-\s*(.+)$/);
+          if (!match) continue;
+
+          const [, month, day, year, descText] = match;
+          const descTrimmed = descText.trim();
+          const dateStart = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0);
+          const dateEnd = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 23, 59, 59);
+
+          const matchingLogs = await db
+            .select({ id: timeLogs.id, invoiceId: timeLogs.invoiceId })
+            .from(timeLogs)
+            .where(
+              and(
+                eq(timeLogs.projectId, inv.projectId),
+                eq(timeLogs.taskDescription, descTrimmed),
+                gte(timeLogs.date, dateStart),
+                lte(timeLogs.date, dateEnd),
+                isNull(timeLogs.invoiceId)
+              )
+            );
+
+          if (matchingLogs.length > 0) {
+            await db.update(timeLogs).set({ invoiceId: inv.id }).where(eq(timeLogs.id, matchingLogs[0].id));
+            migrated++;
+            continue;
+          }
+
+          const matchingEntries = await db
+            .select({ id: timeEntries.id, invoiceId: timeEntries.invoiceId })
+            .from(timeEntries)
+            .where(
+              and(
+                eq(timeEntries.projectId, inv.projectId),
+                or(
+                  eq(timeEntries.notes, descTrimmed),
+                  and(
+                    isNull(timeEntries.notes),
+                    sql`${descTrimmed} = 'Task work'`
+                  )
+                ),
+                gte(timeEntries.date, dateStart),
+                lte(timeEntries.date, dateEnd),
+                isNull(timeEntries.invoiceId)
+              )
+            );
+
+          if (matchingEntries.length > 0) {
+            await db.update(timeEntries).set({ invoiceId: inv.id }).where(eq(timeEntries.id, matchingEntries[0].id));
+            migrated++;
+          }
+        }
+      }
+    }
+
+    return migrated;
   }
 
   // Daily Activity Logs

@@ -3182,6 +3182,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const billedItems = await storage.getBilledItemIds(parseInt(req.params.projectId));
+      res.set("Cache-Control", "no-store");
       res.json(billedItems);
     } catch (error) {
       console.error("Error fetching billed items:", error);
@@ -3576,6 +3577,13 @@ export async function registerRoutes(
       const parsedItems = z.array(insertInvoiceItemSchema.omit({ invoiceId: true })).parse(items || []);
       
       const invoice = await storage.createInvoice(parsedInvoice, parsedItems as any);
+
+      const timeLogIds = (parsedItems as any[]).filter((i: any) => i.timeLogId).map((i: any) => i.timeLogId as number);
+      const timeEntryIds = (parsedItems as any[]).filter((i: any) => i.timeEntryId).map((i: any) => i.timeEntryId as number);
+      if (timeLogIds.length > 0 || timeEntryIds.length > 0) {
+        await storage.markTimeEntriesBilled(invoice.id, timeLogIds, timeEntryIds);
+      }
+
       sendWebhook("invoice.created", { invoice }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(invoice);
     } catch (error) {
@@ -3654,10 +3662,29 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Invoice not found" });
       }
       
-      if (items) {
-        await storage.replaceInvoiceItems(invoiceId, items as any);
+      const effectiveStatus = parsed.status ?? currentInvoice.status;
+
+      if (parsed.status === "cancelled" && currentInvoice.status !== "cancelled") {
+        await storage.clearTimeEntriesBilledByInvoice(invoiceId);
       }
-      
+
+      if (currentInvoice.status === "cancelled" && parsed.status && parsed.status !== "cancelled") {
+        await storage.remarkTimeEntriesBilledFromInvoiceItems(invoiceId);
+      }
+
+      if (items) {
+        await storage.clearTimeEntriesBilledByInvoice(invoiceId);
+        await storage.replaceInvoiceItems(invoiceId, items as any);
+
+        if (effectiveStatus !== "cancelled") {
+          const newTimeLogIds = (items as any[]).filter((i: any) => i.timeLogId).map((i: any) => i.timeLogId as number);
+          const newTimeEntryIds = (items as any[]).filter((i: any) => i.timeEntryId).map((i: any) => i.timeEntryId as number);
+          if (newTimeLogIds.length > 0 || newTimeEntryIds.length > 0) {
+            await storage.markTimeEntriesBilled(invoiceId, newTimeLogIds, newTimeEntryIds);
+          }
+        }
+      }
+
       if (parsed.status === "paid" || (currentInvoice.status === "paid" && parsed.status === undefined)) {
         const existingPayments = await storage.getPaymentsByInvoiceId(invoiceId);
         const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
@@ -3701,6 +3728,7 @@ export async function registerRoutes(
       }
       
       const invoiceId = parseInt(req.params.id);
+      await storage.clearTimeEntriesBilledByInvoice(invoiceId);
       await storage.resetExpensesForInvoice(invoiceId);
       await storage.resetBillItemsForInvoice(invoiceId);
       const deleted = await storage.deleteInvoice(invoiceId);

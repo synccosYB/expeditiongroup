@@ -72,6 +72,14 @@ app.use((req, res, next) => {
     log(`Failed to repair orphaned invoice items: ${err.message}`);
   });
 
+  storage.migrateInvoiceIdToTimeEntries().then((count) => {
+    if (count > 0) {
+      log(`Migrated invoiceId to ${count} time logs/entries`);
+    }
+  }).catch((err) => {
+    log(`Failed to migrate invoiceId to time entries: ${err.message}`);
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
