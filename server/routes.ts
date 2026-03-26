@@ -290,6 +290,48 @@ export async function registerRoutes(
 
   (async () => {
     try {
+      const unlinkedResult = await db.execute(sql`
+        UPDATE invoice_items
+        SET time_log_id = matched.log_id
+        FROM (
+          SELECT DISTINCT ON (ii2.id) ii2.id as item_id, tl.id as log_id
+          FROM invoice_items ii2
+          JOIN invoices i ON ii2.invoice_id = i.id
+          JOIN time_logs tl ON tl.project_id = i.project_id
+          WHERE ii2.time_log_id IS NULL
+            AND ii2.time_entry_id IS NULL
+            AND tl.task_description IS NOT NULL
+            AND LENGTH(TRIM(tl.task_description)) > 20
+            AND ii2.description LIKE '%' || TRIM(tl.task_description) || '%'
+          ORDER BY ii2.id, LENGTH(tl.task_description) DESC
+        ) matched
+        WHERE invoice_items.id = matched.item_id
+      `);
+      const linkedCount = unlinkedResult.rowCount ?? 0;
+      if (linkedCount > 0) {
+        console.log(`[Data Fix] Linked ${linkedCount} orphaned invoice items back to their source time logs`);
+      }
+
+      const setInvoiceIdResult = await db.execute(sql`
+        UPDATE time_logs tl
+        SET invoice_id = ii.invoice_id
+        FROM invoice_items ii
+        JOIN invoices i ON i.id = ii.invoice_id
+        WHERE ii.time_log_id = tl.id
+          AND tl.invoice_id IS NULL
+          AND i.status != 'cancelled'
+      `);
+      const setCount = setInvoiceIdResult.rowCount ?? 0;
+      if (setCount > 0) {
+        console.log(`[Data Fix] Set invoice_id on ${setCount} time logs from linked invoice items`);
+      }
+    } catch (err: any) {
+      console.log('[Data Fix] Invoice item linking skipped:', err?.message);
+    }
+  })();
+
+  (async () => {
+    try {
       const existingLogs = await db.select({ id: dailyActivityLogs.id }).from(dailyActivityLogs).limit(1);
       if (existingLogs.length > 0) {
         return;
