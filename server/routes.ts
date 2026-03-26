@@ -7,7 +7,7 @@ import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries } from "@shared/schema";
+import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -285,6 +285,188 @@ export async function registerRoutes(
       console.log(`[Data Fix] Recalculated balances for ${allBankAccounts.length} bank accounts`);
     } catch (err: any) {
       console.error('[Data Fix] Error recalculating bank account balances:', err?.message);
+    }
+  })();
+
+  (async () => {
+    try {
+      const existingLogs = await db.select({ id: dailyActivityLogs.id }).from(dailyActivityLogs).limit(1);
+      if (existingLogs.length > 0) {
+        return;
+      }
+      console.log('[Data Fix] No daily activity logs found, regenerating from source data...');
+
+      const admins = await db.select({ id: users.id }).from(users).where(sql`${users.role} IN ('admin', 'super_admin')`).limit(1);
+      const targetUserId = admins[0]?.id;
+      if (!targetUserId) {
+        console.log('[Data Fix] No admin user found, skipping activity log regeneration');
+        return;
+      }
+      const REGEN_MARKER = { source: "regen_2026" };
+      const startDate = new Date(2025, 9, 28);
+      const endDate = new Date();
+
+      const allDocuments = await db.select().from(documents).where(
+        and(isNotNull(documents.createdAt), gte(documents.createdAt, startDate), lte(documents.createdAt, endDate))
+      );
+      for (const doc of allDocuments) {
+        await db.insert(auditLogs).values({
+          userId: doc.uploadedByUserId || targetUserId,
+          action: "upload",
+          entityType: "document",
+          entityId: String(doc.id),
+          description: `Document uploaded: ${doc.fileName}`,
+          metadata: REGEN_MARKER,
+          createdAt: doc.createdAt,
+        });
+      }
+
+      const allTasks = await db.select().from(tasks).where(
+        and(isNotNull(tasks.completedAt), gte(tasks.completedAt, startDate), lte(tasks.completedAt, endDate))
+      );
+      for (const task of allTasks) {
+        await db.insert(auditLogs).values({
+          userId: task.assigneeId || targetUserId,
+          action: "status_change",
+          entityType: "task",
+          entityId: String(task.id),
+          description: `Task completed: ${task.title}`,
+          metadata: REGEN_MARKER,
+          createdAt: task.completedAt,
+        });
+      }
+
+      const allNotes = await db.select().from(notes).where(
+        and(isNotNull(notes.createdAt), gte(notes.createdAt, startDate), lte(notes.createdAt, endDate))
+      );
+      for (const note of allNotes) {
+        await db.insert(auditLogs).values({
+          userId: note.userId || targetUserId,
+          action: "create",
+          entityType: "note",
+          entityId: String(note.id),
+          description: `Note created: ${note.content.substring(0, 80)}`,
+          metadata: REGEN_MARKER,
+          createdAt: note.createdAt,
+        });
+      }
+
+      const allInvoices = await db.select().from(invoices).where(
+        and(isNotNull(invoices.createdAt), gte(invoices.createdAt, startDate), lte(invoices.createdAt, endDate))
+      );
+      for (const invoice of allInvoices) {
+        await db.insert(auditLogs).values({
+          userId: targetUserId,
+          action: "create",
+          entityType: "invoice",
+          entityId: String(invoice.id),
+          description: `Invoice created: ${invoice.invoiceNumber}`,
+          metadata: REGEN_MARKER,
+          createdAt: invoice.createdAt,
+        });
+      }
+
+      let logsCreated = 0;
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const day = currentDate.getDate();
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+
+        const [dateTimeEntries, dateTimeLogs, dateNotes, dateDocs, dateTasks, dateAudit] = await Promise.all([
+          storage.getTimeEntriesForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getTimeLogsForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getNotesCreatedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getDocumentsProcessedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getTasksCompletedForDateRange(targetUserId, startOfDay, endOfDay),
+          storage.getAuditLogsForDateRange(targetUserId, startOfDay, endOfDay),
+        ]);
+
+        const hasActivity = dateTimeEntries.length > 0 || dateTimeLogs.length > 0 || dateNotes.length > 0 || dateDocs.length > 0 || dateTasks.length > 0;
+
+        if (hasActivity) {
+          let totalMinutes = 0;
+          dateTimeEntries.forEach((entry: any) => { totalMinutes += entry.totalMinutes || 0; });
+          dateTimeLogs.forEach((log: any) => { totalMinutes += parseFloat(log.totalHours || "0") * 60; });
+          const hoursWorked = totalMinutes > 0 ? (totalMinutes / 60).toFixed(1) : "";
+
+          const summaryParts: string[] = [];
+          if (dateTimeEntries.length > 0 || dateTimeLogs.length > 0) summaryParts.push(`Logged ${dateTimeEntries.length + dateTimeLogs.length} time entries`);
+          if (dateTasks.length > 0) summaryParts.push(`Completed ${dateTasks.length} tasks`);
+          if (dateDocs.length > 0) summaryParts.push(`Processed ${dateDocs.length} documents`);
+          if (dateNotes.length > 0) summaryParts.push(`Added ${dateNotes.length} notes`);
+          const summary = summaryParts.join(", ");
+
+          const detailLines: string[] = [];
+          if (dateTimeEntries.length > 0) {
+            detailLines.push("TIME ENTRIES:");
+            for (const entry of dateTimeEntries) {
+              const t = await storage.getTask(entry.taskId);
+              const p = await storage.getProject(entry.projectId);
+              const mins = entry.totalMinutes || 0;
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              detailLines.push(`• ${p?.name || "Unknown Project"} - ${t?.title || "Task"}: ${h > 0 ? `${h}h ${m}m` : `${m}m`}${entry.notes ? ` (${entry.notes})` : ""}`);
+            }
+          }
+          if (dateTimeLogs.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("TIME LOGS:");
+            for (const log of dateTimeLogs) {
+              const p = await storage.getProject(log.projectId);
+              detailLines.push(`• ${p?.name || "Unknown Project"}: ${log.taskDescription} (${log.totalHours}h)`);
+            }
+          }
+          if (dateTasks.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("TASKS COMPLETED:");
+            for (const t of dateTasks) {
+              const p = await storage.getProject(t.projectId);
+              detailLines.push(`• ${p?.name || "Unknown"}: ${t.title}`);
+            }
+          }
+          if (dateDocs.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("DOCUMENTS PROCESSED:");
+            for (const doc of dateDocs) {
+              const p = await storage.getProject(doc.projectId);
+              detailLines.push(`• ${p?.name || "Unknown"}: ${doc.fileName} (${doc.documentStatus || "uploaded"})`);
+            }
+          }
+          if (dateNotes.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("NOTES ADDED:");
+            for (const note of dateNotes) {
+              detailLines.push(`• ${note.content.substring(0, 60)}${note.content.length > 60 ? "..." : ""}`);
+            }
+          }
+          const significantActions = dateAudit.filter((log: any) =>
+            ["create", "update", "upload", "status_change", "document_accepted", "document_rejected"].includes(log.action)
+          );
+          if (significantActions.length > 0) {
+            if (detailLines.length > 0) detailLines.push("");
+            detailLines.push("KEY ACTIONS:");
+            for (const action of significantActions.slice(0, 10)) {
+              if (action.description) detailLines.push(`• ${action.description}`);
+            }
+          }
+
+          await storage.createDailyActivityLog({
+            userId: targetUserId,
+            date: startOfDay,
+            summary,
+            details: detailLines.join("\n"),
+            hoursWorked,
+          });
+          logsCreated++;
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      console.log(`[Data Fix] Regenerated ${logsCreated} daily activity logs`);
+    } catch (err: any) {
+      console.error('[Data Fix] Error regenerating activity logs:', err?.message);
     }
   })();
 
