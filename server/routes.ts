@@ -596,7 +596,12 @@ export async function registerRoutes(
     try {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (user) {
+        const { passwordHash, ...safeUser } = user;
+        res.json(safeUser);
+      } else {
+        res.status(404).json({ message: "User not found" });
+      }
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -2321,7 +2326,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const allUsers = await storage.getAllUsers();
-      res.json(allUsers);
+      res.json(allUsers.map(({ passwordHash, ...u }) => u));
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -2363,7 +2368,8 @@ export async function registerRoutes(
         role: parsed.role,
       });
 
-      res.status(201).json(user);
+      const { passwordHash: _, ...safeUser } = user;
+      res.status(201).json(safeUser);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
@@ -2391,7 +2397,8 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json(updatedUser);
+      const { passwordHash: _, ...safeUser } = updatedUser;
+      res.json(safeUser);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid role" });

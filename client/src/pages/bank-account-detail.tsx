@@ -46,7 +46,7 @@ export default function BankAccountDetail() {
   });
 
   const { data: transactions } = useQuery<BankTransaction[]>({
-    queryKey: [`/api/bank-accounts/${accountId}/transactions`],
+    queryKey: ["/api/bank-accounts", accountId, "transactions"],
     enabled: !!accountId,
   });
 
