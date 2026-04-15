@@ -161,7 +161,7 @@ function TaskDetailDialog({
   const [notesValue, setNotesValue] = useState("");
 
   const { data: timeEntries } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries", { taskId: task?.id }],
+    queryKey: ["/api/tasks", task?.id, "time-entries"],
     enabled: !!task?.id,
   });
 

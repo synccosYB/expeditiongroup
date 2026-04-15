@@ -1,0 +1,64 @@
+BUG-0190
+The calendar requires the following fixes and enhancements:
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Drag-and-drop functionality should be smoother and easier to use (see video).
+Ability to save notes, with automatic sync to project notes (see video).
+Ability to view task notes history, synced with the main project (see video).
+Ability to log time, with entries syncing directly under project time logs (see video).
+When clicking “Today,” it should open a dedicated view showing only today’s tasks (similar to Google Calendar), not the full calendar view.
+
+AI Analysis
+
+### Analysis:
+
+1) **Affected Part of the App**:  
+The **Calendar module** is primarily affected, focusing on usability (drag-and-drop), new feature requirements (sync capabilities for notes and time logs), and functionality improvements (view and display logic for "Today").
+
+2) **Details and Root Cause Analysis**:
+   - **Drag-and-Drop Smoothness**: Likely an issue with event listeners, rendering performance, or the implementation of the drag-and-drop logic. The current functionality might have delays, bugs, or require optimization of mouse/touch interactions.  
+   - **Save Notes with Automatic Sync**: This indicates synchronization logic between the calendar and the project notes system is either missing or incomplete. Backend APIs for syncing notes might not exist or are improperly implemented.  
+   - **Task Notes History Integration**: This requires a strong linking mechanism between tasks on the calendar and the project-level history. This may involve improper or missing data relationships and retrieval queries from the backend.  
+   - **Time Logging Sync**: Similar to the notes issue, this will require ensuring time logs recorded in the calendar are either integrated into or synced with the centralized project time logs. Again, missing APIs or incomplete database handling could be the root cause.  
+   - **“Today” Button Functionality**: Current behavior reveals full calendar instead of a filtered, dedicated “today-only” view. The feature is likely not implemented, or the logic for toggling views fails to differentiate between the full view and filtered “today-only” tasks.
+
+3) **Recommendations / Next Steps**:
+   - **Drag-and-Drop**: Profile and debug the drag-and-drop interactions to assess performance bottlenecks. Optimize event handling (debouncing/throttling) and improve visuals for smoother feedback. Closely review framework drag logic.  
+   - **Notes Sync**: Implement a backend-to-frontend integration to persist and sync notes automatically into the project notes database. Test multiple edge cases, including network errors.  
+   - **Task Notes History**: Design a unified API or data linking solution to fetch and show the task-specific notes history. Ensure history fetch and write operations are efficient and tied to correct task IDs.  
+   - **Time Logging**: Ensure time logs written in the calendar module use the same API as the project-level time logs. Validate time entries are correctly consolidated in reports or summaries.  
+   - **“Today” Button**: Add a filter capability for the “Today” button that queries and displays only today’s tasks. Ensure the view can toggle seamlessly from the full view to today’s view and back.
+
+### General Comment:  
+While these issues and enhancements span functionality, syncing, and UX, none appear to compromise the stability of the Calendar module. However, they prevent the module from being fully functional and user-friendly.
+
+```json
+{"severity": "medium", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+

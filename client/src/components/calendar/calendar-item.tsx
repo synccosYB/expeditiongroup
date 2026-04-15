@@ -55,10 +55,10 @@ export function CalendarItem({ event, onClick }: CalendarItemProps) {
       <div
         {...listeners}
         {...attributes}
-        className="flex-shrink-0 cursor-grab touch-none"
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
         data-testid={`drag-handle-${event.id}`}
       >
-        <GripVertical className="h-3 w-3 opacity-50 group-hover:opacity-100" />
+        <GripVertical className="h-3 w-3 opacity-40 group-hover:opacity-100 transition-opacity" />
       </div>
       <div
         className="flex items-center gap-1 truncate flex-1 min-w-0"
@@ -82,16 +82,16 @@ export function CalendarItemCard({ event, isDragging }: CalendarItemCardProps) {
   return (
     <div
       className={cn(
-        "text-xs p-2 rounded shadow-lg flex items-center gap-1 bg-card border",
+        "text-xs p-2 rounded shadow-xl flex items-center gap-2 bg-card border-2 transition-transform",
         event.type === "task" && "border-chart-4",
         event.type === "reminder" && "border-chart-3",
         event.type === "deadline" && "border-destructive",
-        isDragging && "rotate-3"
+        isDragging && "rotate-2 scale-105"
       )}
     >
       {event.type === "task" && <ClipboardList className="h-3 w-3 flex-shrink-0" />}
       {event.type === "reminder" && <Bell className="h-3 w-3 flex-shrink-0" />}
-      <span className="truncate max-w-[150px]">{event.title}</span>
+      <span className="truncate max-w-[150px] font-medium">{event.title}</span>
     </div>
   );
 }

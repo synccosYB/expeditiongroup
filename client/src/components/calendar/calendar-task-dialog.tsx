@@ -108,7 +108,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
   const task = freshTask ?? eventTask;
 
   const { data: timeEntries } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries", { taskId: task?.id }],
+    queryKey: ["/api/tasks", task?.id, "time-entries"],
     enabled: !!task?.id,
   });
 
@@ -243,6 +243,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       if (task?.projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });

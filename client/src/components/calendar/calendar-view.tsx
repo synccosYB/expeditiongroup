@@ -13,7 +13,7 @@ import {
   rectIntersection,
   type CollisionDetection,
 } from "@dnd-kit/core";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse, setMonth, setYear, getMonth, getYear } from "date-fns";
+import { format, addMonths, subMonths, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addWeeks, subWeeks, startOfWeek, endOfWeek, parse, setMonth, setYear, getMonth, getYear } from "date-fns";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Bell, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export type CalendarEvent = {
   status?: string;
 };
 
-type ViewMode = "month" | "week";
+type ViewMode = "month" | "week" | "day";
 
 function toLocalDate(dateValue: string | Date): Date {
   if (!dateValue) return new Date();
@@ -65,13 +65,13 @@ export function CalendarView() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200,
-        tolerance: 5,
+        delay: 150,
+        tolerance: 8,
       },
     })
   );
@@ -183,13 +183,16 @@ export function CalendarView() {
   const navigate = (direction: "prev" | "next") => {
     if (viewMode === "month") {
       setCurrentDate(direction === "prev" ? subMonths(currentDate, 1) : addMonths(currentDate, 1));
-    } else {
+    } else if (viewMode === "week") {
       setCurrentDate(direction === "prev" ? subWeeks(currentDate, 1) : addWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(direction === "prev" ? subDays(currentDate, 1) : addDays(currentDate, 1));
     }
   };
 
   const goToToday = () => {
     setCurrentDate(new Date());
+    setViewMode("day");
   };
 
   const handleMonthChange = (month: string) => {
@@ -289,6 +292,7 @@ export function CalendarView() {
               <TabsList>
                 <TabsTrigger value="month" data-testid="tab-month">Month</TabsTrigger>
                 <TabsTrigger value="week" data-testid="tab-week">Week</TabsTrigger>
+                <TabsTrigger value="day" data-testid="tab-day">Day</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="flex items-center gap-1">
@@ -332,9 +336,13 @@ export function CalendarView() {
                 </SelectContent>
               </Select>
             </>
-          ) : (
+          ) : viewMode === "week" ? (
             <p className="text-xl font-semibold">
               Week of {format(startOfWeek(currentDate), "MMM d")} - {format(endOfWeek(currentDate), "MMM d, yyyy")}
+            </p>
+          ) : (
+            <p className="text-xl font-semibold">
+              {format(currentDate, "EEEE, MMMM d, yyyy")}
             </p>
           )}
         </div>
@@ -347,29 +355,121 @@ export function CalendarView() {
           onDragEnd={handleDragEnd}
         >
           <div className="border-t">
-            <div className="grid grid-cols-7 border-b">
-              {weekDays.map((day) => (
-                <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground border-r last:border-r-0">
-                  {day}
+            {viewMode === "day" ? (
+              <div className="p-4 min-h-[400px]">
+                {(() => {
+                  const todayEvents = getEventsForDay(currentDate);
+                  if (todayEvents.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                        <CalendarIcon className="h-12 w-12 mb-3 opacity-30" />
+                        <p className="text-lg font-medium">No tasks or reminders</p>
+                        <p className="text-sm">Nothing scheduled for {format(currentDate, "MMMM d, yyyy")}</p>
+                      </div>
+                    );
+                  }
+                  const taskEvents = todayEvents.filter(e => e.type === "task");
+                  const reminderEvents = todayEvents.filter(e => e.type === "reminder");
+                  return (
+                    <div className="space-y-4">
+                      {taskEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <ClipboardList className="h-4 w-4" />
+                            Tasks ({taskEvents.length})
+                          </h4>
+                          <div className="space-y-1">
+                            {taskEvents.map((event) => (
+                              <div
+                                key={event.id}
+                                className={cn(
+                                  "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors",
+                                  event.status === "done" && "opacity-50"
+                                )}
+                                onClick={() => handleEventClick(event)}
+                                data-testid={`day-view-item-${event.id}`}
+                              >
+                                <ClipboardList className="h-4 w-4 text-chart-4 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-sm font-medium truncate", event.status === "done" && "line-through")}>
+                                    {event.title}
+                                  </p>
+                                  {event.projectName && (
+                                    <p className="text-xs text-muted-foreground truncate">{event.projectName}</p>
+                                  )}
+                                </div>
+                                {event.status && (
+                                  <Badge variant={event.status === "done" ? "secondary" : "outline"} className="text-xs flex-shrink-0">
+                                    {event.status.replace(/_/g, " ")}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {reminderEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Bell className="h-4 w-4" />
+                            Reminders ({reminderEvents.length})
+                          </h4>
+                          <div className="space-y-1">
+                            {reminderEvents.map((event) => (
+                              <div
+                                key={event.id}
+                                className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors"
+                                onClick={() => handleEventClick(event)}
+                                data-testid={`day-view-item-${event.id}`}
+                              >
+                                <Bell className="h-4 w-4 text-chart-3 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{event.title}</p>
+                                  {event.projectName && (
+                                    <p className="text-xs text-muted-foreground truncate">{event.projectName}</p>
+                                  )}
+                                </div>
+                                {event.status && (
+                                  <Badge variant="outline" className="text-xs flex-shrink-0">
+                                    {event.status}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-7 border-b">
+                  {weekDays.map((day) => (
+                    <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground border-r last:border-r-0">
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className={cn(
-              "grid grid-cols-7",
-              viewMode === "week" ? "min-h-[400px]" : ""
-            )}>
-              {days.map((day, index) => (
-                <CalendarDay
-                  key={day.toISOString()}
-                  day={day}
-                  events={getEventsForDay(day)}
-                  isCurrentMonth={isSameMonth(day, currentDate)}
-                  isToday={isToday(day)}
-                  viewMode={viewMode}
-                  onEventClick={handleEventClick}
-                />
-              ))}
-            </div>
+                <div className={cn(
+                  "grid grid-cols-7",
+                  viewMode === "week" ? "min-h-[400px]" : ""
+                )}>
+                  {days.map((day, index) => (
+                    <CalendarDay
+                      key={day.toISOString()}
+                      day={day}
+                      events={getEventsForDay(day)}
+                      isCurrentMonth={isSameMonth(day, currentDate)}
+                      isToday={isToday(day)}
+                      viewMode={viewMode}
+                      onEventClick={handleEventClick}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <DragOverlay>
             {activeEvent && (
