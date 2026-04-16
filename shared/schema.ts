@@ -146,7 +146,7 @@ export const projects = pgTable("projects", {
   jobType: projectTypeEnum("job_type").default("other"),
   status: projectStatusEnum("status").default("intake").notNull(),
   priority: projectPriorityEnum("priority").default("normal"),
-  isVisibleToClient: boolean("is_visible_to_client").default(false),
+  isVisibleToClient: boolean("is_visible_to_client").default(true),
   internalCode: varchar("internal_code", { length: 50 }),
   assignedAdminId: varchar("assigned_admin_id").references(() => users.id),
   startDate: timestamp("start_date"),
