@@ -1,0 +1,61 @@
+BUG-0184
+Client Portal Job Status Counts Showing 0
+Bug
+In Progress
+High
+Close
+Resolve
+Status
+In Progress
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+In the client portal, all job status categories (Open, On Hold, Completed) are displaying as 0, even though jobs exist in the system.
+
+AI Analysis
+
+### Analysis:
+
+1. **What part of the app is affected:**
+   - The "Job Status Counts" display within the Client Portal that shows the number of jobs in various statuses (e.g., Open, On Hold, Completed).
+
+2. **Root cause analysis:**
+   - The issue appears to be related to the logic or data retrieval behind the job status counts. Potential causes include:
+     - Backend API not returning accurate data, possibly due to a broken query or filtering logic.
+     - Frontend does not properly process or display data if it fails to parse the response.
+     - A mismatch between the data in the system and what the frontend expects (e.g., using an outdated endpoint or incorrect data schema).
+     - Caching mechanisms that fail to reflect the current job counts.
+     - Authorization or filtering rules incorrectly applied when fetching the job data for a specific user or client.
+
+3. **Recommended fix or next steps:**
+   - Ensure the backend API or database query returning job status counts is working as expected, and verify whether the counts are valid and reflect the actual data in the database.
+   - Use network monitoring tools (e.g., browser dev tools) to check the API call being made when the client portal loads. Confirm:
+     - Whether the API is being called.
+     - If the API response is correct and includes non-zero counts.
+   - If the API response is correct but counts still display as 0, investigate the frontend logic where the data is mapped onto the UI. Debug whether the values are being unintentionally overridden or improperly parsed.
+   - Verify environment-specific configurations that might impact data retrieval (such as incorrectly applied filters or client IDs).
+   - Add test cases for both backend and frontend to confirm the job counts are displayed properly under various conditions.
+
+### Suggested Severity and Category:
+```json
+{"severity": "high", "category": "data"}
+```
+
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
