@@ -70,6 +70,14 @@ import Reconciliation from "@/pages/reconciliation";
 import UndepositedFunds from "@/pages/undeposited-funds";
 import Deposits from "@/pages/deposits";
 import JournalEntries from "@/pages/journal-entries";
+import ReportsLanding from "@/pages/reports";
+import ProfitLossReport from "@/pages/reports/profit-loss";
+import BalanceSheetReport from "@/pages/reports/balance-sheet";
+import TrialBalanceReport from "@/pages/reports/trial-balance";
+import GeneralLedgerReport from "@/pages/reports/general-ledger";
+import CashFlowReport from "@/pages/reports/cash-flow";
+import ArAgingReport from "@/pages/reports/ar-aging";
+import ApAgingReport from "@/pages/reports/ap-aging";
 import { SynkdexWidget } from "@/components/synkdex-widget";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -125,6 +133,14 @@ function AdminRouter() {
       <Route path="/bills/:id" component={BillDetail} />
       <Route path="/rebill-center" component={RebillCenter} />
       <Route path="/journal-entries" component={JournalEntries} />
+      <Route path="/reports" component={ReportsLanding} />
+      <Route path="/reports/profit-loss" component={ProfitLossReport} />
+      <Route path="/reports/balance-sheet" component={BalanceSheetReport} />
+      <Route path="/reports/trial-balance" component={TrialBalanceReport} />
+      <Route path="/reports/general-ledger" component={GeneralLedgerReport} />
+      <Route path="/reports/cash-flow" component={CashFlowReport} />
+      <Route path="/reports/ar-aging" component={ArAgingReport} />
+      <Route path="/reports/ap-aging" component={ApAgingReport} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

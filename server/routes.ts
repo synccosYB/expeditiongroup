@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./auth";
 import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
+import { registerReportRoutes } from "./reports";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
 import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users } from "@shared/schema";
@@ -7490,6 +7491,8 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to regenerate activity logs", error: String(error) });
     }
   });
+
+  registerReportRoutes(app);
 
   return httpServer;
 }

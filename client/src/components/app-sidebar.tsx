@@ -35,6 +35,7 @@ import {
   Wallet,
   ArrowDownToLine,
   BookText,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,6 +69,7 @@ const bookkeepingMenuItems = [
   { title: "Bills", url: "/bills", icon: FileText },
   { title: "Rebill Center", url: "/rebill-center", icon: RefreshCw },
   { title: "Journal Entries", url: "/journal-entries", icon: BookText },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 
 const clientMenuItems = [
