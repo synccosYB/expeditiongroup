@@ -53,6 +53,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/lib/dateUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
 import { Landmark } from "lucide-react";
 
@@ -64,7 +65,6 @@ type PaymentWithDeposit = Payment & {
     bankTransactionId: number | null;
   } | null;
 };
-import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
 
 interface InvoiceWithRelations extends Invoice {
   project?: Project;
@@ -312,52 +312,41 @@ export default function InvoiceDetail() {
 
       <Card className="print:shadow-none print:border-0" data-testid="invoice-print-area">
         <CardContent className="p-8">
-          <div className="flex justify-between gap-8 mb-8">
-            <div data-testid="invoice-company-info">
-              <img 
-                src={logoUrl} 
-                alt="Expedition Group" 
-                className="h-12 dark:invert print:filter-none"
-                data-testid="img-company-logo"
-              />
-              <div className="mt-3 text-sm text-muted-foreground space-y-0.5">
-                <p>17 Sandybrook Drive</p>
-                <p>Spring Valley, NY 10977</p>
-                <p>(845) 212-2040</p>
-                <p>Info@expeditiongroupny.com</p>
-              </div>
-            </div>
-            <div className="text-right" data-testid="invoice-bill-to">
-              <h2 className="text-lg font-semibold mb-4">Bill To</h2>
-              {invoice.client ? (
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{invoice.client.name}</p>
-                  {invoice.client.company && (
-                    <p className="text-muted-foreground">{invoice.client.company}</p>
-                  )}
-                  {invoice.client.address && (
-                    <p className="text-muted-foreground">{invoice.client.address}</p>
-                  )}
-                  {invoice.client.email && (
-                    <p className="text-muted-foreground">{invoice.client.email}</p>
-                  )}
-                  {invoice.client.phone && (
-                    <p className="text-muted-foreground">{invoice.client.phone}</p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{invoice.recipientName || "Manual Invoice"}</p>
-                  {invoice.recipientAddress && (
-                    <p className="text-muted-foreground">{invoice.recipientAddress}</p>
-                  )}
-                  {invoice.recipientEmail && (
-                    <p className="text-muted-foreground">{invoice.recipientEmail}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <PrintCompanyHeader
+            rightTestId="invoice-bill-to"
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Bill To</h2>
+                {invoice.client ? (
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{invoice.client.name}</p>
+                    {invoice.client.company && (
+                      <p className="text-muted-foreground">{invoice.client.company}</p>
+                    )}
+                    {invoice.client.address && (
+                      <p className="text-muted-foreground">{invoice.client.address}</p>
+                    )}
+                    {invoice.client.email && (
+                      <p className="text-muted-foreground">{invoice.client.email}</p>
+                    )}
+                    {invoice.client.phone && (
+                      <p className="text-muted-foreground">{invoice.client.phone}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{invoice.recipientName || "Manual Invoice"}</p>
+                    {invoice.recipientAddress && (
+                      <p className="text-muted-foreground">{invoice.recipientAddress}</p>
+                    )}
+                    {invoice.recipientEmail && (
+                      <p className="text-muted-foreground">{invoice.recipientEmail}</p>
+                    )}
+                  </div>
+                )}
+              </>
+            }
+          />
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="invoice-info-grid">
             <div>
@@ -566,116 +555,70 @@ export default function InvoiceDetail() {
         />
       )}
 
-      <style>{`
-        @media print {
-          body, html {
-            background: white !important;
-            color: #111 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+      <PrintStyles
+        extraCss={`
+          @media print {
+            html {
+              color: #111 !important;
+            }
+            [data-testid="invoice-print-area"] {
+              background: white !important;
+              color: #111 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+            [data-testid="invoice-print-area"] * {
+              color: #111 !important;
+              background-color: transparent !important;
+              border-color: #ddd !important;
+            }
+            [data-testid="invoice-info-grid"] {
+              background-color: #f5f5f5 !important;
+            }
+            [data-testid="invoice-info-grid"] p {
+              color: #111 !important;
+            }
+            [data-testid="invoice-info-grid"] .text-xs {
+              color: #666 !important;
+            }
+            [data-testid="invoice-project-box"] {
+              border: 1px solid #ddd !important;
+              background: transparent !important;
+            }
+            [data-testid="invoice-notes-box"] {
+              background-color: #f5f5f5 !important;
+            }
+            [data-testid="invoice-bill-to"] p {
+              color: #333 !important;
+            }
+            [data-testid="invoice-bill-to"] .font-medium {
+              color: #111 !important;
+            }
+            [data-testid="invoice-company-info"] p {
+              color: #555 !important;
+            }
+            th {
+              color: #111 !important;
+              border-bottom: 2px solid #333 !important;
+            }
+            td {
+              color: #111 !important;
+              border-bottom: 1px solid #ddd !important;
+            }
+            [data-testid="invoice-totals"] span {
+              color: #111 !important;
+            }
+            [data-testid="invoice-totals"] .text-green-600 {
+              color: #16a34a !important;
+            }
+            .space-y-6 > * {
+              margin: 0 !important;
+            }
           }
-          .print\\:hidden {
-            display: none !important;
-          }
-          [data-testid="invoice-print-area"] {
-            background: white !important;
-            color: #111 !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          [data-testid="invoice-print-area"] * {
-            color: #111 !important;
-            background-color: transparent !important;
-            border-color: #ddd !important;
-          }
-          [data-testid="invoice-info-grid"] {
-            background-color: #f5f5f5 !important;
-          }
-          [data-testid="invoice-info-grid"] p {
-            color: #111 !important;
-          }
-          [data-testid="invoice-info-grid"] .text-xs {
-            color: #666 !important;
-          }
-          [data-testid="invoice-project-box"] {
-            border: 1px solid #ddd !important;
-            background: transparent !important;
-          }
-          [data-testid="invoice-notes-box"] {
-            background-color: #f5f5f5 !important;
-          }
-          .dark\\:invert, img.dark\\:invert {
-            filter: none !important;
-          }
-          [data-testid="img-company-logo"] {
-            filter: none !important;
-          }
-          [data-testid="invoice-bill-to"] p {
-            color: #333 !important;
-          }
-          [data-testid="invoice-bill-to"] .font-medium {
-            color: #111 !important;
-          }
-          [data-testid="invoice-company-info"] p {
-            color: #555 !important;
-          }
-          table {
-            border-collapse: collapse;
-            table-layout: auto !important;
-            width: 100% !important;
-          }
-          th {
-            color: #111 !important;
-            border-bottom: 2px solid #333 !important;
-          }
-          td {
-            color: #111 !important;
-            border-bottom: 1px solid #ddd !important;
-          }
-          td:first-child {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            white-space: pre-wrap !important;
-            max-width: none !important;
-          }
-          tr {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          [data-testid="invoice-totals"] span {
-            color: #111 !important;
-          }
-          [data-testid="invoice-totals"] .text-green-600 {
-            color: #16a34a !important;
-          }
-          .space-y-6 > * {
-            margin: 0 !important;
-          }
-          .sdx-widget-btn,
-          .sdx-overlay,
-          #synkdex-widget,
-          [class*='sdx-'],
-          [id*='synkdex'],
-          iframe[src*='synkdex'],
-          iframe[id*='synkdex'],
-          iframe[id*='sdx'],
-          iframe[class*='sdx'],
-          img[src*='synkdex'],
-          img[src*='Synkdex'],
-          img[alt*='synkdex'],
-          img[alt*='Synkdex'] {
-            display: none !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
-            overflow: hidden !important;
-            position: absolute !important;
-            left: -9999px !important;
-          }
-        }
-      `}</style>
+        `}
+      />
     </div>
   );
 }

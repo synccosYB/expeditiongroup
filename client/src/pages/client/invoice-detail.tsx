@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
+import { PrintStyles } from "@/components/printable-document";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -346,48 +347,7 @@ export default function ClientInvoiceDetail() {
         </Card>
       )}
 
-      <style>{`
-        @media print {
-          .text-green-600 {
-            color: #16a34a !important;
-          }
-          table {
-            table-layout: auto !important;
-            width: 100% !important;
-          }
-          td:first-child {
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            white-space: pre-wrap !important;
-            max-width: none !important;
-          }
-          tr {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-          .sdx-widget-btn,
-          .sdx-overlay,
-          #synkdex-widget,
-          [class*='sdx-'],
-          [id*='synkdex'],
-          iframe[src*='synkdex'],
-          iframe[id*='synkdex'],
-          iframe[id*='sdx'],
-          iframe[class*='sdx'],
-          img[src*='synkdex'],
-          img[src*='Synkdex'],
-          img[alt*='synkdex'],
-          img[alt*='Synkdex'] {
-            display: none !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
-            overflow: hidden !important;
-            position: absolute !important;
-            left: -9999px !important;
-          }
-        }
-      `}</style>
+      <PrintStyles cardLayout={false} />
     </div>
   );
 }

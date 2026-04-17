@@ -10,7 +10,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
-import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { Bill, BillItem, Vendor, BillPayment, BankAccount } from "@shared/schema";
 
 type BillWithRelations = Bill & {
@@ -104,42 +104,30 @@ export default function BillDetail() {
 
       <Card className="print:shadow-none print:border-0">
         <CardContent className="p-8">
-          <div className="flex justify-between gap-8 mb-8">
-            <div>
-              <img
-                src={logoUrl}
-                alt="Expedition Group"
-                className="h-12 dark:invert print:filter-none"
-                data-testid="img-company-logo"
-              />
-              <div className="mt-3 text-sm text-muted-foreground space-y-0.5 print:text-gray-600">
-                <p>17 Sandybrook Drive</p>
-                <p>Spring Valley, NY 10977</p>
-                <p>(845) 212-2040</p>
-                <p>Info@expeditiongroupny.com</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <h2 className="text-lg font-semibold mb-4">Bill From</h2>
-              {bill.vendor && (
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{bill.vendor.name}</p>
-                  {bill.vendor.company && (
-                    <p className="text-muted-foreground print:text-gray-600">{bill.vendor.company}</p>
-                  )}
-                  {bill.vendor.email && (
-                    <p className="text-muted-foreground print:text-gray-600">{bill.vendor.email}</p>
-                  )}
-                  {bill.vendor.phone && (
-                    <p className="text-muted-foreground print:text-gray-600">{bill.vendor.phone}</p>
-                  )}
-                  {bill.vendor.address && (
-                    <p className="text-muted-foreground print:text-gray-600">{bill.vendor.address}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          <PrintCompanyHeader
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Bill From</h2>
+                {bill.vendor && (
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{bill.vendor.name}</p>
+                    {bill.vendor.company && (
+                      <p className="text-muted-foreground print:text-gray-600">{bill.vendor.company}</p>
+                    )}
+                    {bill.vendor.email && (
+                      <p className="text-muted-foreground print:text-gray-600">{bill.vendor.email}</p>
+                    )}
+                    {bill.vendor.phone && (
+                      <p className="text-muted-foreground print:text-gray-600">{bill.vendor.phone}</p>
+                    )}
+                    {bill.vendor.address && (
+                      <p className="text-muted-foreground print:text-gray-600">{bill.vendor.address}</p>
+                    )}
+                  </div>
+                )}
+              </>
+            }
+          />
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-lg">
             <div>
@@ -267,42 +255,7 @@ export default function BillDetail() {
         </CardContent>
       </Card>
 
-      <style>{`
-        @media print {
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-          [class*="space-y-6"] {
-            margin: 0 !important;
-            padding: 20px !important;
-          }
-          [class*="CardContent"] {
-            padding: 0 !important;
-          }
-          [class*="bg-muted"] {
-            background-color: #f5f5f5 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          [class*="text-muted-foreground"] {
-            color: #666 !important;
-          }
-          .dark\\:invert {
-            filter: none !important;
-          }
-          table {
-            border-collapse: collapse;
-          }
-          th, td {
-            border-bottom: 1px solid #ddd;
-          }
-        }
-      `}</style>
+      <PrintStyles />
     </div>
   );
 }

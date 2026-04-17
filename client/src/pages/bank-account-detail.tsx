@@ -10,7 +10,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
 import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
-import logoUrl from "@/assets/logo-expedition-group-checkbox.svg";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { BankAccount, BankTransaction } from "@shared/schema";
 
 const formatCurrency = (value: string | number | null | undefined) => {
@@ -127,41 +127,29 @@ export default function BankAccountDetail() {
 
       <Card className="print:shadow-none print:border-0">
         <CardContent className="p-8">
-          <div className="flex justify-between gap-8 mb-8">
-            <div>
-              <img
-                src={logoUrl}
-                alt="Expedition Group"
-                className="h-12 dark:invert print:filter-none"
-                data-testid="img-company-logo"
-              />
-              <div className="mt-3 text-sm text-muted-foreground space-y-0.5 print:text-gray-600">
-                <p>17 Sandybrook Drive</p>
-                <p>Spring Valley, NY 10977</p>
-                <p>(845) 212-2040</p>
-                <p>Info@expeditiongroupny.com</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <h2 className="text-lg font-semibold mb-4">Account Summary</h2>
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">{account.name}</p>
-                {account.bankName && (
-                  <p className="text-muted-foreground print:text-gray-600">{account.bankName}</p>
-                )}
-                {account.accountNumber && (
-                  <p className="text-muted-foreground print:text-gray-600">
-                    Acct: {maskNumber(account.accountNumber)}
-                  </p>
-                )}
-                {account.routingNumber && (
-                  <p className="text-muted-foreground print:text-gray-600">
-                    Routing: {maskNumber(account.routingNumber)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          <PrintCompanyHeader
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Account Summary</h2>
+                <div className="space-y-1 text-sm">
+                  <p className="font-medium">{account.name}</p>
+                  {account.bankName && (
+                    <p className="text-muted-foreground print:text-gray-600">{account.bankName}</p>
+                  )}
+                  {account.accountNumber && (
+                    <p className="text-muted-foreground print:text-gray-600">
+                      Acct: {maskNumber(account.accountNumber)}
+                    </p>
+                  )}
+                  {account.routingNumber && (
+                    <p className="text-muted-foreground print:text-gray-600">
+                      Routing: {maskNumber(account.routingNumber)}
+                    </p>
+                  )}
+                </div>
+              </>
+            }
+          />
 
           <Separator className="mb-8" />
 
@@ -262,44 +250,18 @@ export default function BankAccountDetail() {
         </CardContent>
       </Card>
 
-      <style>{`
-        @media print {
-          body {
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+      <PrintStyles
+        extraCss={`
+          @media print {
+            table {
+              font-size: 11px;
+            }
+            th, td {
+              padding: 6px 4px;
+            }
           }
-          .print\\:hidden {
-            display: none !important;
-          }
-          [class*="space-y-6"] {
-            margin: 0 !important;
-            padding: 20px !important;
-          }
-          [class*="CardContent"] {
-            padding: 0 !important;
-          }
-          [class*="bg-muted"] {
-            background-color: #f5f5f5 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          [class*="text-muted-foreground"] {
-            color: #666 !important;
-          }
-          .dark\\:invert {
-            filter: none !important;
-          }
-          table {
-            border-collapse: collapse;
-            font-size: 11px;
-          }
-          th, td {
-            border-bottom: 1px solid #ddd;
-            padding: 6px 4px;
-          }
-        }
-      `}</style>
+        `}
+      />
     </div>
   );
 }
