@@ -1,0 +1,73 @@
+FR-0022
+Update the reconciliation screen layout to match QuickBooks Desktop style, where income/payments appear on the right side and bills/expenses appear on the left side. Also enable the ability to click on any charge or payment and open the underlying transaction directly.
+Feature Request
+In Progress
+High
+Close
+Resolve
+Status
+In Progress
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+The reconciliation view should separate incoming transactions (deposits/payments) on the right and outgoing transactions (bills/expenses) on the left, similar to QuickBooks Desktop. Additionally, selecting a transaction during reconciliation should allow the user to open and view the full transaction record directly for quick review or correction. This will improve usability and speed up the reconciliation process.
+
+AI Analysis
+
+### Analysis of Bug Report and Screenshot
+
+**1) Affected part of the app:**  
+The reconciliation screen layout in the accounting module is impacted. It displays a single column of transactions without the clear separation of income/payments (incoming) on the right and bills/expenses (outgoing) on the left as described for user expectations.
+
+Additionally, the clicking functionality to open a detailed transaction view is absent, hindering quick reviews or corrections during reconciliation.
+
+**2) Screenshot findings:**
+- The current reconciliation UI lists both incomes and expenses in the same vertical column, making it harder to differentiate between transaction types at a glance.
+- The "Cleared Transactions" section also uses a simple tabular format, but it doesn’t visually group transactions or provide a clear distinction between income and expense categories.
+- There is no visible option or interactive indicator (like a hyperlink or a clickable icon/button) that allows users to navigate directly to the detailed transaction record.
+
+**3) Root Cause Analysis:**
+- **Layout issue:** The UI design of the reconciliation screen does not mirror the QuickBooks Desktop style, which segregates income/payments and bills/expenses into separate columns.
+- **Functionality issue:** A feature to let users click on a transaction and open its detailed record seems either unimplemented or disabled.
+- **User experience concern:** The convoluted layout results in cluttered display and increases the time/effort needed for reconciliation.
+
+**4) Recommended Fixes/Next Steps:**
+1. **UI Adjustment for Layout:** Refactor the reconciliation screen's layout to display:
+   - Income/Payments in a right-aligned column.
+   - Bills/Expenses in a left-aligned column.
+   - This layout could use color-coding or a contrasting background for further distinction.
+2. **Add Clickable Transactions Functionality:**
+   - Implement a mechanism (e.g., hyperlink or button within each transaction row) to allow users to trigger a modal or navigate to the detailed transaction record with one click.
+3. **Align with Best Practices:**
+   - Reference the QuickBooks Desktop layout and functionality closely to provide a familiar user flow.
+
+```json
+{
+  "severity": "high",
+  "category": "ui,functionality"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/bank-reconciliation/3
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (1)
+
+Yitzchock Braunclient
+about 1 month ago
+Checked and it doesn't work
+
