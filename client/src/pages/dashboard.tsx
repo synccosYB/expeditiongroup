@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,16 +32,26 @@ import type { Project, Task, Client, Invoice } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 
-interface DashboardStats {
-  totalClients: number;
-  activeProjects: number;
-  pendingTasks: number;
-  totalHours: number;
-}
-
-interface ProjectsByStatus {
-  status: string;
-  count: number;
+interface DashboardSummary {
+  stats: {
+    totalClients: number;
+    activeClients: number;
+    totalProjects: number;
+    activeProjects: number;
+    pendingTasks: number;
+    totalHours: number;
+  };
+  projectsByStatus: { status: string; count: number }[];
+  overdueTasks: (Task & { project: Project })[];
+  recentProjects: (Project & { client: Client })[];
+  pendingTasksPreview: (Task & { project: Project })[];
+  invoiceSummary: {
+    totalCount: number;
+    unpaidCount: number;
+    unpaidTotal: number;
+    paidCount: number;
+  };
+  unbilledHours: number;
 }
 
 const STATUS_PIPELINE_ORDER = [
@@ -58,84 +69,36 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState<string>("");
   const [dailyActivityDialogOpen, setDailyActivityDialogOpen] = useState(false);
 
-  const statsQueryKey = startDate || endDate 
-    ? ["/api/dashboard/stats", { startDate, endDate }]
-    : ["/api/dashboard/stats"];
+  const summaryQueryKey = startDate || endDate
+    ? ["/api/dashboard/summary", { startDate, endDate }]
+    : ["/api/dashboard/summary"];
 
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<DashboardStats>({
-    queryKey: statsQueryKey,
+  const { data: summary, isLoading, error: summaryError } = useQuery<DashboardSummary>({
+    queryKey: summaryQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
-      const url = `/api/dashboard/stats${params.toString() ? `?${params.toString()}` : ""}`;
+      const url = `/api/dashboard/summary${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error(`Failed to fetch stats (${res.status})`);
+      if (!res.ok) throw new Error(`Failed to fetch dashboard (${res.status})`);
       return res.json();
     },
   });
 
-  const { data: allProjects, isLoading: projectsLoading, error: projectsError } = useQuery<(Project & { client: Client })[]>({
-    queryKey: ["/api/projects"],
-  });
+  const dashboardErrors: { label: string; error: unknown }[] = summaryError
+    ? [{ label: "Dashboard", error: summaryError }]
+    : [];
 
-  const { data: allClients, isLoading: clientsLoading, error: clientsError } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
-  });
-
-  const { data: allTasks, isLoading: tasksLoading, error: tasksError } = useQuery<(Task & { project: Project })[]>({
-    queryKey: ["/api/tasks"],
-  });
-
-  const { data: projectsByStatus, isLoading: pipelineLoading, error: pipelineError } = useQuery<ProjectsByStatus[]>({
-    queryKey: ["/api/projects/by-status"],
-  });
-
-  const { data: rawOverdueTasks, isLoading: overdueLoading, error: overdueError } = useQuery<(Task & { project: Project })[]>({
-    queryKey: ["/api/tasks/overdue"],
-  });
-  const overdueTasks = rawOverdueTasks?.filter(t => t.status !== "done" && t.status !== "cancelled") || [];
-
-  const { data: invoices, isLoading: invoicesLoading, error: invoicesError } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
-    queryKey: ["/api/invoices"],
-  });
-
-  const { data: allTimeEntries, isLoading: timeEntriesLoading, error: timeEntriesError } = useQuery<any[]>({
-    queryKey: ["/api/time-entries"],
-  });
-
-  const dashboardErrors: { label: string; error: unknown }[] = [
-    { label: "Dashboard stats", error: statsError },
-    { label: "Projects", error: projectsError },
-    { label: "Clients", error: clientsError },
-    { label: "Tasks", error: tasksError },
-    { label: "Job pipeline", error: pipelineError },
-    { label: "Overdue tasks", error: overdueError },
-    { label: "Invoices", error: invoicesError },
-    { label: "Time entries", error: timeEntriesError },
-  ].filter(e => e.error);
-
-  const recentProjects = allProjects?.slice(0, 5);
-  const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
-
-  const isLoading = statsLoading || projectsLoading || clientsLoading || tasksLoading || pipelineLoading || overdueLoading || invoicesLoading || timeEntriesLoading;
-
-  // Invoice stats (unpaid = draft + sent, not paid or cancelled)
-  const unpaidInvoices = invoices?.filter(Boolean).filter(i => i.status === "draft" || i.status === "sent") || [];
-  const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
-  const paidInvoices = invoices?.filter(Boolean).filter(i => i.status === "paid") || [];
-
-  // Calculate unbilled hours from time entries (all entries not yet on an invoice)
-  const billedTimeEntryIds = new Set<number>();
-  invoices?.filter(Boolean).forEach(invoice => {
-    if (invoice?.status !== "cancelled") {
-      invoice?.items?.forEach((item: any) => {
-        if (item.timeEntryId) billedTimeEntryIds.add(item.timeEntryId);
-      });
-    }
-  });
-  const unbilledEntries = allTimeEntries?.filter(e => !billedTimeEntryIds.has(e.id)) || [];
-  const unbilledHours = unbilledEntries.reduce((sum, e) => sum + (e.totalMinutes || 0) / 60, 0);
+  const stats = summary?.stats;
+  const projectsByStatus = summary?.projectsByStatus;
+  const overdueTasks = summary?.overdueTasks ?? [];
+  const recentProjects = summary?.recentProjects;
+  const pendingTasks = summary?.pendingTasksPreview;
+  const invoiceSummary = summary?.invoiceSummary;
+  const unbilledHours = summary?.unbilledHours ?? 0;
+  const unpaidCount = invoiceSummary?.unpaidCount ?? 0;
+  const unpaidTotal = invoiceSummary?.unpaidTotal ?? 0;
 
   // Create a map for easy lookup of counts by status
   const statusCountMap = new Map<string, number>();
@@ -150,30 +113,54 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
 
-  const handlePrintReport = (reportType: string) => {
+  const statsError = summaryError;
+  const projectsError = summaryError;
+  const clientsError = summaryError;
+  const tasksError = summaryError;
+  const pipelineError = summaryError;
+  const overdueError = summaryError;
+  const invoicesError = summaryError;
+  const timeEntriesError = summaryError;
+
+  const fetchReportData = async (key: string): Promise<any[]> => {
+    return await queryClient.fetchQuery<any[]>({ queryKey: [key] });
+  };
+
+  const handlePrintReport = async (reportType: string) => {
     let reportTitle = "";
     let reportData: any[] = [];
-    
-    switch (reportType) {
-      case "clients":
-        reportTitle = "Total Clients Report";
-        reportData = allClients ?? [];
-        break;
-      case "projects":
-        reportTitle = "Active Projects Report";
-        reportData = allProjects?.filter(p => p.status !== "completed" && p.status !== "cancelled") ?? [];
-        break;
-      case "tasks":
-        reportTitle = "Pending Tasks Report";
-        reportData = allTasks?.filter(t => t.status !== "done") ?? [];
-        break;
-      case "hours":
-        reportTitle = "Total Hours Report";
-        break;
-      case "invoices":
-        reportTitle = "Invoices Report";
-        reportData = unpaidInvoices;
-        break;
+    let invoicesForReport: any[] = [];
+
+    try {
+      switch (reportType) {
+        case "clients":
+          reportTitle = "Total Clients Report";
+          reportData = await fetchReportData("/api/clients");
+          break;
+        case "projects":
+          reportTitle = "Active Projects Report";
+          reportData = (await fetchReportData("/api/projects")).filter(
+            (p: any) => p.status !== "completed" && p.status !== "cancelled"
+          );
+          break;
+        case "tasks":
+          reportTitle = "Pending Tasks Report";
+          reportData = (await fetchReportData("/api/tasks")).filter(
+            (t: any) => t.status !== "done"
+          );
+          break;
+        case "hours":
+          reportTitle = "Total Hours Report";
+          break;
+        case "invoices":
+          reportTitle = "Invoices Report";
+          invoicesForReport = (await fetchReportData("/api/invoices")).filter(Boolean);
+          reportData = invoicesForReport.filter((i: any) => i.status === "draft" || i.status === "sent");
+          break;
+      }
+    } catch (e) {
+      console.error("Failed to fetch report data", e);
+      return;
     }
 
     const printWindow = window.open("", "_blank");
@@ -246,9 +233,9 @@ export default function Dashboard() {
         </div>
       `;
     } else if (reportType === "invoices") {
-      const draftInvoices = invoices?.filter(Boolean).filter(i => i.status === "draft") || [];
-      const sentInvoices = invoices?.filter(Boolean).filter(i => i.status === "sent") || [];
-      const paidInvoicesList = invoices?.filter(Boolean).filter(i => i.status === "paid") || [];
+      const draftInvoices = invoicesForReport.filter((i: any) => i.status === "draft");
+      const sentInvoices = invoicesForReport.filter((i: any) => i.status === "sent");
+      const paidInvoicesList = invoicesForReport.filter((i: any) => i.status === "paid");
       
       const draftTotal = draftInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
       const sentTotal = sentInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
@@ -322,16 +309,16 @@ export default function Dashboard() {
     printWindow.print();
   };
 
-  const activeClients = allClients?.filter(c => c.status === "active").length ?? 0;
-  const totalProjectsCount = allProjects?.length ?? 0;
+  const activeClients = stats?.activeClients ?? 0;
+  const totalProjectsCount = stats?.totalProjects ?? 0;
   const overdueCount = overdueTasks?.length ?? 0;
-  
+
   const statCards = [
     {
       title: "Total Clients",
-      value: statsError ? "—" : stats?.totalClients ?? 0,
-      subtitle: clientsError ? "Failed to load" : `${activeClients} active`,
-      hasError: Boolean(statsError || clientsError),
+      value: summaryError ? "—" : stats?.totalClients ?? 0,
+      subtitle: summaryError ? "Failed to load" : `${activeClients} active`,
+      hasError: Boolean(summaryError),
       icon: Users,
       color: "text-chart-1",
       bgColor: "bg-chart-1/10",
@@ -339,9 +326,9 @@ export default function Dashboard() {
     },
     {
       title: "Active Projects",
-      value: statsError ? "—" : stats?.activeProjects ?? 0,
-      subtitle: projectsError ? "Failed to load" : `${totalProjectsCount} total`,
-      hasError: Boolean(statsError || projectsError),
+      value: summaryError ? "—" : stats?.activeProjects ?? 0,
+      subtitle: summaryError ? "Failed to load" : `${totalProjectsCount} total`,
+      hasError: Boolean(summaryError),
       icon: FolderKanban,
       color: "text-chart-2",
       bgColor: "bg-chart-2/10",
@@ -349,9 +336,9 @@ export default function Dashboard() {
     },
     {
       title: "Pending Tasks",
-      value: statsError ? "—" : stats?.pendingTasks ?? 0,
-      subtitle: overdueError ? "Failed to load" : `${overdueCount} due/overdue`,
-      hasError: Boolean(statsError || overdueError),
+      value: summaryError ? "—" : stats?.pendingTasks ?? 0,
+      subtitle: summaryError ? "Failed to load" : `${overdueCount} due/overdue`,
+      hasError: Boolean(summaryError),
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
@@ -359,9 +346,9 @@ export default function Dashboard() {
     },
     {
       title: "Total Hours",
-      value: statsError ? "—" : stats?.totalHours ?? 0,
-      subtitle: timeEntriesError || invoicesError ? "Failed to load" : `${unbilledHours.toFixed(1)} unbilled`,
-      hasError: Boolean(statsError || timeEntriesError || invoicesError),
+      value: summaryError ? "—" : stats?.totalHours ?? 0,
+      subtitle: summaryError ? "Failed to load" : `${unbilledHours.toFixed(1)} unbilled`,
+      hasError: Boolean(summaryError),
       icon: Clock,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",
@@ -369,9 +356,9 @@ export default function Dashboard() {
     },
     {
       title: "Invoices",
-      value: invoicesError ? "—" : invoices?.filter(Boolean).filter(i => i.status !== "cancelled").length ?? 0,
-      subtitle: invoicesError ? "Failed to load" : `${unpaidInvoices.length} unpaid`,
-      hasError: Boolean(invoicesError),
+      value: summaryError ? "—" : invoiceSummary?.totalCount ?? 0,
+      subtitle: summaryError ? "Failed to load" : `${unpaidCount} unpaid`,
+      hasError: Boolean(summaryError),
       icon: DollarSign,
       color: "text-chart-5",
       bgColor: "bg-chart-5/10",

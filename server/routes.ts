@@ -625,6 +625,22 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/dashboard/summary", isAuthenticated, async (req: Request, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const summary = await storage.getDashboardSummary(startDate, endDate);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching dashboard summary:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard summary" });
+    }
+  });
+
   app.get("/api/clients", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);

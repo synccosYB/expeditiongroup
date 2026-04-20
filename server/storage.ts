@@ -253,6 +253,27 @@ export interface IStorage {
     recentProjects: (Project & { client: Client })[];
     upcomingTasks: (Task & { project: Project })[];
   }>;
+  getDashboardSummary(startDate?: Date, endDate?: Date): Promise<{
+    stats: {
+      totalClients: number;
+      activeClients: number;
+      totalProjects: number;
+      activeProjects: number;
+      pendingTasks: number;
+      totalHours: number;
+    };
+    projectsByStatus: { status: string; count: number }[];
+    overdueTasks: (Task & { project: Project })[];
+    recentProjects: (Project & { client: Client })[];
+    pendingTasksPreview: (Task & { project: Project })[];
+    invoiceSummary: {
+      totalCount: number;
+      unpaidCount: number;
+      unpaidTotal: number;
+      paidCount: number;
+    };
+    unbilledHours: number;
+  }>;
   
   // Search
   globalSearch(query: string): Promise<{
@@ -1378,6 +1399,137 @@ export class DatabaseStorage implements IStorage {
         ...r.tasks,
         project: r.projects!,
       })),
+    };
+  }
+
+  async getDashboardSummary(startDate?: Date, endDate?: Date): Promise<{
+    stats: {
+      totalClients: number;
+      activeClients: number;
+      totalProjects: number;
+      activeProjects: number;
+      pendingTasks: number;
+      totalHours: number;
+    };
+    projectsByStatus: { status: string; count: number }[];
+    overdueTasks: (Task & { project: Project })[];
+    recentProjects: (Project & { client: Client })[];
+    pendingTasksPreview: (Task & { project: Project })[];
+    invoiceSummary: {
+      totalCount: number;
+      unpaidCount: number;
+      unpaidTotal: number;
+      paidCount: number;
+    };
+    unbilledHours: number;
+  }> {
+    const teDateFilter = startDate && endDate
+      ? and(sql`${timeEntries.date} >= ${startDate}`, sql`${timeEntries.date} <= ${endDate}`)
+      : startDate
+        ? sql`${timeEntries.date} >= ${startDate}`
+        : endDate
+          ? sql`${timeEntries.date} <= ${endDate}`
+          : undefined;
+    const tlDateFilter = startDate && endDate
+      ? and(sql`${timeLogs.date} >= ${startDate}`, sql`${timeLogs.date} <= ${endDate}`)
+      : startDate
+        ? sql`${timeLogs.date} >= ${startDate}`
+        : endDate
+          ? sql`${timeLogs.date} <= ${endDate}`
+          : undefined;
+
+    const [
+      clientCounts,
+      projectCounts,
+      pendingCountRow,
+      projectsByStatusResult,
+      overdueResult,
+      recentProjectsResult,
+      pendingTasksResult,
+      timeEntriesAgg,
+      timeLogsAgg,
+      invoiceStatusAgg,
+      unbilledMinutesRow,
+    ] = await Promise.all([
+      db.select({
+        total: count(),
+        active: sql<number>`COUNT(*) FILTER (WHERE ${clients.status} = 'active')`,
+      }).from(clients),
+      db.select({
+        total: count(),
+        active: sql<number>`COUNT(*) FILTER (WHERE ${projects.status} = 'in_progress')`,
+      }).from(projects),
+      db.select({ count: count() }).from(tasks).where(eq(tasks.status, "todo")),
+      db.select({ status: projects.status, count: count() }).from(projects).groupBy(projects.status),
+      db.select().from(tasks).leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(and(
+          ne(tasks.status, "done"),
+          ne(tasks.status, "cancelled"),
+          isNotNull(tasks.dueDate),
+          sql`DATE(${tasks.dueDate}) <= CURRENT_DATE`
+        ))
+        .orderBy(tasks.dueDate),
+      db.select().from(projects).leftJoin(clients, eq(projects.clientId, clients.id))
+        .orderBy(desc(projects.createdAt)).limit(5),
+      db.select().from(tasks).leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(ne(tasks.status, "done"))
+        .orderBy(desc(tasks.createdAt)).limit(5),
+      teDateFilter
+        ? db.select({ total: sql<number>`COALESCE(SUM(${timeEntries.totalMinutes}), 0)` }).from(timeEntries).where(teDateFilter)
+        : db.select({ total: sql<number>`COALESCE(SUM(${timeEntries.totalMinutes}), 0)` }).from(timeEntries),
+      tlDateFilter
+        ? db.select({ total: sql<number>`COALESCE(SUM(CAST(${timeLogs.totalHours} AS DOUBLE PRECISION)), 0)` }).from(timeLogs).where(tlDateFilter)
+        : db.select({ total: sql<number>`COALESCE(SUM(CAST(${timeLogs.totalHours} AS DOUBLE PRECISION)), 0)` }).from(timeLogs),
+      db.select({
+        status: invoices.status,
+        count: count(),
+        total: sql<number>`COALESCE(SUM(CAST(${invoices.total} AS DOUBLE PRECISION)), 0)`,
+      }).from(invoices).groupBy(invoices.status),
+      db.select({
+        total: sql<number>`COALESCE(SUM(${timeEntries.totalMinutes}), 0)`,
+      }).from(timeEntries).where(sql`${timeEntries.id} NOT IN (
+        SELECT ${invoiceItems.timeEntryId} FROM ${invoiceItems}
+        INNER JOIN ${invoices} ON ${invoices.id} = ${invoiceItems.invoiceId}
+        WHERE ${invoiceItems.timeEntryId} IS NOT NULL AND ${invoices.status} != 'cancelled'
+      )`),
+    ]);
+
+    const totalMinutesFromEntries = Number(timeEntriesAgg[0]?.total ?? 0);
+    const totalHoursFromLogs = Number(timeLogsAgg[0]?.total ?? 0);
+    const totalHours = Math.round(((totalMinutesFromEntries / 60) + totalHoursFromLogs) * 10) / 10;
+
+    let totalCount = 0;
+    let unpaidCount = 0;
+    let unpaidTotal = 0;
+    let paidCount = 0;
+    for (const row of invoiceStatusAgg) {
+      const c = Number(row.count);
+      const t = Number(row.total);
+      if (row.status !== "cancelled") totalCount += c;
+      if (row.status === "draft" || row.status === "sent") {
+        unpaidCount += c;
+        unpaidTotal += t;
+      }
+      if (row.status === "paid") paidCount += c;
+    }
+
+    const unbilledHours = Math.round((Number(unbilledMinutesRow[0]?.total ?? 0) / 60) * 10) / 10;
+
+    return {
+      stats: {
+        totalClients: Number(clientCounts[0]?.total ?? 0),
+        activeClients: Number(clientCounts[0]?.active ?? 0),
+        totalProjects: Number(projectCounts[0]?.total ?? 0),
+        activeProjects: Number(projectCounts[0]?.active ?? 0),
+        pendingTasks: Number(pendingCountRow[0]?.count ?? 0),
+        totalHours,
+      },
+      projectsByStatus: projectsByStatusResult.map(r => ({ status: r.status, count: Number(r.count) })),
+      overdueTasks: overdueResult.map(r => ({ ...r.tasks, project: r.projects! })),
+      recentProjects: recentProjectsResult.map(r => ({ ...r.projects, client: r.clients! })),
+      pendingTasksPreview: pendingTasksResult.map(r => ({ ...r.tasks, project: r.projects! })),
+      invoiceSummary: { totalCount, unpaidCount, unpaidTotal, paidCount },
+      unbilledHours,
     };
   }
 
