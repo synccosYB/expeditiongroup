@@ -94,3 +94,10 @@ Preferred communication style: Simple, everyday language.
 - **Dates**: `date-fns`
 - **HTTP**: Fetch API (client), Express (server)
 - **AI**: OpenAI via Replit AI Integrations (`AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`)
+
+## Testing Notes
+- `client/src/index.css` defines `--css-ready: 1` on `:root` as a Tailwind-applied
+  signal. In automated tests, wait for
+  `getComputedStyle(document.documentElement).getPropertyValue('--css-ready') === '1'`
+  before asserting on layout/visual state. See `docs/testing-css-readiness.md`
+  for the full root-cause writeup of the dev-mode CSS injection race.
