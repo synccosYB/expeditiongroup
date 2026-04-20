@@ -49,6 +49,8 @@ export default function ArAgingPage() {
       if (!res.ok) throw new Error("Failed to fetch A/R aging");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty = !!data && data.rows.length === 0;

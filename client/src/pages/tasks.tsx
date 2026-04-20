@@ -60,7 +60,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, formatDateForInput, isDateOverdue } from "@/lib/dateUtils";
@@ -978,6 +978,8 @@ export default function Tasks() {
 
   const { data: tasks, isLoading } = useQuery<TaskWithProject[]>({
     queryKey: ["/api/tasks"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const timeLogForm = useForm<TimeEntryFormData>({

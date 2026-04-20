@@ -48,7 +48,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { parseLocalDate, formatDateForInput, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 import type { Project, Client } from "@shared/schema";
@@ -179,10 +179,14 @@ export default function Projects() {
 
   const { data: projects, isLoading } = useQuery<(Project & { client: Client })[]>({
     queryKey: ["/api/projects"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: clients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const form = useForm<ProjectFormData>({

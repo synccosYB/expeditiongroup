@@ -48,6 +48,8 @@ export default function ApAgingPage() {
       if (!res.ok) throw new Error("Failed to fetch A/P aging");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty = !!data && data.rows.length === 0;

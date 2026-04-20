@@ -55,6 +55,8 @@ export default function GeneralLedgerPage() {
       if (!res.ok) throw new Error("Failed to fetch general ledger");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty = !!data && data.accounts.length === 0;

@@ -97,6 +97,8 @@ export default function ProfitLossPage() {
       if (!res.ok) throw new Error("Failed to fetch P&L");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty = !!data && data.revenue.length === 0 && data.cogs.length === 0 && data.operating.length === 0 && data.otherIncome.length === 0 && data.otherExpense.length === 0;

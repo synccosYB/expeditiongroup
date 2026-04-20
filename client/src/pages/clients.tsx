@@ -37,7 +37,7 @@ import { Link } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Client } from "@shared/schema";
 import {
@@ -99,6 +99,8 @@ export default function Clients() {
 
   const { data: clients, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const form = useForm<ClientFormData>({

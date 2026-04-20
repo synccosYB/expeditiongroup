@@ -45,6 +45,8 @@ export default function CashFlowPage() {
       if (!res.ok) throw new Error("Failed to fetch cash flow");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty = !!data && data.netIncome === 0 && data.operating.total === 0 && data.investing.total === 0 && data.financing.total === 0 && data.beginningCash === 0 && data.endingCash === 0;

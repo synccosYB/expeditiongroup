@@ -53,6 +53,8 @@ export default function BalanceSheetPage() {
       if (!res.ok) throw new Error("Failed to fetch balance sheet");
       return res.json();
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   const isEmpty =

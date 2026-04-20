@@ -57,6 +57,8 @@ export const queryClient = new QueryClient({
   },
 });
 
+export const LIST_PAGE_REFETCH_INTERVAL_MS = 60_000;
+
 export const DASHBOARD_QUERY_KEYS: readonly (readonly unknown[])[] = [
   ["/api/dashboard/stats"],
   ["/api/projects"],

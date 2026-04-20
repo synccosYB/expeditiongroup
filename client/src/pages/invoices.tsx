@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest, invalidateDashboardQueries } from "@/lib/queryClient";
+import { queryClient, apiRequest, invalidateDashboardQueries, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2, Plus } from "lucide-react";
 import { useState } from "react";
@@ -82,10 +82,14 @@ export default function Invoices() {
 
   const { data: invoices, isLoading: invoicesLoading } = useQuery<InvoiceWithDetails[]>({
     queryKey: ["/api/invoices"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<InvoiceStats>({
     queryKey: ["/api/invoices/stats"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const deleteMutation = useMutation({
