@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import {
   FileText,
   DollarSign,
   NotebookPen,
+  Loader2,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -70,12 +71,18 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [dailyActivityDialogOpen, setDailyActivityDialogOpen] = useState(false);
+  const [, setNowTick] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const summaryQueryKey = startDate || endDate
     ? ["/api/dashboard/summary", { startDate, endDate }]
     : ["/api/dashboard/summary"];
 
-  const { data: summary, isLoading, error: summaryError } = useQuery<DashboardSummary>({
+  const { data: summary, isLoading, isFetching, dataUpdatedAt, error: summaryError } = useQuery<DashboardSummary>({
     queryKey: summaryQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -382,6 +389,22 @@ export default function Dashboard() {
           <p className="text-muted-foreground mt-1">
             Overview of your permit expediting operations
           </p>
+          <div
+            className="mt-2 flex items-center gap-2 text-xs text-muted-foreground h-4"
+            aria-live="polite"
+            data-testid="status-dashboard-refresh"
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" data-testid="icon-dashboard-refreshing" />
+                <span>Updating…</span>
+              </>
+            ) : dataUpdatedAt ? (
+              <span data-testid="text-dashboard-last-updated">
+                Updated {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <Button
