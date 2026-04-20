@@ -62,7 +62,7 @@ export default function Dashboard() {
     ? ["/api/dashboard/stats", { startDate, endDate }]
     : ["/api/dashboard/stats"];
 
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<DashboardStats>({
     queryKey: statsQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -70,39 +70,50 @@ export default function Dashboard() {
       if (endDate) params.append("endDate", endDate);
       const url = `/api/dashboard/stats${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await fetch(url, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch stats");
+      if (!res.ok) throw new Error(`Failed to fetch stats (${res.status})`);
       return res.json();
     },
   });
 
-  const { data: allProjects, isLoading: projectsLoading } = useQuery<(Project & { client: Client })[]>({
+  const { data: allProjects, isLoading: projectsLoading, error: projectsError } = useQuery<(Project & { client: Client })[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: allClients, isLoading: clientsLoading } = useQuery<Client[]>({
+  const { data: allClients, isLoading: clientsLoading, error: clientsError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
-  const { data: allTasks, isLoading: tasksLoading } = useQuery<(Task & { project: Project })[]>({
+  const { data: allTasks, isLoading: tasksLoading, error: tasksError } = useQuery<(Task & { project: Project })[]>({
     queryKey: ["/api/tasks"],
   });
 
-  const { data: projectsByStatus, isLoading: pipelineLoading } = useQuery<ProjectsByStatus[]>({
+  const { data: projectsByStatus, isLoading: pipelineLoading, error: pipelineError } = useQuery<ProjectsByStatus[]>({
     queryKey: ["/api/projects/by-status"],
   });
 
-  const { data: rawOverdueTasks, isLoading: overdueLoading } = useQuery<(Task & { project: Project })[]>({
+  const { data: rawOverdueTasks, isLoading: overdueLoading, error: overdueError } = useQuery<(Task & { project: Project })[]>({
     queryKey: ["/api/tasks/overdue"],
   });
   const overdueTasks = rawOverdueTasks?.filter(t => t.status !== "done" && t.status !== "cancelled") || [];
 
-  const { data: invoices, isLoading: invoicesLoading } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
+  const { data: invoices, isLoading: invoicesLoading, error: invoicesError } = useQuery<(Invoice & { items?: { timeLogId?: number | null; timeEntryId?: number | null }[] })[]>({
     queryKey: ["/api/invoices"],
   });
 
-  const { data: allTimeEntries, isLoading: timeEntriesLoading } = useQuery<any[]>({
+  const { data: allTimeEntries, isLoading: timeEntriesLoading, error: timeEntriesError } = useQuery<any[]>({
     queryKey: ["/api/time-entries"],
   });
+
+  const dashboardErrors: { label: string; error: unknown }[] = [
+    { label: "Dashboard stats", error: statsError },
+    { label: "Projects", error: projectsError },
+    { label: "Clients", error: clientsError },
+    { label: "Tasks", error: tasksError },
+    { label: "Job pipeline", error: pipelineError },
+    { label: "Overdue tasks", error: overdueError },
+    { label: "Invoices", error: invoicesError },
+    { label: "Time entries", error: timeEntriesError },
+  ].filter(e => e.error);
 
   const recentProjects = allProjects?.slice(0, 5);
   const pendingTasks = allTasks?.filter(t => t.status !== "done").slice(0, 5);
@@ -318,8 +329,9 @@ export default function Dashboard() {
   const statCards = [
     {
       title: "Total Clients",
-      value: stats?.totalClients ?? 0,
-      subtitle: `${activeClients} active`,
+      value: statsError ? "—" : stats?.totalClients ?? 0,
+      subtitle: clientsError ? "Failed to load" : `${activeClients} active`,
+      hasError: Boolean(statsError || clientsError),
       icon: Users,
       color: "text-chart-1",
       bgColor: "bg-chart-1/10",
@@ -327,8 +339,9 @@ export default function Dashboard() {
     },
     {
       title: "Active Projects",
-      value: stats?.activeProjects ?? 0,
-      subtitle: `${totalProjectsCount} total`,
+      value: statsError ? "—" : stats?.activeProjects ?? 0,
+      subtitle: projectsError ? "Failed to load" : `${totalProjectsCount} total`,
+      hasError: Boolean(statsError || projectsError),
       icon: FolderKanban,
       color: "text-chart-2",
       bgColor: "bg-chart-2/10",
@@ -336,8 +349,9 @@ export default function Dashboard() {
     },
     {
       title: "Pending Tasks",
-      value: stats?.pendingTasks ?? 0,
-      subtitle: `${overdueCount} due/overdue`,
+      value: statsError ? "—" : stats?.pendingTasks ?? 0,
+      subtitle: overdueError ? "Failed to load" : `${overdueCount} due/overdue`,
+      hasError: Boolean(statsError || overdueError),
       icon: ClipboardList,
       color: "text-chart-3",
       bgColor: "bg-chart-3/10",
@@ -345,8 +359,9 @@ export default function Dashboard() {
     },
     {
       title: "Total Hours",
-      value: stats?.totalHours ?? 0,
-      subtitle: `${unbilledHours.toFixed(1)} unbilled`,
+      value: statsError ? "—" : stats?.totalHours ?? 0,
+      subtitle: timeEntriesError || invoicesError ? "Failed to load" : `${unbilledHours.toFixed(1)} unbilled`,
+      hasError: Boolean(statsError || timeEntriesError || invoicesError),
       icon: Clock,
       color: "text-chart-4",
       bgColor: "bg-chart-4/10",
@@ -354,8 +369,9 @@ export default function Dashboard() {
     },
     {
       title: "Invoices",
-      value: invoices?.filter(Boolean).filter(i => i.status !== "cancelled").length ?? 0,
-      subtitle: `${unpaidInvoices.length} unpaid`,
+      value: invoicesError ? "—" : invoices?.filter(Boolean).filter(i => i.status !== "cancelled").length ?? 0,
+      subtitle: invoicesError ? "Failed to load" : `${unpaidInvoices.length} unpaid`,
+      hasError: Boolean(invoicesError),
       icon: DollarSign,
       color: "text-chart-5",
       bgColor: "bg-chart-5/10",
@@ -420,11 +436,29 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {dashboardErrors.length > 0 && (
+        <Card className="border-destructive/50 bg-destructive/5" data-testid="card-dashboard-errors">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-destructive">
+                  Some dashboard data failed to load
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Affected: {dashboardErrors.map(e => e.label).join(", ")}. Try refreshing the page; if the problem persists, you may have been signed out or lack permission for these endpoints.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((stat) => (
           <Card 
             key={stat.title} 
-            className="cursor-pointer hover-elevate transition-all"
+            className={`cursor-pointer hover-elevate transition-all ${stat.hasError ? "border-destructive/50" : ""}`}
             onClick={() => handlePrintReport(stat.reportType)}
             data-testid={`stat-card-${stat.reportType}`}
           >
@@ -455,12 +489,14 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Card data-testid="card-job-pipeline">
+      <Card data-testid="card-job-pipeline" className={pipelineError ? "border-destructive/50" : ""}>
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
             <CardTitle className="text-lg font-semibold">Job Pipeline</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {totalPipelineProjects} total jobs across all stages
+            <p className="text-sm text-muted-foreground mt-1" data-testid="text-pipeline-total">
+              {pipelineError
+                ? "Couldn't load job pipeline counts"
+                : `${totalPipelineProjects} total jobs across all stages`}
             </p>
           </div>
           <Button variant="ghost" size="sm" asChild>
@@ -482,7 +518,9 @@ export default function Dashboard() {
                   data-testid={`pipeline-stage-${stage.key}`}
                 >
                   <div className={`w-3 h-3 rounded-full ${stage.color} mx-auto mb-2`} />
-                  <div className="text-2xl font-bold text-foreground">{count}</div>
+                  <div className="text-2xl font-bold text-foreground">
+                    {pipelineError ? "—" : count}
+                  </div>
                   <div className="text-xs text-muted-foreground">{stage.label}</div>
                 </Link>
               );
@@ -496,7 +534,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <AlertTriangle className={`h-5 w-5 ${overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
             <CardTitle className={`text-lg font-semibold ${overdueTasks.length > 0 ? "text-destructive" : ""}`}>
-              Due & Overdue Tasks ({overdueTasks.length})
+              Due & Overdue Tasks ({overdueError ? "—" : overdueTasks.length})
             </CardTitle>
           </div>
           <Button variant="ghost" size="sm" asChild>
@@ -507,7 +545,9 @@ export default function Dashboard() {
           </Button>
         </CardHeader>
         <CardContent>
-          {overdueTasks.length > 0 ? (
+          {overdueError ? (
+            <p className="text-sm text-destructive" data-testid="text-overdue-error">Failed to load overdue tasks. Try refreshing the page.</p>
+          ) : overdueTasks.length > 0 ? (
             <div className="space-y-3">
               {overdueTasks.slice(0, 5).map((task) => (
                 <Link
@@ -555,7 +595,9 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {recentProjects && recentProjects.length > 0 ? (
+            {projectsError ? (
+              <p className="text-sm text-destructive py-4" data-testid="text-recent-projects-error">Failed to load recent projects.</p>
+            ) : recentProjects && recentProjects.length > 0 ? (
               <div className="space-y-4">
                 {recentProjects.slice(0, 5).map((project) => (
                   <Link
@@ -599,7 +641,9 @@ export default function Dashboard() {
             </Button>
           </CardHeader>
           <CardContent>
-            {pendingTasks && pendingTasks.length > 0 ? (
+            {tasksError ? (
+              <p className="text-sm text-destructive py-4" data-testid="text-pending-tasks-error">Failed to load tasks.</p>
+            ) : pendingTasks && pendingTasks.length > 0 ? (
               <div className="space-y-4">
                 {pendingTasks.slice(0, 5).map((task) => (
                   <div
