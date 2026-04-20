@@ -32,6 +32,8 @@ import type { Project, Task, Client, Invoice } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 
+const DASHBOARD_REFETCH_INTERVAL_MS = 60_000;
+
 interface DashboardSummary {
   stats: {
     totalClients: number;
@@ -84,6 +86,7 @@ export default function Dashboard() {
       if (!res.ok) throw new Error(`Failed to fetch dashboard (${res.status})`);
       return res.json();
     },
+    refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
   });
 
   const dashboardErrors: { label: string; error: unknown }[] = summaryError

@@ -28,7 +28,7 @@ import { TaskTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import type { TimeLog, TimeEntry, Project, User, Task, Client, Invoice } from "@shared/schema";
 import { formatTimeRange12h, formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 
@@ -114,6 +114,7 @@ export default function TimeLogs() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-logs"] });
+      invalidateDashboardQueries();
       setEditingLog(null);
       toast({ title: "Time log updated successfully" });
     },
@@ -127,7 +128,7 @@ export default function TimeLogs() {
       return await apiRequest("PATCH", `/api/time-entries/${data.id}`, data.updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      invalidateDashboardQueries();
       setEditingLog(null);
       toast({ title: "Time entry updated successfully" });
     },
@@ -176,7 +177,7 @@ export default function TimeLogs() {
       return response.json();
     },
     onSuccess: (invoice: Invoice) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      invalidateDashboardQueries();
       toast({ title: "Invoice generated successfully" });
       navigate(`/invoices/${invoice.id}`);
     },

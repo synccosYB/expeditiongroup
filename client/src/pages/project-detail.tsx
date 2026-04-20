@@ -80,7 +80,7 @@ import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull, formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder, IntakeApplication } from "@shared/schema";
 import {
@@ -1356,7 +1356,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       toast({ title: "Task created successfully" });
@@ -1386,7 +1386,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       toast({ title: "Task updated successfully" });
@@ -1410,7 +1410,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       toast({ title: "Task deleted successfully" });
@@ -1549,7 +1549,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       toast({ title: "Time log added successfully" });
       setIsTimeLogDialogOpen(false);
@@ -1586,7 +1586,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       toast({ title: "Time log updated successfully" });
       setIsTimeLogDialogOpen(false);
@@ -1609,7 +1609,7 @@ export default function ProjectDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
       toast({ title: "Time log deleted successfully" });
       setDeletingTimeLog(null);

@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, invalidateDashboardQueries } from "@/lib/queryClient";
 import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2, Plus } from "lucide-react";
 import { useState } from "react";
@@ -93,8 +93,7 @@ export default function Invoices() {
       await apiRequest("DELETE", `/api/invoices/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Invoice deleted successfully" });
       setDeleteId(null);
     },

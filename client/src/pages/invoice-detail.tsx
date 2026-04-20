@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/lib/dateUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
@@ -157,7 +157,7 @@ export default function InvoiceDetail() {
       await apiRequest("DELETE", `/api/invoices/${invoiceId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rebill-center"] });
       toast({ title: "Invoice deleted successfully" });
@@ -178,7 +178,7 @@ export default function InvoiceDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "balance"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "payments"] });

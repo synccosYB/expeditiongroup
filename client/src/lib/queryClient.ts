@@ -46,12 +46,31 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 30_000,
+      retry: 1,
     },
     mutations: {
       retry: false,
     },
   },
 });
+
+export const DASHBOARD_QUERY_KEYS: readonly (readonly unknown[])[] = [
+  ["/api/dashboard/stats"],
+  ["/api/projects"],
+  ["/api/clients"],
+  ["/api/tasks"],
+  ["/api/projects/by-status"],
+  ["/api/tasks/overdue"],
+  ["/api/invoices"],
+  ["/api/invoices/stats"],
+  ["/api/time-entries"],
+];
+
+export function invalidateDashboardQueries() {
+  for (const queryKey of DASHBOARD_QUERY_KEYS) {
+    queryClient.invalidateQueries({ queryKey: queryKey as unknown[] });
+  }
+}

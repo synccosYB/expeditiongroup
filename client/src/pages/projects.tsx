@@ -48,7 +48,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { parseLocalDate, formatDateForInput, parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
 import type { Project, Client } from "@shared/schema";
@@ -214,8 +214,7 @@ export default function Projects() {
       return await apiRequest("POST", "/api/projects", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Project created successfully" });
       setIsDialogOpen(false);
       form.reset();
@@ -250,7 +249,7 @@ export default function Projects() {
       return await apiRequest("PATCH", `/api/projects/${id}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      invalidateDashboardQueries();
       toast({ title: "Project updated successfully" });
       setIsDialogOpen(false);
       setEditingProject(null);
@@ -281,8 +280,7 @@ export default function Projects() {
       return await apiRequest("DELETE", `/api/projects/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Project deleted successfully" });
       setDeletingProject(null);
       setRelatedDataCounts(null);
@@ -312,8 +310,7 @@ export default function Projects() {
       return await apiRequest("POST", `/api/projects/${id}/archive`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Project archived successfully" });
       setDeletingProject(null);
       setRelatedDataCounts(null);
@@ -343,8 +340,7 @@ export default function Projects() {
       return await apiRequest("DELETE", `/api/projects/${id}/permanent`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Project permanently deleted" });
       setDeletingProject(null);
       setRelatedDataCounts(null);

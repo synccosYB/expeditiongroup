@@ -60,7 +60,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { parseLocalDate, parseLocalDateFromISO, formatLocalDate, formatDateForInput, isDateOverdue } from "@/lib/dateUtils";
@@ -240,7 +240,7 @@ function TaskDetailDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       if (task?.projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
       }
@@ -268,7 +268,7 @@ function TaskDetailDialog({
       return await apiRequest("POST", "/api/time-entries", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      invalidateDashboardQueries();
       toast({ title: "Time entry logged successfully" });
       detailTimeLogForm.reset({ date: format(new Date(), "yyyy-MM-dd"), isBillable: true });
     },
@@ -1018,7 +1018,7 @@ export default function Tasks() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
     },
     onError: (error) => {
@@ -1057,8 +1057,7 @@ export default function Tasks() {
       return await apiRequest("POST", "/api/time-entries", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      invalidateDashboardQueries();
       toast({ title: "Time entry logged successfully" });
       setIsTimeLogDialogOpen(false);
       setSelectedTaskForTimeLog(null);

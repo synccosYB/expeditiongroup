@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { formatLocalDate, parseLocalDate, formatDateForInput } from "@/lib/dateUtils";
 import type { Task, Project, User, TimeEntry } from "@shared/schema";
@@ -209,7 +209,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       if (task?.projectId) {
         queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
       }
@@ -242,7 +242,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
       return await apiRequest("POST", "/api/time-entries", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      invalidateDashboardQueries();
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", task?.id, "time-entries"] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       if (task?.projectId) {

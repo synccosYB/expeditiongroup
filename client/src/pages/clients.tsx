@@ -37,7 +37,7 @@ import { Link } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Client } from "@shared/schema";
 import {
@@ -125,8 +125,7 @@ export default function Clients() {
       return await apiRequest("POST", "/api/clients", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Client created successfully" });
       setIsDialogOpen(false);
       form.reset();
@@ -156,7 +155,7 @@ export default function Clients() {
       return await apiRequest("PATCH", `/api/clients/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      invalidateDashboardQueries();
       toast({ title: "Client updated successfully" });
       setIsDialogOpen(false);
       setEditingClient(null);
@@ -187,8 +186,7 @@ export default function Clients() {
       return await apiRequest("DELETE", `/api/clients/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Client deleted successfully" });
       setDeletingClient(null);
       setClientRelatedCounts(null);
@@ -230,8 +228,7 @@ export default function Clients() {
       return await apiRequest("POST", `/api/clients/${id}/archive`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Client archived successfully" });
       setArchivingClient(null);
     },
@@ -260,8 +257,7 @@ export default function Clients() {
       return await apiRequest("DELETE", `/api/clients/${id}/permanent`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      invalidateDashboardQueries();
       toast({ title: "Client permanently deleted" });
       setPermanentDeleteClient(null);
     },
