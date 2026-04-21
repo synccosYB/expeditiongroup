@@ -1,0 +1,73 @@
+BUG-0197
+Client Portal Job Status Counts Showing 0
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Please review the attached picture of the client portal. It shows the job status counts displaying as 0, which may indicate a data or syncing issue.
+
+AI Analysis
+
+### Bug Analysis
+
+#### **Affected Section**: 
+The "Job Pipeline" section within the client portal of the Expedition Group system. Job status counts across all statuses (e.g., *In Progress*, *Completed*, *On-Hold*) are displayed as "0," despite there likely being active jobs in these categories, as other data (e.g., "My Projects" showing 25 active projects) is populated correctly.
+
+#### **Root Cause Analysis**:
+From the screenshot:
+1. The UI is rendering static "0" values for all job status counts in the "Job Pipeline."
+2. The issue could be linked to:
+   - **Data Fetching Issue**: Failure in the backend API to return the required job data to populate job statuses. This could be caused by:
+     - API endpoint unresponsive.
+     - Data-syncing issue due to schema changes or mismatched query.
+     - Incorrect filter logic being applied for job statuses.
+   - **Frontend Rendering Issue**: The UI might not be consuming the API response correctly or is defaulting values to "0" if data is missing/undefined.
+3. *Indirect evidence*: Other widgets (e.g., "My Projects" and "Pending Tasks") appear to be updating properly, indicating the problem is likely isolated to the "Job Pipeline" data source or rendering logic.
+
+#### **Recommended Fix**:
+1. **Backend Debugging**:
+   - Verify the API endpoint responsible for supplying job pipeline data. Check logs for potential errors or discrepancies in the response payload.
+   - Confirm that the database query driving the pipeline counts is operating as expected.
+   - Test API responses in various scenarios to ensure correct adherence to filtering logic.
+2. **Frontend Debugging**:
+   - Add error handling to log the actual data fetching process for job statuses.
+   - Verify that the frontend is parsing and mapping data correctly into the Job Pipeline component.
+   - Insert a fallback message (e.g., "Data unavailable") instead of defaulting to "0" when data is missing or undefined.
+
+#### **Next Steps**:
+- Analyze API and database logs for discrepancies or errors when fetching job pipeline data.
+- Coordinate with the frontend team to ensure any improper rendering or default fallback logic is rectified.
+- Conduct a full test of the client portal, focusing on real-time syncing of job statuses to prevent further occurrences.
+
+```json
+{"severity": "high", "category": "data"}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/projects/31
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
