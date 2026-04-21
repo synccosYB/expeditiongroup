@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { AIImproveButton } from "@/components/ai-improve-button";
 import { Separator } from "@/components/ui/separator";
+import { NotesHistoryList } from "@/components/notes-history-list";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,13 +160,26 @@ function TaskDetailDialog({
   const [activeTab, setActiveTab] = useState("details");
   const [isEditing, setIsEditing] = useState(false);
   const [notesValue, setNotesValue] = useState("");
+  const [syncedNotes, setSyncedNotes] = useState<{ taskId: number; notes: string } | null>(null);
 
-  const { data: timeEntries } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/tasks", task?.id, "time-entries"],
-    enabled: !!task?.id,
+  const { data: freshTask } = useQuery<TaskWithSubtasks>({
+    queryKey: ["/api/tasks", task?.id],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/tasks/${task?.id}`);
+      return res.json();
+    },
+    enabled: !!task?.id && isOpen,
+    staleTime: 0,
   });
 
-  const taskTimeEntries = timeEntries?.filter(te => te.taskId === task?.id) || [];
+  const effectiveTask = (freshTask ?? task) as TaskWithSubtasks | null;
+
+  const { data: timeEntries } = useQuery<TimeEntry[]>({
+    queryKey: ["/api/tasks", effectiveTask?.id, "time-entries"],
+    enabled: !!effectiveTask?.id,
+  });
+
+  const taskTimeEntries = timeEntries?.filter(te => te.taskId === effectiveTask?.id) || [];
 
   const taskForm = useForm<TaskEditFormData>({
     resolver: zodResolver(taskEditSchema),
@@ -192,16 +206,9 @@ function TaskDetailDialog({
   });
 
   useEffect(() => {
-    if (task && isOpen) {
-      taskForm.reset({
-        title: task.title || "",
-        description: task.description || "",
-        status: task.status || "todo",
-        priority: task.priority || "normal",
-        dueDate: task.dueDate ? formatDateForInput(task.dueDate) : "",
-        internalNotes: task.internalNotes || "",
-      });
-      setNotesValue(task.internalNotes || "");
+    if (isOpen && task) {
+      setIsEditing(false);
+      setActiveTab("details");
       detailTimeLogForm.reset({
         date: format(new Date(), "yyyy-MM-dd"),
         startTime: "",
@@ -210,10 +217,42 @@ function TaskDetailDialog({
         notes: "",
         isBillable: true,
       });
-      setIsEditing(false);
-      setActiveTab("details");
+    }
+    if (!isOpen) {
+      setSyncedNotes(null);
     }
   }, [task?.id, isOpen]);
+
+  // Sync local form/notes state from the freshly fetched task. On first arrival
+  // for a given task we always reset; on subsequent updates (e.g. after notes
+  // are saved in another dialog) we re-sync the textarea only if the user has
+  // not made unsaved edits, so we never blow away in-progress typing.
+  useEffect(() => {
+    if (!isOpen || !freshTask) return;
+    const freshNotes = freshTask.internalNotes || "";
+
+    if (!syncedNotes || syncedNotes.taskId !== freshTask.id) {
+      taskForm.reset({
+        title: freshTask.title || "",
+        description: freshTask.description || "",
+        status: freshTask.status || "todo",
+        priority: freshTask.priority || "normal",
+        dueDate: freshTask.dueDate ? formatDateForInput(freshTask.dueDate) : "",
+        internalNotes: freshNotes,
+      });
+      setNotesValue(freshNotes);
+      setSyncedNotes({ taskId: freshTask.id, notes: freshNotes });
+      return;
+    }
+
+    if (freshNotes !== syncedNotes.notes) {
+      if (notesValue === syncedNotes.notes) {
+        setNotesValue(freshNotes);
+        taskForm.setValue("internalNotes", freshNotes);
+      }
+      setSyncedNotes({ taskId: freshTask.id, notes: freshNotes });
+    }
+  }, [freshTask, isOpen, syncedNotes, notesValue, taskForm]);
 
   const watchedDetailStartTime = detailTimeLogForm.watch("startTime");
   const watchedDetailEndTime = detailTimeLogForm.watch("endTime");
@@ -234,15 +273,19 @@ function TaskDetailDialog({
 
   const updateTaskDetailMutation = useMutation({
     mutationFn: async (data: Partial<Task>) => {
-      const res = await apiRequest("PATCH", `/api/tasks/${task?.id}`, data);
+      const res = await apiRequest("PATCH", `/api/tasks/${effectiveTask?.id}`, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", effectiveTask?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
       invalidateDashboardQueries();
-      if (task?.projectId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/projects", task.projectId.toString()] });
+      if (effectiveTask?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", effectiveTask.projectId.toString()] });
+      }
+      if ("internalNotes" in variables) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", effectiveTask?.id, "notes-history"] });
       }
       toast({ title: "Task updated successfully" });
       setIsEditing(false);
@@ -279,11 +322,17 @@ function TaskDetailDialog({
 
   const saveNotesMutation = useMutation({
     mutationFn: async (notes: string) => {
-      const res = await apiRequest("PATCH", `/api/tasks/${task?.id}`, { internalNotes: notes || null });
+      const res = await apiRequest("PATCH", `/api/tasks/${effectiveTask?.id}`, { internalNotes: notes || null });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", effectiveTask?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", effectiveTask?.id, "notes-history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      if (effectiveTask?.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", effectiveTask.projectId.toString()] });
+      }
       taskForm.setValue("internalNotes", notesValue);
       toast({ title: "Notes saved successfully" });
     },
@@ -293,7 +342,7 @@ function TaskDetailDialog({
   });
 
   const handleSaveNotes = () => {
-    if (!task) return;
+    if (!effectiveTask) return;
     saveNotesMutation.mutate(notesValue);
   };
 
@@ -634,6 +683,12 @@ function TaskDetailDialog({
                 Save Notes
               </Button>
             </div>
+
+            <NotesHistoryList
+              taskId={effectiveTask?.id}
+              enabled={activeTab === "notes"}
+              testIdPrefix="detail-notes-history"
+            />
           </TabsContent>
 
           <TabsContent value="timelog" className="space-y-6 pt-4">

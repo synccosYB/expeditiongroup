@@ -1092,18 +1092,25 @@ export async function registerRoutes(
         const oldNotes = oldTask.internalNotes || null;
         const newNotes = parsed.internalNotes || null;
         if (oldNotes !== newNotes) {
-          await storage.createAuditLog({
-            userId: req.session.userId!,
-            action: "update",
-            entityType: "task_notes",
-            entityId: String(taskId),
-            description: `Updated internal notes on task "${task.title}"`,
-            metadata: {
-              oldNotes: oldNotes,
-              newNotes: newNotes,
-              taskTitle: task.title,
-            },
-          });
+          try {
+            await storage.createAuditLog({
+              userId: req.session.userId!,
+              action: "update",
+              entityType: "task_notes",
+              entityId: String(taskId),
+              description: `Updated internal notes on task "${task.title}"`,
+              metadata: {
+                oldNotes: oldNotes,
+                newNotes: newNotes,
+                taskTitle: task.title,
+              },
+            });
+          } catch (auditError) {
+            console.error(
+              `Failed to record task_notes audit log for task ${taskId}:`,
+              auditError,
+            );
+          }
         }
       }
 
