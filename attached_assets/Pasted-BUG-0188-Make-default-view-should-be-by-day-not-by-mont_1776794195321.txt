@@ -1,0 +1,57 @@
+BUG-0188
+Make default view should be by day not by month
+Bug
+New
+Low
+Close
+Resolve
+Status
+New
+Priority
+Low
+Assigned To
+Unassigned
+AI Analysis
+
+### Analysis:
+
+1. **Part of the App Affected**:
+   - The affected area is the "My Work" module of the application. 
+   - The view choices include options for "Day," "Week," and "Month," with a calendar navigation bar visible in the top-right section.
+   - The default view currently appears to be "Month" (as highlighted in the bug report), but the request in the report is to make the default "Day."
+
+2. **Root Cause Analysis**:
+   - The screenshot demonstrates that upon accessing the "My Work" page, the data displayed is filtered for a single day ("Monday, April 13, 2026"). 
+   - However, there is no visible indicator or configuration in the UI to either confirm or adjust the default view displayed after page load.
+   - Possible causes:
+     - The default view is hardcoded to "Month" in the backend or frontend logic.
+     - A user-specific setting or preference (if such exists) is either not saved or not respected during page initialization.
+     - Misalignment between the selected default view configuration setting and the rendering logic.
+
+3. **Recommended Fix or Next Steps**:
+   - Verify the current default view logic in the initialization of the "My Work" page (either server-side or frontend).
+   - If the current logic is set to "Month" as a static view, update it to ensure the "Day" filter is the default upon user login or navigation to the page.
+   - Provide an option in user-specific settings for selecting a preferred default view (Day/Week/Month), if not already available.
+   - Conduct regression testing to ensure updates do not break other parts of the module, especially navigation and filtering.
+
+---
+
+```json
+{"severity": "low", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
+https://financery.co/my-work
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Joel Brach
+joel@financery.co
+Client: Financery (financery.co)
+Linked Projects
+
+Full CRM PMS
+Open in Replit
+Replies (0)
+
+No replies yet
