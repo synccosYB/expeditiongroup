@@ -28,7 +28,7 @@ import { TaskTypeBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
+import { apiRequest, queryClient, invalidateDashboardQueries, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import type { TimeLog, TimeEntry, Project, User, Task, Client, Invoice } from "@shared/schema";
 import { formatTimeRange12h, formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 
@@ -80,10 +80,14 @@ export default function TimeLogs() {
 
   const { data: timeLogs, isLoading: logsLoading } = useQuery<TimeLogWithRelations[]>({
     queryKey: ["/api/time-logs"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: timeEntries, isLoading: entriesLoading } = useQuery<TimeEntryWithRelations[]>({
     queryKey: ["/api/time-entries"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: projects } = useQuery<(Project & { client: Client })[]>({

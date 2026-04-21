@@ -34,7 +34,7 @@ import { Plus, Search, MoreHorizontal, Pencil, Trash2, BarChart3, ChevronRight, 
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Account } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -174,6 +174,8 @@ export default function ChartOfAccounts() {
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ["/api/accounts"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const form = useForm<AccountFormData>({

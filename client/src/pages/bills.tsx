@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Bill, BillItem, Vendor, Account, BillPayment, BankAccount, Client, Project } from "@shared/schema";
 import { Switch } from "@/components/ui/switch";
@@ -295,6 +295,8 @@ export default function Bills() {
 
   const { data: bills, isLoading } = useQuery<BillWithRelations[]>({
     queryKey: ["/api/bills"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: vendors } = useQuery<Vendor[]>({

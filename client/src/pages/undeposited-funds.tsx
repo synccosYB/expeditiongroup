@@ -35,7 +35,7 @@ import { Plus, Wallet, Building, Trash2, ArrowRight } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import type { Client, Invoice, BankAccount, Payment } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -112,10 +112,14 @@ export default function UndepositedFunds() {
 
   const { data: payments, isLoading: paymentsLoading } = useQuery<PaymentWithRelations[]>({
     queryKey: ["/api/payments/undeposited"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: totalData } = useQuery<{ total: number }>({
     queryKey: ["/api/payments/undeposited-total"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: clients } = useQuery<Client[]>({

@@ -13,7 +13,7 @@ import { Building, Trash2, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import type { BankAccount, Deposit, Payment, Client, Invoice } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -74,6 +74,8 @@ export default function Deposits() {
 
   const { data: deposits, isLoading } = useQuery<DepositWithRelations[]>({
     queryKey: ["/api/deposits"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const deleteDepositMutation = useMutation({

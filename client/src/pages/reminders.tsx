@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
 import { CalendarView } from "@/components/calendar";
 import type { TaskReminder, Task, Project } from "@shared/schema";
@@ -126,6 +126,8 @@ export default function Reminders() {
 
   const { data: reminders, isLoading } = useQuery<ReminderWithContext[]>({
     queryKey: ["/api/reminders"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const toggleReadMutation = useMutation({

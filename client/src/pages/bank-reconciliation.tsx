@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useParams, useLocation } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -212,6 +212,8 @@ export default function BankReconciliationPage() {
 
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery<TransactionWithRelations[]>({
     queryKey: ["/api/bank-accounts", accountId, "transactions", { excludeReconciled: isReconciling }],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
     queryFn: async () => {
       const url = isReconciling
         ? `/api/bank-accounts/${accountId}/transactions?excludeReconciled=true`
@@ -226,6 +228,8 @@ export default function BankReconciliationPage() {
   const { data: reconciliations, isLoading: isLoadingReconciliations } = useQuery<BankReconciliation[]>({
     queryKey: ["/api/bank-accounts", accountId, "reconciliations"],
     enabled: accountId > 0,
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const createReconciliationMutation = useMutation({

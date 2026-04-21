@@ -50,7 +50,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { parseLocalDateFromISO, formatDateForInput } from "@/lib/dateUtils";
 import type { Account, JournalEntry, JournalEntryLine } from "@shared/schema";
@@ -115,6 +115,8 @@ export default function JournalEntries() {
 
   const { data: entries, isLoading } = useQuery<JournalEntryWithLines[]>({
     queryKey: ["/api/journal-entries"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: accounts } = useQuery<Account[]>({

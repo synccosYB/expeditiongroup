@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { Plus, MoreHorizontal, Eye, Trash2, FileText, DollarSign, Users, Clock, ArrowRight, ChevronRight, Building2, Mail, Phone, GripVertical } from "lucide-react";
 import { useState } from "react";
@@ -232,10 +232,14 @@ export default function SalesPipeline() {
 
   const { data: contacts, isLoading: contactsLoading } = useQuery<SalesContact[]>({
     queryKey: ["/api/sales-contacts"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: proposals, isLoading: proposalsLoading } = useQuery<ProposalWithDetails[]>({
     queryKey: ["/api/proposals"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const updateContactMutation = useMutation({

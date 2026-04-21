@@ -36,7 +36,7 @@ import { useLocation } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Expense, Vendor, Account, Client, Project, Bill, BankAccount } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -313,6 +313,8 @@ export default function Expenses() {
 
   const { data: expenses, isLoading } = useQuery<ExpenseWithRelations[]>({
     queryKey: ["/api/expenses"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: vendors } = useQuery<Vendor[]>({

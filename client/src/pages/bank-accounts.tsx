@@ -34,7 +34,7 @@ import { Link } from "wouter";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { BankAccount } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +86,8 @@ export default function BankAccounts() {
 
   const { data: bankAccounts, isLoading } = useQuery<BankAccount[]>({
     queryKey: ["/api/bank-accounts"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const form = useForm<BankAccountFormData>({

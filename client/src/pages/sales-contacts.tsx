@@ -60,7 +60,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Users, DollarSign, TrendingUp, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { formatLocalDate } from "@/lib/dateUtils";
 import { insertSalesContactSchema, type SalesContact } from "@shared/schema";
 
@@ -111,6 +111,8 @@ export default function SalesContacts() {
 
   const { data: contacts, isLoading } = useQuery<SalesContact[]>({
     queryKey: ["/api/sales-contacts"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const form = useForm<ContactFormData>({

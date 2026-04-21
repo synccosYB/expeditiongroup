@@ -27,7 +27,7 @@ import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, Mail, Phone, D
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Vendor } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -74,10 +74,14 @@ export default function Vendors() {
 
   const { data: vendors, isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: vendorBalances } = useQuery<{ vendorId: number; balance: string }[]>({
     queryKey: ["/api/vendors/balances"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const balanceMap = useMemo(() => {

@@ -21,7 +21,7 @@ import { Search, Receipt, DollarSign, Calendar, FileText, Check } from "lucide-r
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, LIST_PAGE_REFETCH_INTERVAL_MS } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Expense, Vendor, Client, Project, Bill, BillItem } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -107,10 +107,14 @@ export default function RebillCenter() {
 
   const { data: expenses, isLoading: expensesLoading } = useQuery<ExpenseWithRelations[]>({
     queryKey: ["/api/expenses/rebillable"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: billItems, isLoading: billItemsLoading } = useQuery<BillItemWithRelations[]>({
     queryKey: ["/api/bill-items/rebillable"],
+    refetchInterval: LIST_PAGE_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   });
 
   const { data: clients } = useQuery<Client[]>({
