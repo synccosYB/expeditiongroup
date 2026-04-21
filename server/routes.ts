@@ -1504,13 +1504,44 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/client/projects/by-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+
+      const projects = await storage.getProjectsByClientId(user.clientId);
+      const visibleProjects = projects.filter(p => p.isVisibleToClient);
+
+      const statusCounts = visibleProjects.reduce((acc: Record<string, number>, project) => {
+        acc[project.status] = (acc[project.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const result = Object.entries(statusCounts).map(([status, count]) => ({
+        status,
+        count,
+      }));
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching client projects by status:", error);
+      res.status(500).json({ message: "Failed to fetch projects by status" });
+    }
+  });
+
   app.get("/api/client/projects/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
-      const project = await storage.getProject(parseInt(req.params.id));
+      const projectId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(projectId) || String(projectId) !== req.params.id) {
+        return res.status(400).json({ message: "Invalid project id" });
+      }
+      const project = await storage.getProject(projectId);
       if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
         return res.status(404).json({ message: "Project not found" });
       }
@@ -2942,33 +2973,7 @@ export async function registerRoutes(
     }
   });
 
-  // Client Portal - Get projects by status
-  app.get("/api/client/projects/by-status", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.userId!);
-      if (!user?.clientId) {
-        return res.status(403).json({ message: "No client access" });
-      }
-
-      const projects = await storage.getProjectsByClientId(user.clientId);
-      const visibleProjects = projects.filter(p => p.isVisibleToClient);
-      
-      const statusCounts = visibleProjects.reduce((acc: Record<string, number>, project) => {
-        acc[project.status] = (acc[project.status] || 0) + 1;
-        return acc;
-      }, {});
-
-      const result = Object.entries(statusCounts).map(([status, count]) => ({
-        status,
-        count,
-      }));
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error fetching client projects by status:", error);
-      res.status(500).json({ message: "Failed to fetch projects by status" });
-    }
-  });
+  // Client Portal - Get projects by status (registered earlier alongside other client project routes)
 
   // Client Portal - Get reminders
   app.get("/api/client/reminders", isAuthenticated, async (req: any, res) => {
