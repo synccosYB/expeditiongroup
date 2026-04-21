@@ -98,33 +98,161 @@ export function CalendarView() {
 
   const [lastDropDate, setLastDropDate] = useState<string>("");
 
-  const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, dueDate }: { taskId: number; dueDate: string }) => {
+  type CalendarEventsData = {
+    tasks: (Task & { project: Project })[];
+    reminders: (TaskReminder & { task: Task; project: Project })[];
+  };
+  type TasksCacheData =
+    | (Task & { project?: Project })
+    | (Task & { project?: Project })[]
+    | undefined;
+  type RemindersCacheData = TaskReminder | TaskReminder[] | undefined;
+  type CacheSnapshot<TData> = ReturnType<typeof queryClient.getQueriesData<TData>>;
+
+  const restoreSnapshots = <TData,>(snapshots: CacheSnapshot<TData>) => {
+    snapshots.forEach(([key, data]) => queryClient.setQueryData<TData>(key, data));
+  };
+
+  const updateTaskMutation = useMutation<
+    unknown,
+    Error,
+    { taskId: number; dueDate: string },
+    {
+      prevCalendar: CacheSnapshot<CalendarEventsData>;
+      prevTasks: CacheSnapshot<TasksCacheData>;
+    }
+  >({
+    mutationFn: async ({ taskId, dueDate }) => {
       const res = await apiRequest("PATCH", `/api/tasks/${taskId}`, { dueDate });
       return res.json();
     },
+    onMutate: async ({ taskId, dueDate }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/calendar/events"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/tasks"] });
+
+      const prevCalendar = queryClient.getQueriesData<CalendarEventsData>({
+        queryKey: ["/api/calendar/events"],
+      });
+      const prevTasks = queryClient.getQueriesData<TasksCacheData>({
+        queryKey: ["/api/tasks"],
+      });
+
+      queryClient.setQueriesData<CalendarEventsData>(
+        { queryKey: ["/api/calendar/events"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            tasks: old.tasks.map((t) =>
+              t.id === taskId ? { ...t, dueDate: new Date(dueDate) } : t
+            ),
+            reminders: old.reminders.map((r) =>
+              r.task?.id === taskId
+                ? { ...r, task: { ...r.task, dueDate: new Date(dueDate) } }
+                : r
+            ),
+          };
+        }
+      );
+
+      queryClient.setQueriesData<TasksCacheData>(
+        { queryKey: ["/api/tasks"] },
+        (old) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.map((t) =>
+              t?.id === taskId ? { ...t, dueDate: new Date(dueDate) } : t
+            );
+          }
+          if (old.id === taskId) return { ...old, dueDate: new Date(dueDate) };
+          return old;
+        }
+      );
+
+      return { prevCalendar, prevTasks };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx) {
+        restoreSnapshots(ctx.prevCalendar);
+        restoreSnapshots(ctx.prevTasks);
+      }
+      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({ title: "Task moved", description: `Due date changed to ${lastDropDate}` });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
     },
   });
 
-  const updateReminderMutation = useMutation({
-    mutationFn: async ({ reminderId, scheduledAt }: { reminderId: number; scheduledAt: string }) => {
+  const updateReminderMutation = useMutation<
+    unknown,
+    Error,
+    { reminderId: number; scheduledAt: string },
+    {
+      prevCalendar: CacheSnapshot<CalendarEventsData>;
+      prevReminders: CacheSnapshot<RemindersCacheData>;
+    }
+  >({
+    mutationFn: async ({ reminderId, scheduledAt }) => {
       const res = await apiRequest("PATCH", `/api/reminders/${reminderId}`, { scheduledAt });
       return res.json();
     },
+    onMutate: async ({ reminderId, scheduledAt }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/calendar/events"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/reminders"] });
+
+      const prevCalendar = queryClient.getQueriesData<CalendarEventsData>({
+        queryKey: ["/api/calendar/events"],
+      });
+      const prevReminders = queryClient.getQueriesData<RemindersCacheData>({
+        queryKey: ["/api/reminders"],
+      });
+
+      queryClient.setQueriesData<CalendarEventsData>(
+        { queryKey: ["/api/calendar/events"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            reminders: old.reminders.map((r) =>
+              r.id === reminderId ? { ...r, scheduledAt: new Date(scheduledAt) } : r
+            ),
+          };
+        }
+      );
+
+      queryClient.setQueriesData<RemindersCacheData>(
+        { queryKey: ["/api/reminders"] },
+        (old) => {
+          if (!old) return old;
+          if (Array.isArray(old)) {
+            return old.map((r) =>
+              r?.id === reminderId ? { ...r, scheduledAt: new Date(scheduledAt) } : r
+            );
+          }
+          if (old.id === reminderId) return { ...old, scheduledAt: new Date(scheduledAt) };
+          return old;
+        }
+      );
+
+      return { prevCalendar, prevReminders };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx) {
+        restoreSnapshots(ctx.prevCalendar);
+        restoreSnapshots(ctx.prevReminders);
+      }
+      toast({ title: "Error", description: "Failed to update reminder", variant: "destructive" });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
       toast({ title: "Reminder updated", description: "Schedule has been changed" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update reminder", variant: "destructive" });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/calendar/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reminders"] });
     },
   });
 
