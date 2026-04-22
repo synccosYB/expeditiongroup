@@ -396,7 +396,7 @@ export default function InvoiceDetail() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity print:hidden"
                     onClick={() => {
                       setInlineInvoiceNumber(invoice.invoiceNumber || "");
                       setEditingInvoiceNumber(true);
@@ -428,7 +428,7 @@ export default function InvoiceDetail() {
 
           {(invoice.project || invoice.projectId) && (
             <div className="mb-8 p-4 border rounded-md" data-testid="invoice-project-box">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2" data-testid="invoice-project-header">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm font-medium">Project</p>
               </div>
@@ -569,12 +569,22 @@ export default function InvoiceDetail() {
               box-shadow: none !important;
               border: none !important;
             }
-            [data-testid="invoice-print-area"] * {
+            [data-testid="invoice-print-area"] *:not([data-testid="badge-invoice-status"]) {
               color: #111 !important;
               background-color: transparent !important;
               border-color: #ddd !important;
             }
+            [data-testid="invoice-print-area"] .mb-8 {
+              margin-bottom: 1rem !important;
+            }
+            [data-testid="invoice-print-area"] .mt-8 {
+              margin-top: 1rem !important;
+            }
             [data-testid="invoice-info-grid"] {
+              display: grid !important;
+              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+              gap: 1rem !important;
+              padding: 0.75rem 1rem !important;
               background-color: #f5f5f5 !important;
             }
             [data-testid="invoice-info-grid"] p {
@@ -586,6 +596,31 @@ export default function InvoiceDetail() {
             [data-testid="invoice-project-box"] {
               border: 1px solid #ddd !important;
               background: transparent !important;
+              padding: 0.75rem 1rem !important;
+            }
+            [data-testid="invoice-project-header"] {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              gap: 0.5rem !important;
+              margin-bottom: 0.25rem !important;
+            }
+            [data-testid="invoice-project-header"] svg {
+              display: inline-block !important;
+              flex-shrink: 0 !important;
+              width: 1rem !important;
+              height: 1rem !important;
+            }
+            [data-testid="badge-invoice-status"] {
+              display: inline-block !important;
+              padding: 2px 8px !important;
+              border: 1px solid #333 !important;
+              border-radius: 9999px !important;
+              font-weight: 600 !important;
+              font-size: 0.75rem !important;
+              color: #111 !important;
+              background-color: #fff !important;
+              margin-top: 4px !important;
             }
             [data-testid="invoice-notes-box"] {
               background-color: #f5f5f5 !important;
