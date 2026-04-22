@@ -1,0 +1,64 @@
+BUG-0203
+Invoice printing incorrectly (layout issue)
+Bug
+New
+Medium
+Close
+Resolve
+Status
+New
+Priority
+Medium
+Assigned To
+Unassigned
+Description
+
+Invoice printing incorrectly (layout issue)
+
+AI Analysis
+
+### Analysis:
+1. **Part of App Affected**:
+   - The invoice printing feature, specifically the layout and formatting, is presenting an issue.
+
+2. **Identified Problems**:
+   - **Improper Spacing**: There is significant white space or blank sections within the invoice (e.g., between "INV-2026-0107" and the "Bill To" information, and different sections throughout the page).
+   - **Misaligned Elements**: The "Edit" pencil icon and "Sent" status icon appear inconsistent, either misaligned or unnecessarily prominent.
+
+3. **Potential Root Cause**:
+   - This issue could be due to incorrect CSS rules affecting the layout of the print version of the invoice.
+   - It is possible that print-specific stylesheets (CSS `@media print`) are either missing or not being applied correctly.
+   - The alignment of icons and text could result from improper flex or grid layouts, or unintended margins/paddings.
+
+4. **Recommended Fix/Next Steps**:
+   - Review and update the CSS print styles to ensure proper alignment and spacing of invoice elements.
+   - Conduct a thorough inspection using browser developer tools to debug layout issues and pinpoint specific CSS causing the extra spaces and misalignments.
+   - Test the printing functionality on various printers and screen resolutions to ensure consistent results.
+   - Include QA regression testing for this feature post-fix.
+
+### JSON Summary:
+```json
+{
+  "severity": "medium",
+  "category": "styling"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/invoices/187
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
