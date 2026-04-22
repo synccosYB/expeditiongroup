@@ -1,0 +1,102 @@
+BUG-0198
+Notes not saving in main task ; and add task history view from main task in cander
+Bug
+In Progress
+High
+Close
+Resolve
+Status
+In Progress
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+Notes entered in the calendar task view are not saving or syncing to the main task notes. This issue has been reported multiple times and marked as resolved, but it is still not fixed and needs to be triple-checked.
+
+Additionally, please add a task history section below the notes area (as shown in the screenshot) to display all previous notes in chronological order within the task view.
+
+Lastly, I want to see not only newly entered notes but also all past notes in the main task notes section, not just under the calendar view.
+
+Resolution
+
+App is running cleanly. Let me update the commit message and mark complete:
+
+Resolved about 2 hours ago
+
+AI Analysis
+
+### Bug Analysis
+
+#### Issue 1: Notes Not Saving to the Main Task Notes Section
+- **Affected Area:** The "Notes" feature integration between the calendar task view and the main task view.
+- **Root Cause:** 
+  - The notes entered in the calendar task view aren't syncing correctly to the main task notes due to a potential failure in the save-handler logic or API request/response handling. This could stem from mismatched database fields or improper data binding between UI components and the backend.
+  - Since this issue has reportedly been marked "resolved" multiple times, it is worth verifying if the data fetch/save process bypasses the calendar task view when syncing notes to the main task.
+- **Recommended Fix:**
+  - Triple-check the saving flow to ensure:
+    1. Changes made in calendar task views trigger an immediate API call to update the main task notes.
+    2. The database correctly maps the notes under both views.
+    3. There is no data loss or overwrite due to database syncing failures.
+  - Add robust error handling and logging to identify and address syncing issues if they occur again.
+
+#### Issue 2: Task History View Missing
+- **Affected Area:** The "Task Details" modal's "Notes" section.
+- **Root Cause:** 
+  - This appears to be a missing feature request rather than a bug.
+- **Recommended Fix:**
+  - Add a "Task History" section, as suggested in the screenshot mockup, to display all past notes in chronological order. The implementation might involve querying a history log table from the database containing all note updates linked to a task.
+  - Place the history section as shown below the editable "Internal Notes" area.
+
+#### Issue 3: Viewing All Notes in the Main Task
+- **Affected Area:** Inclusion of both past and newly created notes in the main task notes section.
+- **Root Cause:** 
+  - Possible limitations in the current design, where only the latest note is displayed or where filtering logic excludes older entries.
+  - The backend's data fetch logic might only query the most recent changes instead of appending all notes.
+- **Recommended Fix:**
+  - Modify the data-fetching logic to retrieve and display all linked notes (new and past) in the main task notes section.
+  - Add pagination or a scrollable display for better UI experience when the list of notes grows.
+
+#### Screenshot Analysis:
+- The "Task Details" modal design is clear, but the "Save Notes" button does not provide confirmation or feedback post-save. If the syncing fails, users might not be alerted, leading to confusion.
+- Space suggested for the additional "Task History" section is appropriate.
+
+---
+
+### JSON Summary
+
+```json
+{
+  "severity": "high",
+  "category": "functionality"
+}
+```
+
+Screenshot
+
+Screenshot
+https://expeditiongroupny.com/reminders
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (2)
+
+Yoel Bochnerteam
+about 2 hours ago
+Notes typed and saved in the calendar Task Details dialog appear immediately in the main Tasks page Task Details dialog for the same task (and vice versa), without a manual refresh.
+The "Save Notes" button in both dialogs gives clear success/failure feedback (toast) and disables while saving.
+The main Tasks page Task Details dialog shows a "Notes History" section directly below the Internal Notes textarea, listing every prior note in reverse-chronological order with author name and timestamp — matching the layout already used in the calendar dialog.
+Re-opening either dialog after a save shows the latest saved note in the textarea and the new entry at the top of the history.
+
+Yitzchock Braunclient
+about 1 hour ago
+Re-tested and issue is still not working. Notes entered via the calendar task do not save or sync to the main task. Additionally, the task view does not display full note history, including notes entered directly from the main task
+...
