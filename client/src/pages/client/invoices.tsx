@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,9 +29,12 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Printer,
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { Invoice, Project } from "@shared/schema";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
@@ -49,6 +52,11 @@ const INVOICE_STATUSES = [
 export default function ClientInvoices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    const cleanup = installPrintListeners();
+    return cleanup;
+  }, []);
 
   const { data: invoices, isLoading } = useQuery<InvoiceWithProject[]>({
     queryKey: ["/api/client/invoices"],
@@ -104,18 +112,30 @@ export default function ClientInvoices() {
     }
   };
 
+  const handlePrint = () => {
+    handlePrintWithWidgetRemoval({
+      documentTitle: "Invoices",
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground" data-testid="text-client-invoices-title">
-          Invoices
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          View and track your invoices
-        </p>
+      <div className="print:hidden flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground" data-testid="text-client-invoices-title">
+            Invoices
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            View and track your invoices
+          </p>
+        </div>
+        <Button variant="outline" onClick={handlePrint} data-testid="button-print-invoices">
+          <Printer className="h-4 w-4 mr-2" />
+          Print
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="print:hidden grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -157,7 +177,7 @@ export default function ClientInvoices() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="print:hidden flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -183,7 +203,7 @@ export default function ClientInvoices() {
       </div>
 
       {filteredInvoices.length > 0 ? (
-        <Card>
+        <Card className="print:hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -228,7 +248,7 @@ export default function ClientInvoices() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="print:hidden">
           <CardContent className="p-0">
             <EmptyState
               icon={DollarSign}
@@ -240,6 +260,112 @@ export default function ClientInvoices() {
           </CardContent>
         </Card>
       )}
+
+      <div className="hidden print:block" data-testid="invoices-print-area">
+        <div className="p-8">
+          <PrintCompanyHeader
+            rightTestId="invoices-print-meta"
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Invoice Statement</h2>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">{format(new Date(), "MMMM d, yyyy")}</p>
+                </div>
+              </>
+            }
+          />
+
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold mb-1" data-testid="invoices-print-title">Invoices</h1>
+            <p className="text-sm text-muted-foreground">
+              {filteredInvoices.length} invoice{filteredInvoices.length === 1 ? "" : "s"}
+              {(searchTerm || statusFilter !== "all") ? " (filtered)" : ""}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="invoices-info-grid">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+              <p className="font-medium">{filteredInvoices.length}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Outstanding</p>
+              <p className="font-medium">${unpaidTotal.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Paid</p>
+              <p className="font-medium">${paidTotal.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {filteredInvoices.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 font-medium">Invoice #</th>
+                  <th className="text-left py-3 font-medium">Project</th>
+                  <th className="text-left py-3 font-medium w-28">Date</th>
+                  <th className="text-left py-3 font-medium w-28">Due Date</th>
+                  <th className="text-right py-3 font-medium w-28">Amount</th>
+                  <th className="text-left py-3 font-medium w-32">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id} className="border-b">
+                    <td className="py-3 font-mono">{invoice.invoiceNumber}</td>
+                    <td className="py-3">{invoice.project?.name || "—"}</td>
+                    <td className="py-3">{invoice.createdAt ? format(new Date(invoice.createdAt), "MMM d, yyyy") : "—"}</td>
+                    <td className="py-3">{invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy") : "—"}</td>
+                    <td className="py-3 text-right font-medium">${parseFloat(invoice?.total || "0").toLocaleString()}</td>
+                    <td className="py-3 capitalize">{invoice.status === "sent" ? "Awaiting Payment" : invoice.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-muted-foreground">No invoices to display.</p>
+          )}
+        </div>
+      </div>
+
+      <PrintStyles
+        cardLayout={false}
+        extraCss={`
+          @media print {
+            html { color: #111 !important; }
+            [data-testid="invoices-print-area"] {
+              background: white !important;
+              color: #111 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              display: block !important;
+            }
+            [data-testid="invoices-print-area"] * {
+              color: #111 !important;
+              background-color: transparent !important;
+              border-color: #ddd !important;
+            }
+            [data-testid="invoices-print-area"] .mb-8 { margin-bottom: 1rem !important; }
+            [data-testid="invoices-info-grid"] {
+              display: grid !important;
+              grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+              gap: 1rem !important;
+              padding: 0.75rem 1rem !important;
+              background-color: #f5f5f5 !important;
+            }
+            [data-testid="invoices-info-grid"] p { color: #111 !important; }
+            [data-testid="invoices-info-grid"] .text-xs { color: #666 !important; }
+            [data-testid="invoices-print-meta"] p { color: #555 !important; }
+            [data-testid="invoice-company-info"] p { color: #555 !important; }
+            th { color: #111 !important; border-bottom: 2px solid #333 !important; }
+            td { color: #111 !important; border-bottom: 1px solid #ddd !important; }
+            .space-y-6 > * { margin: 0 !important; }
+          }
+        `}
+      />
     </div>
   );
 }

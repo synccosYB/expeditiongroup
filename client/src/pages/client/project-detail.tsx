@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,8 @@ import {
   FolderOpen,
   Users,
   Archive,
+  Printer,
+  Building2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -157,6 +161,11 @@ export default function ClientProjectDetail() {
   const [showArchivedTasks, setShowArchivedTasks] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
+
+  useEffect(() => {
+    const cleanup = installPrintListeners();
+    return cleanup;
+  }, []);
 
   const toggleExpand = (taskId: number) => {
     setExpandedTasks(prev => {
@@ -333,31 +342,49 @@ export default function ClientProjectDetail() {
 
   const previewType = viewingDocument ? getFilePreviewType(viewingDocument) : "other";
 
+  const handlePrint = () => {
+    handlePrintWithWidgetRemoval({
+      documentTitle: project?.name || "Project",
+    });
+  };
+
+  const printableTasks = (project.tasks || []).filter(
+    (t) => t.status !== "cancelled",
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/projects" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-back-to-projects">
-          <ChevronLeft className="h-4 w-4" />
-          Back to Projects
-        </Link>
-        <div className="flex items-start sm:items-center gap-2 sm:gap-3 mt-2 flex-wrap">
-          <h1 className="text-xl sm:text-3xl font-semibold text-foreground break-words" data-testid="text-project-name">{project.name}</h1>
-          <StatusBadge status={project.status} type="project" />
+      <div className="print:hidden">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <Link href="/projects" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-back-to-projects">
+              <ChevronLeft className="h-4 w-4" />
+              Back to Projects
+            </Link>
+            <div className="flex items-start sm:items-center gap-2 sm:gap-3 mt-2 flex-wrap">
+              <h1 className="text-xl sm:text-3xl font-semibold text-foreground break-words" data-testid="text-project-name">{project.name}</h1>
+              <StatusBadge status={project.status} type="project" />
+            </div>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {project.client?.name}
+              </p>
+            </div>
+            {project.address && (
+              <p className="text-muted-foreground mt-1 flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {project.address}
+              </p>
+            )}
+          </div>
+          <Button variant="outline" onClick={handlePrint} data-testid="button-print-project">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
         </div>
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {project.client?.name}
-          </p>
-        </div>
-        {project.address && (
-          <p className="text-muted-foreground mt-1 flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {project.address}
-          </p>
-        )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="print:hidden grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {project.county && (
           <Card>
             <CardContent className="flex items-center gap-3 py-4">
@@ -406,7 +433,7 @@ export default function ClientProjectDetail() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="print:hidden grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -461,7 +488,7 @@ export default function ClientProjectDetail() {
         </Card>
       </div>
 
-      <Tabs defaultValue={portalSettings?.showMilestones ? "tasks" : portalSettings?.showDocuments ? "documents" : portalSettings?.showMessages ? "messages" : portalSettings?.showTimeline ? "timeline" : "tasks"}>
+      <Tabs className="print:hidden" defaultValue={portalSettings?.showMilestones ? "tasks" : portalSettings?.showDocuments ? "documents" : portalSettings?.showMessages ? "messages" : portalSettings?.showTimeline ? "timeline" : "tasks"}>
         <TabsList>
           {portalSettings?.showMilestones && (
             <TabsTrigger value="tasks" className="gap-2" data-testid="tab-tasks">
@@ -828,6 +855,193 @@ export default function ClientProjectDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <div className="hidden print:block" data-testid="project-print-area">
+        <div className="p-8">
+          <PrintCompanyHeader
+            rightTestId="project-client-info"
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Prepared For</h2>
+                {project.client ? (
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium">{project.client.name}</p>
+                    {project.client.company && (
+                      <p className="text-muted-foreground">{project.client.company}</p>
+                    )}
+                    {project.client.billingAddress && (
+                      <p className="text-muted-foreground">{project.client.billingAddress}</p>
+                    )}
+                    {project.client.email && (
+                      <p className="text-muted-foreground">{project.client.email}</p>
+                    )}
+                    {project.client.phone && (
+                      <p className="text-muted-foreground">{project.client.phone}</p>
+                    )}
+                  </div>
+                ) : null}
+              </>
+            }
+          />
+
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold mb-1" data-testid="project-print-title">
+              {project.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">Project Summary</p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="project-info-grid">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+              <p className="font-medium capitalize">{(project.status || "").replace(/_/g, " ") || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Progress</p>
+              <p className="font-medium">{Math.round(progress)}% Complete</p>
+            </div>
+            {project.startDate && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Start Date</p>
+                <p className="font-medium">{formatLocalDate(project.startDate)}</p>
+              </div>
+            )}
+            {project.county && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">County</p>
+                <p className="font-medium">{project.county}</p>
+              </div>
+            )}
+            {project.municipality && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Municipality</p>
+                <p className="font-medium">{project.municipality}</p>
+              </div>
+            )}
+          </div>
+
+          {project.address && (
+            <div className="mb-8 p-4 border rounded-md" data-testid="project-address-box">
+              <div className="flex items-center gap-2 mb-2" data-testid="project-address-header">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Project Address</p>
+              </div>
+              <p className="text-sm">{project.address}</p>
+            </div>
+          )}
+
+          {portalSettings?.showMilestones && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-3">Tasks ({printableTasks.length})</h2>
+              {printableTasks.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 font-medium">Task</th>
+                      <th className="text-left py-3 font-medium w-28">Type</th>
+                      <th className="text-left py-3 font-medium w-24">Priority</th>
+                      <th className="text-left py-3 font-medium w-28">Status</th>
+                      <th className="text-left py-3 font-medium w-32">Due</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {printableTasks.map((task) => (
+                      <tr key={task.id} className="border-b">
+                        <td className="py-3 whitespace-pre-wrap break-words">{task.title}</td>
+                        <td className="py-3 capitalize">{task.type?.replace(/_/g, " ") || "—"}</td>
+                        <td className="py-3 capitalize">{task.priority || "normal"}</td>
+                        <td className="py-3 capitalize">{(task.status || "").replace(/_/g, " ")}</td>
+                        <td className="py-3">{task.dueDate ? formatLocalDate(task.dueDate) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tasks yet.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <PrintStyles
+        cardLayout={false}
+        extraCss={`
+          @media print {
+            html {
+              color: #111 !important;
+            }
+            [data-testid="project-print-area"] {
+              background: white !important;
+              color: #111 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              display: block !important;
+            }
+            [data-testid="project-print-area"] * {
+              color: #111 !important;
+              background-color: transparent !important;
+              border-color: #ddd !important;
+            }
+            [data-testid="project-print-area"] .mb-8 {
+              margin-bottom: 1rem !important;
+            }
+            [data-testid="project-info-grid"] {
+              display: grid !important;
+              grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+              gap: 1rem !important;
+              padding: 0.75rem 1rem !important;
+              background-color: #f5f5f5 !important;
+            }
+            [data-testid="project-info-grid"] p {
+              color: #111 !important;
+            }
+            [data-testid="project-info-grid"] .text-xs {
+              color: #666 !important;
+            }
+            [data-testid="project-address-box"] {
+              border: 1px solid #ddd !important;
+              background: transparent !important;
+              padding: 0.75rem 1rem !important;
+            }
+            [data-testid="project-address-header"] {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              gap: 0.5rem !important;
+              margin-bottom: 0.25rem !important;
+            }
+            [data-testid="project-address-header"] svg {
+              display: inline-block !important;
+              flex-shrink: 0 !important;
+              width: 1rem !important;
+              height: 1rem !important;
+            }
+            [data-testid="project-client-info"] p {
+              color: #333 !important;
+            }
+            [data-testid="project-client-info"] .font-medium {
+              color: #111 !important;
+            }
+            [data-testid="invoice-company-info"] p {
+              color: #555 !important;
+            }
+            th {
+              color: #111 !important;
+              border-bottom: 2px solid #333 !important;
+            }
+            td {
+              color: #111 !important;
+              border-bottom: 1px solid #ddd !important;
+            }
+            .space-y-6 > * {
+              margin: 0 !important;
+            }
+          }
+        `}
+      />
     </div>
   );
 }

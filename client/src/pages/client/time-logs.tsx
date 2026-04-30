@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,12 @@ import {
   Calendar,
   Timer,
   X,
+  Printer,
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
+import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import type { TimeEntry, Task, Project } from "@shared/schema";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
@@ -43,6 +46,11 @@ export default function ClientTimeLogs() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  useEffect(() => {
+    const cleanup = installPrintListeners();
+    return cleanup;
+  }, []);
 
   const { data: timeEntries, isLoading: entriesLoading } = useQuery<TimeEntryWithRelations[]>({
     queryKey: ["/api/client/time-entries"],
@@ -97,18 +105,30 @@ export default function ClientTimeLogs() {
     setDateTo("");
   };
 
+  const handlePrint = () => {
+    handlePrintWithWidgetRemoval({
+      documentTitle: "Time Logs",
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground" data-testid="text-client-time-logs-title">
-          Time Logs
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          View time logged on your projects
-        </p>
+      <div className="print:hidden flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground" data-testid="text-client-time-logs-title">
+            Time Logs
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            View time logged on your projects
+          </p>
+        </div>
+        <Button variant="outline" onClick={handlePrint} data-testid="button-print-time-logs">
+          <Printer className="h-4 w-4 mr-2" />
+          Print
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="print:hidden grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -167,7 +187,7 @@ export default function ClientTimeLogs() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="print:hidden flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -222,7 +242,7 @@ export default function ClientTimeLogs() {
       </div>
 
       {filteredEntries.length > 0 ? (
-        <Card>
+        <Card className="print:hidden">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -265,7 +285,7 @@ export default function ClientTimeLogs() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="print:hidden">
           <CardContent className="p-0">
             <EmptyState
               icon={Clock}
@@ -277,6 +297,113 @@ export default function ClientTimeLogs() {
           </CardContent>
         </Card>
       )}
+
+      <div className="hidden print:block" data-testid="time-logs-print-area">
+        <div className="p-8">
+          <PrintCompanyHeader
+            rightTestId="time-logs-print-meta"
+            right={
+              <>
+                <h2 className="text-lg font-semibold mb-4">Time Log Report</h2>
+                <div className="space-y-1 text-sm">
+                  <p className="text-muted-foreground">{format(new Date(), "MMMM d, yyyy")}</p>
+                </div>
+              </>
+            }
+          />
+
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold mb-1" data-testid="time-logs-print-title">Time Logs</h1>
+            <p className="text-sm text-muted-foreground">
+              {filteredEntries.length} entr{filteredEntries.length === 1 ? "y" : "ies"}
+              {(searchTerm || projectFilter !== "all" || hasDateFilter) ? " (filtered)" : ""}
+              {dateFrom || dateTo ? ` · ${dateFrom || "…"} to ${dateTo || "…"}` : ""}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-8 p-4 bg-muted/30 rounded-md" data-testid="time-logs-info-grid">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Time</p>
+              <p className="font-medium">{totalHours}h {remainingMinutes}m</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Billable Time</p>
+              <p className="font-medium">{billableHours}h {billableRemainingMinutes}m</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
+              <p className="font-medium">{filteredEntries.length}</p>
+            </div>
+          </div>
+
+          {filteredEntries.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 font-medium w-28">Date</th>
+                  <th className="text-left py-3 font-medium">Project</th>
+                  <th className="text-left py-3 font-medium">Task</th>
+                  <th className="text-right py-3 font-medium w-24">Duration</th>
+                  <th className="text-left py-3 font-medium w-20">Billable</th>
+                  <th className="text-left py-3 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEntries.map((entry) => (
+                  <tr key={entry.id} className="border-b">
+                    <td className="py-3">{entry.date ? format(parseLocalDateFromISO(entry.date)!, "MMM d, yyyy") : "—"}</td>
+                    <td className="py-3">{entry.project?.name || "—"}</td>
+                    <td className="py-3">{entry.task?.title || "—"}</td>
+                    <td className="py-3 text-right">{formatDuration(entry.totalMinutes || 0)}</td>
+                    <td className="py-3">{entry.isBillable ? "Yes" : "No"}</td>
+                    <td className="py-3 whitespace-pre-wrap break-words">{entry.notes || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-muted-foreground">No time entries to display.</p>
+          )}
+        </div>
+      </div>
+
+      <PrintStyles
+        cardLayout={false}
+        extraCss={`
+          @media print {
+            html { color: #111 !important; }
+            [data-testid="time-logs-print-area"] {
+              background: white !important;
+              color: #111 !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              display: block !important;
+            }
+            [data-testid="time-logs-print-area"] * {
+              color: #111 !important;
+              background-color: transparent !important;
+              border-color: #ddd !important;
+            }
+            [data-testid="time-logs-print-area"] .mb-8 { margin-bottom: 1rem !important; }
+            [data-testid="time-logs-info-grid"] {
+              display: grid !important;
+              grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+              gap: 1rem !important;
+              padding: 0.75rem 1rem !important;
+              background-color: #f5f5f5 !important;
+            }
+            [data-testid="time-logs-info-grid"] p { color: #111 !important; }
+            [data-testid="time-logs-info-grid"] .text-xs { color: #666 !important; }
+            [data-testid="time-logs-print-meta"] p { color: #555 !important; }
+            [data-testid="invoice-company-info"] p { color: #555 !important; }
+            th { color: #111 !important; border-bottom: 2px solid #333 !important; }
+            td { color: #111 !important; border-bottom: 1px solid #ddd !important; }
+            .space-y-6 > * { margin: 0 !important; }
+          }
+        `}
+      />
     </div>
   );
 }
