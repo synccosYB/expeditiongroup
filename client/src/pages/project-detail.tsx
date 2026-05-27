@@ -1375,13 +1375,19 @@ export default function ProjectDetail() {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, data }: { taskId: number; data: Partial<TaskFormData> }) => {
-      const payload = {
-        ...data,
-        dueDate: data.dueDate ? parseLocalDate(data.dueDate) : null,
-        parentTaskId: data.parentTaskId || null,
-        assigneeId: data.assigneeId || null,
-        relatedAssociateId: data.relatedAssociateId || null,
-      };
+      const payload: Record<string, any> = { ...data };
+      if ("dueDate" in data) {
+        payload.dueDate = data.dueDate ? parseLocalDate(data.dueDate) : null;
+      }
+      if ("parentTaskId" in data) {
+        payload.parentTaskId = data.parentTaskId || null;
+      }
+      if ("assigneeId" in data) {
+        payload.assigneeId = data.assigneeId || null;
+      }
+      if ("relatedAssociateId" in data) {
+        payload.relatedAssociateId = data.relatedAssociateId || null;
+      }
       return await apiRequest("PATCH", `/api/tasks/${taskId}`, payload);
     },
     onSuccess: () => {
