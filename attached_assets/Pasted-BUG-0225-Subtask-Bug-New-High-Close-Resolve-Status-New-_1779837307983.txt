@@ -1,0 +1,56 @@
+BUG-0225
+Subtask
+Bug
+New
+High
+Close
+Resolve
+Status
+New
+Priority
+High
+Assigned To
+Unassigned
+Description
+
+When I create a subtask from a parent task and update/add log time, the changes are saved under the subtask, but the subtask then becomes a parent task automatically.
+
+AI Analysis
+
+### Analysis
+
+1. **Affected Area of the App**  
+   This issue pertains to the **task management module**, specifically the interaction between **parent tasks** and their **subtasks**.
+
+2. **Screenshot Observations**
+   - The app UI shows a main parent task under Project: "35 Astor Place."
+   - There is an existing task labeled "Final cost of affidavit," which appears to be a parent task, with metadata like the start date, status ("Waiting"), and action log.
+   - It’s not immediately clear from the screenshot alone how a subtask transitions into a parent task, but this behavior is reported.
+
+3. **Possible Root Cause**
+   - **Data Linkage Issue**:
+     Updating or adding log time may be triggering a state mutation in the database or frontend, resulting in incorrect task hierarchy. Specifically:
+       - There seems to be an erroneous **relationship mapping** between the parent task and its subtasks in the database or state management.
+       - The system possibly re-associates the subtask as a parent task incorrectly on update events.
+   - **State Management Bug**:
+     If reactive frameworks (e.g., React, Vue.js) are in use, there could be a race condition or failure to keep state consistent, causing the UI to render the task as if it were a parent.
+   - **Business Logic Issue**: The backend logic for task hierarchy might not validate changes properly when time logs are updated.
+
+4. **Recommended Fix**
+   - **Database Integrity Check**: Ensure task hierarchy (parent-child relationships) remains intact during updates (e.g., logging time).
+   - **Validation in Backend**: Add a safeguard to prevent assignment of parent status to subtasks unless explicitly intended.
+   - **State Management Fix**: Verify if state mutation causes the task type to switch inadvertently, and debug update methods in the frontend.
+   - **Testing**:
+     - Regression test task creation and modification functionality for subtasks specifically.
+     - Test with a variety of edge cases to ensure the behavior is stable.
+   - **UI Clarification** (optional): Adjust UI to make misclassification between parent and subtask roles more conspicuous to developers and users.
+
+---
+
+```json
+{"severity": "high", "category": "functionality"}
+```
+
+Screenshot
+
+Screenshot
