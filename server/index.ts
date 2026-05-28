@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { restoreDemotedAdmins } from "./accountRecovery";
+import { restoreDemotedAdmins, ensureProtectedSuperAdmins } from "./accountRecovery";
 
 const app = express();
 const httpServer = createServer(app);
@@ -90,6 +90,12 @@ app.use((req, res, next) => {
   } catch (err: any) {
     log(`Failed to ensure invoice_id columns or migrate: ${err.message}`);
   }
+
+  ensureProtectedSuperAdmins()
+    .then((n) => {
+      if (n > 0) log(`Enforced super_admin on ${n} protected account(s)`);
+    })
+    .catch((err) => log(`Protected super admin enforcement failed: ${err.message}`));
 
   restoreDemotedAdmins()
     .then((n) => {

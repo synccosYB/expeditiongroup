@@ -27,9 +27,32 @@ export interface ActorContext {
 export const SYSTEM_ACTOR: ActorContext = { userId: null, email: null, role: null };
 
 /**
+ * Accounts that must always remain super_admin and can never be demoted by
+ * anyone (including other super admins or the automatic recovery routine).
+ * yoel@synccos.com is the permanent project owner. Additional protected
+ * emails can be supplied via the PROTECTED_SUPER_ADMIN_EMAILS env var
+ * (comma-separated).
+ */
+export function protectedSuperAdminEmails(): string[] {
+  const base = ["yoel@synccos.com"];
+  const extra = (process.env.PROTECTED_SUPER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set([...base, ...extra]));
+}
+
+export function isProtectedSuperAdmin(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return protectedSuperAdminEmails().includes(email.trim().toLowerCase());
+}
+
+/**
  * Pure validator (no DB). Throws AccountGuardError when the change is not
  * permitted by the policy:
  *
+ *  - a protected super_admin (see protectedSuperAdminEmails) can never be
+ *    demoted or relinked, by anyone
  *  - admins/super_admins cannot be silently demoted to `client`
  *  - admins/super_admins cannot have a clientId attached
  *  - only a super_admin can lower another super_admin
@@ -37,12 +60,27 @@ export const SYSTEM_ACTOR: ActorContext = { userId: null, email: null, role: nul
  */
 export function validateAccountChange(
   actor: ActorContext,
-  target: Pick<User, "role" | "clientId">,
+  target: Pick<User, "role" | "clientId"> & { email?: string | null },
   changes: AccountChange,
 ): void {
   const isSystem = actor.userId === null;
   const actorRole = actor.role;
   const targetRole = target.role as Role;
+
+  if (isProtectedSuperAdmin(target.email)) {
+    if (changes.role !== undefined && changes.role !== "super_admin") {
+      throw new AccountGuardError(
+        "This account is a protected super admin and cannot be demoted.",
+        403,
+      );
+    }
+    if (changes.clientId !== undefined && changes.clientId !== null) {
+      throw new AccountGuardError(
+        "This account is a protected super admin and cannot be linked to a client.",
+        403,
+      );
+    }
+  }
 
   if (changes.role !== undefined) {
     const newRole = changes.role;

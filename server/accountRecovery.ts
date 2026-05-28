@@ -1,7 +1,61 @@
 import { db } from "./db";
 import { users, projects, type User } from "@shared/schema";
 import { eq, inArray, and, isNotNull } from "drizzle-orm";
-import { applyAccountChange, SYSTEM_ACTOR, logAccountRestoration, type Role } from "./accountGuard";
+import {
+  applyAccountChange,
+  SYSTEM_ACTOR,
+  logAccountRestoration,
+  protectedSuperAdminEmails,
+  type Role,
+} from "./accountGuard";
+
+/**
+ * Startup enforcement: guarantee that every protected super-admin account (see
+ * protectedSuperAdminEmails) is actually a super_admin in the database. If one
+ * was somehow demoted while the server was down, this promotes it straight back
+ * to super_admin (not just admin) on the next boot. Runs on every startup and
+ * is a no-op when everything is already correct.
+ */
+export async function ensureProtectedSuperAdmins(): Promise<number> {
+  const emails = protectedSuperAdminEmails();
+  if (emails.length === 0) return 0;
+
+  const rows = await db
+    .select()
+    .from(users)
+    .where(inArray(users.email, emails));
+
+  let fixed = 0;
+  for (const u of rows) {
+    if (u.role === "super_admin" && (u.clientId ?? null) === null) continue;
+    try {
+      const beforeRole = u.role as Role;
+      const beforeClientId = u.clientId ?? null;
+      const updated = await applyAccountChange(
+        SYSTEM_ACTOR,
+        u.id,
+        { role: "super_admin", clientId: null },
+        "Protected super admin: enforced super_admin role on startup",
+      );
+      await logAccountRestoration(
+        SYSTEM_ACTOR,
+        u,
+        beforeRole,
+        updated.role as Role,
+        beforeClientId,
+        updated.clientId ?? null,
+        "Restored protected super admin to super_admin",
+      );
+      fixed += 1;
+      console.log(`[account-recovery] Enforced super_admin for ${u.email}`);
+    } catch (err: any) {
+      console.error(
+        `[account-recovery] Failed to enforce super_admin for ${u.email}: ${err.message}`,
+      );
+    }
+  }
+  return fixed;
+}
 
 /**
  * One-time / startup recovery for accounts that were silently demoted from
