@@ -7590,6 +7590,224 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/ai/projects/:projectId/data-availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project id" });
+      }
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      const hasTasks = (project.tasks?.length || 0) > 0;
+      const hasNotes = (project.notes || []).some((n) => n.content && n.content.trim());
+      const hasDescription = !!(project.description && project.description.trim());
+      const hasTaskNotes = (project.tasks || []).some(
+        (t) => t.internalNotes && t.internalNotes.trim(),
+      );
+      let hasMilestones = false;
+      try {
+        const ms = await storage.getMilestonesByProjectId(projectId);
+        hasMilestones = ms.length > 0;
+      } catch {}
+
+      res.json({ hasData: hasTasks || hasNotes || hasDescription || hasTaskNotes || hasMilestones });
+    } catch (error: any) {
+      console.error("AI project data-availability error:", error);
+      res.status(500).json({ error: "Failed to check project data" });
+    }
+  });
+
+  app.post("/api/ai/projects/:projectId/ask", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const schema = z.object({ question: z.string().min(1).max(2000) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Question is required (max 2,000 characters)" });
+      }
+      const { question } = parsed.data;
+
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Invalid project id" });
+      }
+
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      let milestones: any[] = [];
+      try {
+        milestones = await storage.getMilestonesByProjectId(projectId);
+      } catch {}
+
+      const fmtDate = (d: any) => {
+        if (!d) return "";
+        try {
+          return new Date(d).toISOString().slice(0, 10);
+        } catch {
+          return "";
+        }
+      };
+
+      const sections: string[] = [];
+
+      const meta: string[] = [];
+      meta.push(`Name: ${project.name}`);
+      if (project.status) meta.push(`Status: ${project.status}`);
+      if (project.priority) meta.push(`Priority: ${project.priority}`);
+      if (project.jobType) meta.push(`Job type: ${project.jobType}`);
+      if (project.client?.name) meta.push(`Client: ${project.client.name}`);
+      const addr = [project.address, project.city, project.state, project.zip]
+        .filter(Boolean)
+        .join(", ");
+      if (addr) meta.push(`Address: ${addr}`);
+      if (project.county) meta.push(`County: ${project.county}`);
+      if (project.municipality) meta.push(`Municipality: ${project.municipality}`);
+      if (project.jurisdiction) meta.push(`Jurisdiction: ${project.jurisdiction}`);
+      if (project.startDate) meta.push(`Start date: ${fmtDate(project.startDate)}`);
+      if (project.targetEndDate) meta.push(`Target end: ${fmtDate(project.targetEndDate)}`);
+      if (project.actualEndDate) meta.push(`Actual end: ${fmtDate(project.actualEndDate)}`);
+      if (project.description && project.description.trim()) {
+        meta.push(`Description: ${project.description.trim()}`);
+      }
+      sections.push(`## Project\n${meta.join("\n")}`);
+
+      if (milestones.length > 0) {
+        const lines = milestones.map((m) => {
+          const parts = [
+            m.isCompleted ? "[x]" : "[ ]",
+            m.title,
+            m.dueDate ? `(due ${fmtDate(m.dueDate)})` : "",
+            m.completedAt ? `(done ${fmtDate(m.completedAt)})` : "",
+          ].filter(Boolean);
+          let line = `- ${parts.join(" ")}`;
+          if (m.description && m.description.trim()) {
+            line += `\n    ${m.description.trim()}`;
+          }
+          return line;
+        });
+        sections.push(`## Milestones\n${lines.join("\n")}`);
+      }
+
+      const tasksSorted = (project.tasks || []).slice().sort((a, b) => {
+        const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return db - da;
+      });
+
+      if (tasksSorted.length > 0) {
+        const taskLines: string[] = [];
+        for (const t of tasksSorted) {
+          const head = [
+            `- ${t.title}`,
+            `status: ${t.status}`,
+            t.priority ? `priority: ${t.priority}` : "",
+            t.dueDate ? `due: ${fmtDate(t.dueDate)}` : "",
+            t.completedAt ? `completed: ${fmtDate(t.completedAt)}` : "",
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          let block = head;
+          if (t.internalNotes && t.internalNotes.trim()) {
+            block += `\n    Notes: ${t.internalNotes.trim()}`;
+          }
+          taskLines.push(block);
+        }
+        sections.push(`## Tasks\n${taskLines.join("\n")}`);
+      }
+
+      const projectNotes = (project.notes || [])
+        .filter((n) => n.content && n.content.trim())
+        .slice()
+        .sort((a, b) => {
+          const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return da - db;
+        });
+      if (projectNotes.length > 0) {
+        const noteLines = projectNotes.map(
+          (n) => `[${fmtDate(n.createdAt)}] ${n.content.trim()}`,
+        );
+        sections.push(`## Project notes (oldest first)\n${noteLines.join("\n\n")}`);
+      }
+
+      const taskNoteHistoryLines: string[] = [];
+      const taskIdsForHistory = tasksSorted.slice(0, 40).map((t) => t.id);
+      for (const tid of taskIdsForHistory) {
+        try {
+          const history = await storage.getAuditLogsByEntity("task_notes", String(tid));
+          const task = tasksSorted.find((t) => t.id === tid);
+          for (const log of history) {
+            const meta: any = log.metadata || {};
+            const newNotes: string | null = meta.newNotes ?? null;
+            if (newNotes && newNotes.trim()) {
+              taskNoteHistoryLines.push(
+                `[${fmtDate(log.createdAt)}] Task "${task?.title || tid}": ${newNotes.trim()}`,
+              );
+            }
+          }
+        } catch {}
+      }
+      if (taskNoteHistoryLines.length > 0) {
+        sections.push(
+          `## Task notes history (oldest first)\n${taskNoteHistoryLines
+            .slice(-100)
+            .join("\n\n")}`,
+        );
+      }
+
+      let joined = sections.join("\n\n");
+      const MAX_CHARS = 24000;
+      if (joined.length > MAX_CHARS) {
+        joined = joined.slice(0, MAX_CHARS) + "\n\n[Truncated due to length]";
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const systemPrompt = `You are an assistant that answers questions about a single construction permit project. Use ONLY the information provided in the project context. If the answer is not in the context, say so plainly. Be concise, organize answers with short bullet points when appropriate, and reference task names, dates, and milestones when helpful. Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+
+      const userPrompt = `Project context:\n\n${joined}\n\nQuestion: ${question}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 900,
+        temperature: 0.3,
+      });
+
+      const answer = response.choices[0]?.message?.content?.trim() || "";
+      res.json({
+        answer,
+        taskCount: tasksSorted.length,
+        noteCount: projectNotes.length,
+        milestoneCount: milestones.length,
+      });
+    } catch (error: any) {
+      console.error("AI ask-project error:", error);
+      res.status(500).json({ error: "Failed to generate answer" });
+    }
+  });
+
   app.post("/api/ai/improve-text", isAuthenticated, async (req: Request, res) => {
     try {
       const schema = z.object({ text: z.string().min(1).max(10000) });

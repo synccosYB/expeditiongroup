@@ -74,6 +74,7 @@ import {
   Building,
   Search,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { StatusBadge, TaskTypeBadge, AssociateTypeBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
@@ -106,6 +107,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { SimpleFileUploader } from "@/components/SimpleFileUploader";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { DocumentManager } from "@/components/DocumentManager";
+import { AskAiPanel } from "@/components/ask-ai-panel";
 import { InvoiceGenerationDialog } from "@/components/invoice-generation-dialog";
 
 type TaskWithSubtasks = Task & { 
@@ -1049,7 +1051,7 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("tasks");
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
@@ -2207,7 +2209,33 @@ export default function ProjectDetail() {
             <ClipboardCheck className="h-4 w-4 hidden sm:block" />
             Intake {intake ? "" : "(None)"}
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="ask-ai" className="gap-1.5 text-xs sm:text-sm whitespace-nowrap" data-testid="tab-ask-ai">
+              <Sparkles className="h-4 w-4 hidden sm:block" />
+              Ask AI
+            </TabsTrigger>
+          )}
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="ask-ai" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="h-5 w-5 text-chart-4" />
+                  Ask AI about this project
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AskAiPanel
+                  scope="project"
+                  entityId={project?.id}
+                  testIdPrefix="ask-ai-project"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="mt-6">
