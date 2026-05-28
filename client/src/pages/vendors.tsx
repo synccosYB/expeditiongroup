@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ const vendorFormSchema = z.object({
 type VendorFormData = z.infer<typeof vendorFormSchema>;
 
 export default function Vendors() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -135,7 +137,7 @@ export default function Vendors() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -166,7 +168,7 @@ export default function Vendors() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -195,7 +197,7 @@ export default function Vendors() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }

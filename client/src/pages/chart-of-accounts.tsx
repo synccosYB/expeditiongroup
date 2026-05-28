@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,7 @@ function flattenAccountTreeForDisplay(accounts: AccountWithChildren[], depth = 0
 }
 
 export default function ChartOfAccounts() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -219,7 +221,7 @@ export default function ChartOfAccounts() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -274,7 +276,7 @@ export default function ChartOfAccounts() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -327,7 +329,7 @@ export default function ChartOfAccounts() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }

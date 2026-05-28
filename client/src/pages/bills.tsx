@@ -31,7 +31,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, FileText, X, DollarSign, Upload, Image, Loader2, ExternalLink, Eye, Copy, RefreshCw } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
@@ -268,6 +268,7 @@ function BillDocumentUploader({
 }
 
 export default function Bills() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -384,7 +385,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -425,7 +426,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -454,7 +455,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -503,7 +504,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -552,7 +553,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -583,7 +584,7 @@ export default function Bills() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }

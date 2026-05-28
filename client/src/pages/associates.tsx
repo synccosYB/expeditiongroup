@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,7 @@ const typeOptions = [
 ];
 
 export default function Associates() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -128,7 +129,7 @@ export default function Associates() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -159,7 +160,7 @@ export default function Associates() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -188,7 +189,7 @@ export default function Associates() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }

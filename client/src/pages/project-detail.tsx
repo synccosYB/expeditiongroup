@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1047,6 +1047,7 @@ function IntakeLinkSection({ projectId }: { projectId: number }) {
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("tasks");
@@ -1179,7 +1180,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
@@ -1197,7 +1198,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update visibility", variant: "destructive" });
@@ -1366,7 +1367,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
@@ -1403,7 +1404,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update task", variant: "destructive" });
@@ -1425,7 +1426,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete task", variant: "destructive" });
@@ -1474,7 +1475,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add note", variant: "destructive" });
@@ -1507,7 +1508,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update note", variant: "destructive" });
@@ -1526,7 +1527,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete note", variant: "destructive" });
@@ -1564,7 +1565,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add time log", variant: "destructive" });
@@ -1602,7 +1603,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update time log", variant: "destructive" });
@@ -1623,7 +1624,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete time log", variant: "destructive" });
@@ -1643,7 +1644,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to create folder", variant: "destructive" });
@@ -1668,7 +1669,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add document", variant: "destructive" });
@@ -1687,7 +1688,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
@@ -1706,7 +1707,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete folder", variant: "destructive" });
@@ -1726,7 +1727,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to move document", variant: "destructive" });
@@ -1752,7 +1753,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to create checklist", variant: "destructive" });
@@ -1769,7 +1770,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to update checklist", variant: "destructive" });
@@ -1787,7 +1788,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to delete checklist", variant: "destructive" });
@@ -1808,7 +1809,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to add associate", variant: "destructive" });
@@ -1826,7 +1827,7 @@ export default function ProjectDetail() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to remove associate", variant: "destructive" });
@@ -1968,10 +1969,10 @@ export default function ProjectDetail() {
               title="Project not found"
               description="The project you're looking for doesn't exist or may have been deleted."
               actionLabel="View All Projects"
-              onAction={() => window.location.href = "/projects"}
+              onAction={() => setLocation("/projects")}
             />
             <div className="flex justify-center pb-6">
-              <Button variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = "/projects"} data-testid="button-go-back">
+              <Button variant="outline" onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/projects")} data-testid="button-go-back">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Go Back
               </Button>

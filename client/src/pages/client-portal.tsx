@@ -162,7 +162,7 @@ export default function ClientPortal() {
           <h2 className="text-xl font-semibold">Active Projects</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} onView={() => setLocation(`/project/${project.id}`)} />
+              <ProjectCard key={project.id} project={project} onView={() => setLocation(`/projects/${project.id}`)} />
             ))}
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function ClientPortal() {
           <h2 className="text-xl font-semibold text-muted-foreground">Completed Projects</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {completedProjects.slice(0, 3).map((project) => (
-              <ProjectCard key={project.id} project={project} onView={() => setLocation(`/project/${project.id}`)} />
+              <ProjectCard key={project.id} project={project} onView={() => setLocation(`/projects/${project.id}`)} />
             ))}
           </div>
         </div>
@@ -193,7 +193,7 @@ export default function ClientPortal() {
           {invoices && invoices.filter(Boolean).length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {invoices.filter(Boolean).slice(0, 6).map((invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice} onView={() => setLocation(`/invoice/${invoice.id}`)} />
+                <InvoiceCard key={invoice.id} invoice={invoice} onView={() => setLocation(`/invoices/${invoice.id}`)} />
               ))}
             </div>
           ) : (

@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 import {
   Sidebar,
   SidebarContent,
@@ -85,7 +86,7 @@ const clientMenuItems = [
 ];
 
 export function AppSidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, isAdmin } = useAuth();
   const menuItems = isAdmin ? adminMenuItems : clientMenuItems;
 
@@ -204,7 +205,9 @@ export function AppSidebar() {
             aria-label="Log out"
             onClick={async () => {
               await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-              window.location.href = "/";
+              queryClient.setQueryData(["/api/auth/user"], null);
+              await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+              setLocation("/");
             }}
           >
             <LogOut className="h-4 w-4" />

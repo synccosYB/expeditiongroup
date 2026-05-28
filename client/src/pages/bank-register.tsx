@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +83,7 @@ type TransactionWithRelations = BankTransaction & {
 };
 
 export default function BankRegister() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [, params] = useRoute("/bank-register/:id");
   const accountId = params?.id ? parseInt(params.id) : null;
@@ -194,7 +195,7 @@ export default function BankRegister() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -244,7 +245,7 @@ export default function BankRegister() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -274,7 +275,7 @@ export default function BankRegister() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }

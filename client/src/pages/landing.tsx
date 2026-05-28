@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -585,12 +586,12 @@ export default function Landing() {
                   <a href="#how-it-works" className="block text-muted-foreground hover:text-primary transition-colors">
                     How It Works
                   </a>
-                  <a href="/about-us" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-about-us">
+                  <Link href="/about-us" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-about-us">
                     About Us
-                  </a>
-                  <a href="/our-story" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-our-story">
+                  </Link>
+                  <Link href="/our-story" className="block text-muted-foreground hover:text-primary transition-colors" data-testid="link-our-story">
                     Our Story
-                  </a>
+                  </Link>
                 </div>
               </div>
 
@@ -620,15 +621,15 @@ export default function Landing() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
               <p>&copy; {new Date().getFullYear()} Expedition Group. All rights reserved.</p>
               <div className="flex flex-wrap items-center justify-center gap-4">
-                <a href="/privacy-policy" className="hover:text-primary transition-colors" data-testid="link-privacy-policy">
+                <Link href="/privacy-policy" className="hover:text-primary transition-colors" data-testid="link-privacy-policy">
                   Privacy Policy
-                </a>
-                <a href="/terms-of-service" className="hover:text-primary transition-colors" data-testid="link-terms-of-service">
+                </Link>
+                <Link href="/terms-of-service" className="hover:text-primary transition-colors" data-testid="link-terms-of-service">
                   Terms of Service
-                </a>
-                <a href="/cookie-policy" className="hover:text-primary transition-colors" data-testid="link-cookie-policy">
+                </Link>
+                <Link href="/cookie-policy" className="hover:text-primary transition-colors" data-testid="link-cookie-policy">
                   Cookie Policy
-                </a>
+                </Link>
               </div>
               <a href="/auth" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors" data-testid="link-client-portal">
                 Client Portal

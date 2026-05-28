@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ function formatDate(date: string | Date | null) {
 }
 
 export default function JournalEntries() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -143,7 +145,7 @@ export default function JournalEntries() {
         description: "You are logged out. Logging in again...",
         variant: "destructive",
       });
-      setTimeout(() => { window.location.href = "/auth"; }, 500);
+      setTimeout(() => { setLocation("/auth"); }, 500);
       return;
     }
     const errorMessage = error?.message || String(error);

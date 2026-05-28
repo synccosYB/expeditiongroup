@@ -1015,6 +1015,7 @@ function TaskHierarchyItem({
 }
 
 export default function Tasks() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const searchString = useSearch();
@@ -1086,7 +1087,7 @@ export default function Tasks() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/auth";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -1123,7 +1124,7 @@ export default function Tasks() {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
-        setTimeout(() => { window.location.href = "/auth"; }, 500);
+        setTimeout(() => { setLocation("/auth"); }, 500);
         return;
       }
       toast({ title: "Error", description: "Failed to log time entry", variant: "destructive" });

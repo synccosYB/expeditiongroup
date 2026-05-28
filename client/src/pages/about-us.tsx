@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, MapPin, Phone, Mail, CheckCircle2 } from "lucide-react";
@@ -43,10 +44,10 @@ export default function AboutUs() {
           
           <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
             <Button variant="ghost" size="sm" asChild className="mb-8" data-testid="button-back">
-              <a href="/">
+              <Link href="/">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Home
-              </a>
+              </Link>
             </Button>
 
             <div className="max-w-4xl">
