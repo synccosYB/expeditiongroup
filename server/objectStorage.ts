@@ -307,6 +307,66 @@ function ensureFileExtension(filename: string, contentType: string, originalFile
   return trimmedName;
 }
 
+// Extract plain text from a stored file buffer based on its content type / filename.
+// Returns null when the file type is unsupported or extraction fails.
+async function extractTextFromBuffer(
+  buffer: Buffer,
+  contentType: string,
+  fileName: string,
+): Promise<string | null> {
+  const lowerName = fileName.toLowerCase();
+  const lowerType = (contentType || "").toLowerCase();
+
+  const isPdf = lowerType.includes("pdf") || lowerName.endsWith(".pdf");
+  const isDocx =
+    lowerType.includes("wordprocessingml") || lowerName.endsWith(".docx");
+  const isPlainText =
+    lowerType.startsWith("text/") ||
+    lowerType.includes("json") ||
+    lowerType.includes("xml") ||
+    lowerType.includes("csv") ||
+    /\.(txt|md|csv|json|xml|html?|log|rtf)$/.test(lowerName);
+
+  try {
+    if (isPdf) {
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const data = await parser.getText();
+      return data.text || null;
+    }
+    if (isDocx) {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value || null;
+    }
+    if (isPlainText) {
+      return buffer.toString("utf-8");
+    }
+  } catch (err) {
+    console.error(`Failed to extract text from "${fileName}":`, err);
+    return null;
+  }
+  return null;
+}
+
+// Given an object storage path (e.g. "/objects/uploads/<id>"), download the file
+// and return its extracted plain text, or null if it cannot be read.
+export async function extractDocumentText(
+  storagePath: string,
+  fileName: string,
+): Promise<string | null> {
+  try {
+    const file = await objectStorageService.getObjectEntityFile(storagePath);
+    const [metadata] = await file.getMetadata();
+    const contentType = metadata.contentType || "application/octet-stream";
+    const [buffer] = await file.download();
+    return await extractTextFromBuffer(buffer, contentType, fileName);
+  } catch (err) {
+    console.error(`Failed to read document "${fileName}" (${storagePath}):`, err);
+    return null;
+  }
+}
+
 function parseObjectPath(path: string): {
   bucketName: string;
   objectName: string;

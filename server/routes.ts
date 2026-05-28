@@ -4,7 +4,7 @@ import { storage, db } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageService, extractDocumentText } from "./objectStorage";
 import { registerReportRoutes } from "./reports";
 import {
   applyAccountChange,
@@ -2661,15 +2661,63 @@ export async function registerRoutes(
         joined = joined.slice(joined.length - MAX_CHARS);
       }
 
+      // Gather text from client-visible attached documents (extracted on demand).
+      // One unreadable/unsupported file must never break the response.
+      const PER_DOC_CHARS = 6000;
+      const TOTAL_DOC_CHARS = 14000;
+      let docsText = "";
+      try {
+        const allDocuments = await storage.getDocumentsByProjectId(projectId);
+        const visibleDocuments = allDocuments.filter(
+          (d) => d.isVisibleToClient && d.storagePath,
+        );
+        const docBlocks: string[] = [];
+        let docCharsUsed = 0;
+        for (const doc of visibleDocuments) {
+          if (docCharsUsed >= TOTAL_DOC_CHARS) break;
+          let text: string | null = null;
+          try {
+            text = await extractDocumentText(doc.storagePath, doc.fileName);
+          } catch (docErr) {
+            console.error(
+              `Skipping unreadable document "${doc.fileName}":`,
+              docErr,
+            );
+            continue;
+          }
+          if (!text || !text.trim()) continue;
+          let cleaned = text.replace(/\s+\n/g, "\n").trim();
+          if (cleaned.length > PER_DOC_CHARS) {
+            cleaned =
+              cleaned.slice(0, PER_DOC_CHARS) + "\n[Document truncated]";
+          }
+          const remaining = TOTAL_DOC_CHARS - docCharsUsed;
+          if (cleaned.length > remaining) {
+            cleaned = cleaned.slice(0, remaining) + "\n[Document truncated]";
+          }
+          docBlocks.push(`Document: ${doc.fileName}\n${cleaned}`);
+          docCharsUsed += cleaned.length;
+        }
+        if (docBlocks.length > 0) {
+          docsText = docBlocks.join("\n\n---\n\n");
+        }
+      } catch (docsErr) {
+        console.error("Client AI document extraction error:", docsErr);
+      }
+
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
-      const systemPrompt = `You are an assistant that answers a client's questions about their permit-expediting project. Use ONLY the information in the provided project context. If the answer is not in the context, say so plainly. Be concise, friendly, and reference dates when helpful (entries are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+      const systemPrompt = `You are an assistant that answers a client's questions about their permit-expediting project. Use ONLY the information in the provided project context and attached documents. The context may include the text of attached documents (such as contracts, permits, or letters) — you may quote and cite their contents. When your answer draws on a document, reference it by its file name (e.g. "according to contract.pdf"). If the answer is not in the context or documents, say so plainly. Be concise, friendly, and reference dates when helpful (entries are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 
-      const userPrompt = `Project: ${project.name}\n\nProject context (oldest first):\n\n${joined}\n\nQuestion: ${question}`;
+      const documentsSection = docsText
+        ? `\n\nAttached documents:\n\n${docsText}`
+        : "";
+
+      const userPrompt = `Project: ${project.name}\n\nProject context (oldest first):\n\n${joined}${documentsSection}\n\nQuestion: ${question}`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
