@@ -12,6 +12,7 @@ import {
   logAccountDeletion,
   listAccountAuditLogs,
   AccountGuardError,
+  isProtectedSuperAdmin,
 } from "./accountGuard";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
@@ -2491,6 +2492,10 @@ export async function registerRoutes(
       const target = await storage.getUser(req.params.id);
       if (!target) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      if (isProtectedSuperAdmin(target.email)) {
+        return res.status(403).json({ message: "This account is a protected super admin and cannot be deleted." });
       }
 
       if (target.role === "super_admin" && currentUser.role !== "super_admin") {

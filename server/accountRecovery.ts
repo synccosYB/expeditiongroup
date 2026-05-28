@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { users, projects, type User } from "@shared/schema";
-import { eq, inArray, and, isNotNull } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, sql } from "drizzle-orm";
 import {
   applyAccountChange,
   SYSTEM_ACTOR,
@@ -23,7 +23,7 @@ export async function ensureProtectedSuperAdmins(): Promise<number> {
   const rows = await db
     .select()
     .from(users)
-    .where(inArray(users.email, emails));
+    .where(inArray(sql`lower(${users.email})`, emails));
 
   let fixed = 0;
   for (const u of rows) {
