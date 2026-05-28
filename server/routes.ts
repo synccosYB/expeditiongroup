@@ -2536,6 +2536,154 @@ export async function registerRoutes(
     }
   });
 
+  // Client Portal - Check if there is anything for AI to answer about
+  app.get("/api/client/projects/:id/ai/note-availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const projectId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(projectId) || String(projectId) !== req.params.id) {
+        return res.status(400).json({ message: "Invalid project id" });
+      }
+      const project = await storage.getProject(projectId);
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      const hasVisibleNotes = (project.notes || []).some(
+        (n: any) => n.isVisibleToClient && n.content && n.content.trim(),
+      );
+      const hasTasks = (project.tasks || []).length > 0;
+      res.json({ hasNotes: hasVisibleNotes || hasTasks });
+    } catch (error) {
+      console.error("Client AI note-availability error:", error);
+      res.status(500).json({ message: "Failed to check availability" });
+    }
+  });
+
+  // Client Portal - Ask AI about a project (scoped to what the client can see)
+  app.post("/api/client/projects/:id/ai/ask", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.clientId) {
+        return res.status(403).json({ message: "No client access" });
+      }
+      const projectId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(projectId) || String(projectId) !== req.params.id) {
+        return res.status(400).json({ message: "Invalid project id" });
+      }
+      const schema = z.object({ question: z.string().min(1).max(2000) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Question is required (max 2,000 characters)" });
+      }
+      const { question } = parsed.data;
+
+      const project = await storage.getProject(projectId);
+      if (!project || project.clientId !== user.clientId || !project.isVisibleToClient) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      type Entry = { date: Date; label: string; content: string };
+      const entries: Entry[] = [];
+
+      const fmt = (d: Date | null | undefined) => {
+        if (!d) return "unknown date";
+        try {
+          return new Date(d).toISOString().slice(0, 10);
+        } catch {
+          return "unknown date";
+        }
+      };
+
+      entries.push({
+        date: project.updatedAt || project.createdAt || new Date(),
+        label: "Project status",
+        content: [
+          `Name: ${project.name}`,
+          project.description ? `Description: ${project.description}` : null,
+          `Status: ${project.status}`,
+          project.startDate ? `Start date: ${fmt(project.startDate)}` : null,
+          project.targetEndDate ? `Target end date: ${fmt(project.targetEndDate)}` : null,
+          project.actualEndDate ? `Actual end date: ${fmt(project.actualEndDate)}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+
+      for (const note of project.notes || []) {
+        if (!note.isVisibleToClient) continue;
+        if (!note.content || !note.content.trim()) continue;
+        entries.push({
+          date: note.createdAt || new Date(),
+          label: note.taskId ? "Task note" : "Project update",
+          content: note.content,
+        });
+      }
+
+      for (const task of project.tasks || []) {
+        const parts: string[] = [
+          `Task: ${task.title}`,
+          `Status: ${task.status}`,
+        ];
+        if (task.dueDate) parts.push(`Due: ${fmt(task.dueDate)}`);
+        if (task.completedAt) parts.push(`Completed: ${fmt(task.completedAt)}`);
+        if (task.description) parts.push(`Description: ${task.description}`);
+        entries.push({
+          date: task.completedAt || task.dueDate || task.updatedAt || task.createdAt || new Date(),
+          label: "Task",
+          content: parts.join("\n"),
+        });
+      }
+
+      if (entries.length === 0) {
+        return res.status(400).json({ message: "No project information available yet" });
+      }
+
+      entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const MAX_CHARS = 16000;
+      let contextBlocks = entries.map(
+        (e) => `[${fmt(e.date)}] ${e.label}:\n${e.content.trim()}`,
+      );
+      let joined = contextBlocks.join("\n\n---\n\n");
+      while (joined.length > MAX_CHARS && contextBlocks.length > 1) {
+        contextBlocks.shift();
+        joined = `[Older items truncated]\n\n` + contextBlocks.join("\n\n---\n\n");
+      }
+      if (joined.length > MAX_CHARS) {
+        joined = joined.slice(joined.length - MAX_CHARS);
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const systemPrompt = `You are an assistant that answers a client's questions about their permit-expediting project. Use ONLY the information in the provided project context. If the answer is not in the context, say so plainly. Be concise, friendly, and reference dates when helpful (entries are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+
+      const userPrompt = `Project: ${project.name}\n\nProject context (oldest first):\n\n${joined}\n\nQuestion: ${question}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 800,
+        temperature: 0.3,
+      });
+
+      const answer = response.choices[0]?.message?.content?.trim() || "";
+      res.json({ answer, entryCount: entries.length });
+    } catch (error: any) {
+      console.error("Client AI ask-project error:", error);
+      res.status(500).json({ message: "Failed to generate answer" });
+    }
+  });
+
   // Client Portal - Get folders for a project
   app.get("/api/client/projects/:id/folders", isAuthenticated, async (req: any, res) => {
     try {

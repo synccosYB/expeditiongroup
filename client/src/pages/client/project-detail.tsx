@@ -41,10 +41,12 @@ import {
   Archive,
   Printer,
   Building2,
+  Sparkles,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { AskAiProjectPanel } from "@/components/ask-ai-project-panel";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project, Client, Task, Note, User, Document, ClientPortalSettings, Associate, Folder as FolderType } from "@shared/schema";
@@ -514,6 +516,10 @@ export default function ClientProjectDetail() {
               Timeline
             </TabsTrigger>
           )}
+          <TabsTrigger value="ask-ai" className="gap-2" data-testid="tab-ask-ai">
+            <Sparkles className="h-4 w-4" />
+            Ask AI
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tasks" className="mt-6">
@@ -851,6 +857,24 @@ export default function ClientProjectDetail() {
                   description="Tasks will appear here as they are created"
                 />
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ask-ai" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="h-5 w-5 text-chart-4" />
+                Ask AI about this project
+              </CardTitle>
+              <CardDescription>
+                Get a quick summary or ask a specific question based on your
+                project's visible updates and tasks.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AskAiProjectPanel projectId={project.id} />
             </CardContent>
           </Card>
         </TabsContent>
