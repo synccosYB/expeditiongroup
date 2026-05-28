@@ -1,0 +1,55 @@
+FR-0072
+AI read tasks
+Feature Request
+New
+Low
+Close
+Resolve
+Status
+New
+Priority
+Low
+Assigned To
+Unassigned
+Description
+
+I would like an AI feature that allows me to ask questions within my task list. For example, if I have 40 notes from the past half year, I want to be able to ask for the current status, and the system should read all notes and summarize the answer.
+
+AI Analysis
+
+### Analysis:
+1) **Affected Part of the App**: This request describes a missing feature related to task management functionality. Specifically, it concerns the ability to query and summarize tasks or notes using an AI feature.
+
+2) **Root Cause Analysis**: The AI feature described does not currently exist, indicating a gap in functionality rather than a bug or technical error. This is a feature request rather than a defect report.
+
+3) **Recommended Fix or Next Steps**:  
+   - Define the scope for this AI feature:
+     - Specify how tasks/notes should be processed (keywords, natural language understanding, etc.).
+     - Decide the data inputs and outputs for the AI (e.g., structured status reports, detailed summaries, etc.).
+   - Implement natural language processing (NLP) capabilities tailored to analyze and summarize text-based notes.
+   - Introduce a backend service to handle the AI model's logic (e.g., use GPT-like technology for summarization or query response).
+   - Incorporate a task-specific query interface within the App UI to support user interactions with the AI.
+   - Test comprehensively for performance, accuracy, and user experience.
+ 
+This is not a defect but a product enhancement opportunity.
+
+```json
+{"severity": "low", "category": "functionality"}
+```
+
+https://expeditiongroupny.com/time-logs
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36
+Yitzchock Braun
+skver8448@gmail.com
+Client: ExpeditionGroup (expeditiongroupny.com)
+Linked Projects
+
+Intake process
+Open in Replit
+Phase 2
+Open in Replit
+Replies (0)
+
+No replies yet
+
+Write a reply...
