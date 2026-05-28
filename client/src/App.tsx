@@ -45,6 +45,7 @@ import ForArchitectsEngineers from "@/pages/for-architects-engineers";
 import ForConstructionManagers from "@/pages/for-construction-managers";
 import SettingsPage from "@/pages/settings";
 import ActivityLogs from "@/pages/activity-logs";
+import AccountActivity from "@/pages/account-activity";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import Intake from "@/pages/intake";
@@ -113,6 +114,7 @@ function AdminRouter() {
       <Route path="/associates" component={Associates} />
       <Route path="/associates/:id" component={AssociateDetail} />
       <Route path="/activity-logs" component={ActivityLogs} />
+      <Route path="/account-activity" component={AccountActivity} />
       <Route path="/reminders" component={Reminders} />
       <Route path="/sales-contacts" component={SalesContacts} />
       <Route path="/sales-pipeline" component={SalesPipeline} />

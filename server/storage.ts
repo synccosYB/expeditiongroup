@@ -134,8 +134,9 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: UpsertUser): Promise<User>;
   updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
-  updateUserRole(id: string, role: "admin" | "client"): Promise<User | undefined>;
-  linkUserToClient(userId: string, clientId: number): Promise<User | undefined>;
+  // Role / client-link changes must go through server/accountGuard.ts
+  // (applyAccountChange). Direct mutation of users.role or users.clientId is
+  // intentionally not exposed on the storage interface.
   getAllUsers(): Promise<User[]>;
   
   // Clients
@@ -317,6 +318,7 @@ export interface IStorage {
   clearTimeEntriesBilledByInvoice(invoiceId: number): Promise<void>;
   remarkTimeEntriesBilledFromInvoiceItems(invoiceId: number): Promise<void>;
   ensureInvoiceIdColumns(): Promise<void>;
+  ensureAccountAuditLogsTable(): Promise<void>;
   migrateInvoiceIdToTimeEntries(): Promise<number>;
   
   // Daily Activity Logs
@@ -532,24 +534,6 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ passwordHash, updatedAt: new Date() })
       .where(eq(users.id, id))
-      .returning();
-    return user;
-  }
-
-  async updateUserRole(id: string, role: "admin" | "client"): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ role, updatedAt: new Date() })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
-  }
-
-  async linkUserToClient(userId: string, clientId: number): Promise<User | undefined> {
-    const [user] = await db
-      .update(users)
-      .set({ clientId, role: "client", updatedAt: new Date() })
-      .where(eq(users.id, userId))
       .returning();
     return user;
   }
@@ -2097,6 +2081,34 @@ export class DatabaseStorage implements IStorage {
     if (logIds.length > 0 || entryIds.length > 0) {
       await this.markTimeEntriesBilled(invoiceId, logIds, entryIds);
     }
+  }
+
+  async ensureAccountAuditLogsTable(): Promise<void> {
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE account_audit_action AS ENUM (
+          'role_change','client_link_change','account_deleted','account_restored'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+      CREATE TABLE IF NOT EXISTS account_audit_logs (
+        id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        actor_user_id varchar,
+        actor_email varchar(255),
+        target_user_id varchar,
+        target_email varchar(255),
+        action account_audit_action NOT NULL,
+        before_role varchar(32),
+        after_role varchar(32),
+        before_client_id integer,
+        after_client_id integer,
+        reason text,
+        metadata jsonb,
+        created_at timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_account_audit_target ON account_audit_logs(target_user_id);
+      CREATE INDEX IF NOT EXISTS idx_account_audit_created ON account_audit_logs(created_at);
+    `);
   }
 
   async ensureInvoiceIdColumns(): Promise<void> {

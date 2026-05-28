@@ -57,6 +57,34 @@ export const journalEntryStatusEnum = pgEnum("journal_entry_status", ["draft", "
 export const documentStatusEnum = pgEnum("document_status", ["uploaded", "under_review", "accepted", "rejected"]);
 export const auditActionEnum = pgEnum("audit_action", ["login", "logout", "upload", "download", "view", "create", "update", "delete", "status_change", "document_uploaded", "document_reviewed", "document_accepted", "document_rejected"]);
 
+// Account audit log enums
+export const accountAuditActionEnum = pgEnum("account_audit_action", [
+  "role_change",
+  "client_link_change",
+  "account_deleted",
+  "account_restored",
+]);
+
+// Account Audit Logs table — tracks sensitive account mutations
+export const accountAuditLogs = pgTable("account_audit_logs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  actorUserId: varchar("actor_user_id"),
+  actorEmail: varchar("actor_email", { length: 255 }),
+  targetUserId: varchar("target_user_id"),
+  targetEmail: varchar("target_email", { length: 255 }),
+  action: accountAuditActionEnum("action").notNull(),
+  beforeRole: varchar("before_role", { length: 32 }),
+  afterRole: varchar("after_role", { length: 32 }),
+  beforeClientId: integer("before_client_id"),
+  afterClientId: integer("after_client_id"),
+  reason: text("reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_account_audit_target").on(table.targetUserId),
+  index("idx_account_audit_created").on(table.createdAt),
+]);
+
 // Session storage table (IMPORTANT: mandatory for Replit Auth)
 export const sessions = pgTable(
   "sessions",
@@ -1473,6 +1501,7 @@ export const insertDocumentRequestSchema = createInsertSchema(documentRequests).
   dueDate: dateCoercion,
 });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export const insertAccountAuditLogSchema = createInsertSchema(accountAuditLogs).omit({ id: true, createdAt: true });
 export const insertIntakeApplicationSchema = createInsertSchema(intakeApplications).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   submittedAt: dateCoercion,
   convertedAt: dateCoercion,
@@ -1570,6 +1599,8 @@ export type InsertDocumentRequest = z.infer<typeof insertDocumentRequestSchema>;
 export type DocumentRequest = typeof documentRequests.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAccountAuditLog = z.infer<typeof insertAccountAuditLogSchema>;
+export type AccountAuditLog = typeof accountAuditLogs.$inferSelect;
 export type InsertIntakeApplication = z.infer<typeof insertIntakeApplicationSchema>;
 export type IntakeApplication = typeof intakeApplications.$inferSelect;
 

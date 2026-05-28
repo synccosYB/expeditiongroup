@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
+import { restoreDemotedAdmins } from "./accountRecovery";
 
 const app = express();
 const httpServer = createServer(app);
@@ -73,6 +74,13 @@ app.use((req, res, next) => {
   });
 
   try {
+    await storage.ensureAccountAuditLogsTable();
+    log(`Ensured account_audit_logs table exists`);
+  } catch (err: any) {
+    log(`Failed to ensure account_audit_logs table: ${err.message}`);
+  }
+
+  try {
     await storage.ensureInvoiceIdColumns();
     log(`Ensured invoice_id columns exist on time_entries and time_logs`);
     const count = await storage.migrateInvoiceIdToTimeEntries();
@@ -82,6 +90,12 @@ app.use((req, res, next) => {
   } catch (err: any) {
     log(`Failed to ensure invoice_id columns or migrate: ${err.message}`);
   }
+
+  restoreDemotedAdmins()
+    .then((n) => {
+      if (n > 0) log(`Restored ${n} demoted admin account(s)`);
+    })
+    .catch((err) => log(`Account restoration failed: ${err.message}`));
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

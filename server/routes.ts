@@ -6,6 +6,13 @@ import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageService } from "./objectStorage";
 import { registerReportRoutes } from "./reports";
+import {
+  applyAccountChange,
+  actorFromUserId,
+  logAccountDeletion,
+  listAccountAuditLogs,
+  AccountGuardError,
+} from "./accountGuard";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
 import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users } from "@shared/schema";
@@ -2443,23 +2450,62 @@ export async function registerRoutes(
       }
 
       const roleSchema = z.object({
-        role: z.enum(["admin", "client"]),
+        role: z.enum(["super_admin", "admin", "client"]),
+        reason: z.string().optional(),
       });
       const parsed = roleSchema.parse(req.body);
 
-      const updatedUser = await storage.updateUserRole(req.params.id, parsed.role);
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const actor = await actorFromUserId(req.session.userId!);
+      const updatedUser = await applyAccountChange(
+        actor,
+        req.params.id,
+        { role: parsed.role },
+        parsed.reason,
+      );
 
       const { passwordHash: _, ...safeUser } = updatedUser;
       res.json(safeUser);
     } catch (error) {
+      if (error instanceof AccountGuardError) {
+        return res.status(error.status).json({ message: error.message });
+      }
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid role" });
       }
       console.error("Error updating user role:", error);
       res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  // Delete a portal user, recording the deletion in the account audit log.
+  app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.session.userId!);
+      if (currentUser?.role !== "admin" && currentUser?.role !== "super_admin") {
+        return res.status(403).json({ message: "Only admins can delete users" });
+      }
+      if (req.params.id === req.session.userId) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+
+      const target = await storage.getUser(req.params.id);
+      if (!target) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (target.role === "super_admin" && currentUser.role !== "super_admin") {
+        return res.status(403).json({ message: "Only a super admin can delete a super admin." });
+      }
+
+      const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
+      const actor = await actorFromUserId(req.session.userId!);
+      await logAccountDeletion(actor, target, reason);
+      await db.delete(users).where(eq(users.id, target.id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
     }
   });
 
@@ -3559,22 +3605,22 @@ export async function registerRoutes(
       const existingUser = await storage.getUserByEmail(parsed.email);
 
       if (existingUser) {
-        // Don't allow linking admin/super_admin accounts - this would demote them
-        if (existingUser.role === "admin" || existingUser.role === "super_admin") {
-          return res.status(400).json({ 
-            message: "Cannot link an admin account to a client. Use a different email address." 
-          });
-        }
-        // Link existing user to this client
+        // Link existing user to this client (guard rejects admin/super_admin)
         if (existingUser.clientId && existingUser.clientId !== clientId) {
           return res.status(400).json({ 
             message: "This email is already linked to a different client" 
           });
         }
-        const linkedUser = await storage.linkUserToClient(existingUser.id, clientId);
+        const actor = await actorFromUserId(req.session.userId!);
+        const linkedUser = await applyAccountChange(
+          actor,
+          existingUser.id,
+          { clientId, role: "client" },
+          `Granted portal access for client #${clientId}`,
+        );
         return res.json({ 
           message: "Existing user linked to client",
-          user: { id: linkedUser?.id, email: linkedUser?.email },
+          user: { id: linkedUser.id, email: linkedUser.email },
           isNew: false 
         });
       }
@@ -3607,6 +3653,9 @@ export async function registerRoutes(
         isNew: true 
       });
     } catch (error) {
+      if (error instanceof AccountGuardError) {
+        return res.status(error.status).json({ message: error.message });
+      }
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
@@ -4313,10 +4362,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "userId and clientId are required" });
       }
 
-      const linkedUser = await storage.linkUserToClient(userId, clientId);
-      if (!linkedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const actor = await actorFromUserId(req.session.userId!);
+      const linkedUser = await applyAccountChange(
+        actor,
+        userId,
+        { clientId, role: "client" },
+        `Admin linked portal user to client #${clientId} via diagnostics`,
+      );
 
       // Ensure portal settings exist
       await storage.upsertClientPortalSettings({ clientId });
@@ -4326,8 +4378,38 @@ export async function registerRoutes(
         user: { id: linkedUser.id, email: linkedUser.email, clientId: linkedUser.clientId }
       });
     } catch (error) {
+      if (error instanceof AccountGuardError) {
+        return res.status(error.status).json({ message: error.message });
+      }
       console.error("Error linking portal user:", error);
       res.status(500).json({ message: "Failed to link user" });
+    }
+  });
+
+  // ============ Account Audit Logs (admin only) ============
+  app.get("/api/account-audit-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const targetUserId = typeof req.query.targetUserId === "string" ? req.query.targetUserId : undefined;
+      const actorUserId = typeof req.query.actorUserId === "string" ? req.query.actorUserId : undefined;
+      const startRaw = typeof req.query.startDate === "string" ? req.query.startDate : undefined;
+      const endRaw = typeof req.query.endDate === "string" ? req.query.endDate : undefined;
+      const limit = req.query.limit ? Math.max(1, parseInt(req.query.limit as string, 10) || 200) : 200;
+
+      const entries = await listAccountAuditLogs({
+        targetUserId,
+        actorUserId,
+        startDate: startRaw ? new Date(startRaw) : undefined,
+        endDate: endRaw ? new Date(endRaw) : undefined,
+        limit,
+      });
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching account audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 
