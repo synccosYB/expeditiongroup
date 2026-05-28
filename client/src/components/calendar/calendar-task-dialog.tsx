@@ -29,6 +29,7 @@ import { AIImproveButton } from "@/components/ai-improve-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { NotesHistoryList } from "@/components/notes-history-list";
+import { AskAiTaskPanel } from "@/components/ask-ai-task-panel";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ import {
   Save,
   X,
   StickyNote,
+  Sparkles,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { useToast } from "@/hooks/use-toast";
@@ -298,7 +300,7 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
 
         {event.type === "task" && task && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details" className="gap-2" data-testid="tab-details">
                 <FileText className="h-4 w-4" />
                 Details
@@ -310,6 +312,10 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
               <TabsTrigger value="timelog" className="gap-2" data-testid="tab-timelog">
                 <Clock className="h-4 w-4" />
                 Time Log
+              </TabsTrigger>
+              <TabsTrigger value="ask-ai" className="gap-2" data-testid="tab-ask-ai">
+                <Sparkles className="h-4 w-4" />
+                Ask AI
               </TabsTrigger>
             </TabsList>
 
@@ -700,6 +706,17 @@ export function CalendarTaskDialog({ event, isOpen, onClose }: CalendarTaskDialo
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent
+              value="ask-ai"
+              forceMount
+              className="space-y-4 pt-4 data-[state=inactive]:hidden"
+            >
+              <AskAiTaskPanel
+                taskId={task?.id}
+                testIdPrefix="ask-ai"
+              />
             </TabsContent>
           </Tabs>
         )}

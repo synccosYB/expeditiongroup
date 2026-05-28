@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AIImproveButton } from "@/components/ai-improve-button";
 import { Separator } from "@/components/ui/separator";
 import { NotesHistoryList } from "@/components/notes-history-list";
+import { AskAiTaskPanel } from "@/components/ask-ai-task-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +57,7 @@ import {
   Save,
   X,
   StickyNote,
+  Sparkles,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { EmptyState } from "@/components/empty-state";
@@ -422,7 +424,7 @@ function TaskDetailDialog({
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details" className="gap-2" data-testid="tab-detail-details">
               <FileText className="h-4 w-4" />
               Details
@@ -434,6 +436,10 @@ function TaskDetailDialog({
             <TabsTrigger value="timelog" className="gap-2" data-testid="tab-detail-timelog">
               <Clock className="h-4 w-4" />
               Time Log
+            </TabsTrigger>
+            <TabsTrigger value="ask-ai" className="gap-2" data-testid="tab-detail-ask-ai">
+              <Sparkles className="h-4 w-4" />
+              Ask AI
             </TabsTrigger>
           </TabsList>
 
@@ -840,6 +846,17 @@ function TaskDetailDialog({
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent
+            value="ask-ai"
+            forceMount
+            className="space-y-4 pt-4 data-[state=inactive]:hidden"
+          >
+            <AskAiTaskPanel
+              taskId={effectiveTask?.id}
+              testIdPrefix="detail-ask-ai"
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>

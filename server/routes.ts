@@ -7280,6 +7280,168 @@ export async function registerRoutes(
     console.error("Error backfilling payments:", error);
   }
 
+  app.get("/api/ai/tasks/:taskId/note-availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const taskId = parseInt(req.params.taskId);
+      if (isNaN(taskId)) {
+        return res.status(400).json({ error: "Invalid task id" });
+      }
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      if (task.internalNotes && task.internalNotes.trim()) {
+        return res.json({ hasNotes: true });
+      }
+      const relatedNotes = await db.select().from(notes).where(eq(notes.taskId, taskId));
+      if (relatedNotes.some((n) => n.content && n.content.trim())) {
+        return res.json({ hasNotes: true });
+      }
+      const history = await storage.getAuditLogsByEntity("task_notes", String(taskId));
+      const historyHasContent = history.some((log) => {
+        const meta: any = log.metadata || {};
+        return (
+          (meta.newNotes && String(meta.newNotes).trim()) ||
+          (meta.oldNotes && String(meta.oldNotes).trim())
+        );
+      });
+      res.json({ hasNotes: historyHasContent });
+    } catch (error: any) {
+      console.error("AI note-availability error:", error);
+      res.status(500).json({ error: "Failed to check note availability" });
+    }
+  });
+
+  app.post("/api/ai/tasks/:taskId/ask", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const schema = z.object({ question: z.string().min(1).max(2000) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Question is required (max 2,000 characters)" });
+      }
+      const { question } = parsed.data;
+
+      const taskId = parseInt(req.params.taskId);
+      if (isNaN(taskId)) {
+        return res.status(400).json({ error: "Invalid task id" });
+      }
+
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const [relatedNotes, history] = await Promise.all([
+        db
+          .select()
+          .from(notes)
+          .where(eq(notes.taskId, taskId)),
+        storage.getAuditLogsByEntity("task_notes", String(taskId)),
+      ]);
+
+      type Entry = { date: Date; label: string; content: string };
+      const entries: Entry[] = [];
+
+      if (task.internalNotes && task.internalNotes.trim()) {
+        entries.push({
+          date: task.updatedAt || task.createdAt || new Date(),
+          label: "Current internal notes",
+          content: task.internalNotes,
+        });
+      }
+
+      for (const note of relatedNotes) {
+        if (!note.content || !note.content.trim()) continue;
+        entries.push({
+          date: note.createdAt || new Date(),
+          label: "Note",
+          content: note.content,
+        });
+      }
+
+      for (const log of history) {
+        const meta: any = log.metadata || {};
+        const newNotes: string | null = meta.newNotes ?? null;
+        const oldNotes: string | null = meta.oldNotes ?? null;
+        if (newNotes && newNotes.trim()) {
+          entries.push({
+            date: log.createdAt || new Date(),
+            label: oldNotes ? "Notes updated to" : "Notes added",
+            content: newNotes,
+          });
+        } else if (oldNotes && !newNotes) {
+          entries.push({
+            date: log.createdAt || new Date(),
+            label: "Notes cleared (previous content)",
+            content: oldNotes,
+          });
+        }
+      }
+
+      if (entries.length === 0) {
+        return res.status(400).json({ error: "No notes available for this task" });
+      }
+
+      entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const fmt = (d: Date) => {
+        try {
+          return new Date(d).toISOString().slice(0, 10);
+        } catch {
+          return "unknown date";
+        }
+      };
+
+      const MAX_CHARS = 16000;
+      let contextBlocks = entries.map(
+        (e) => `[${fmt(e.date)}] ${e.label}:\n${e.content.trim()}`,
+      );
+      let joined = contextBlocks.join("\n\n---\n\n");
+      while (joined.length > MAX_CHARS && contextBlocks.length > 1) {
+        contextBlocks.shift();
+        joined = `[Older notes truncated]\n\n` + contextBlocks.join("\n\n---\n\n");
+      }
+      if (joined.length > MAX_CHARS) {
+        joined = joined.slice(joined.length - MAX_CHARS);
+      }
+
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const systemPrompt = `You are an assistant that answers questions about a single task's notes and history. Use ONLY the information in the provided notes. If the answer is not in the notes, say so plainly. Be concise and reference dates when helpful (the notes are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+
+      const userPrompt = `Task: ${task.title}\n\nNotes and history (oldest first):\n\n${joined}\n\nQuestion: ${question}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 800,
+        temperature: 0.3,
+      });
+
+      const answer = response.choices[0]?.message?.content?.trim() || "";
+      res.json({ answer, noteCount: entries.length });
+    } catch (error: any) {
+      console.error("AI ask-task error:", error);
+      res.status(500).json({ error: "Failed to generate answer" });
+    }
+  });
+
   app.post("/api/ai/improve-text", isAuthenticated, async (req: Request, res) => {
     try {
       const schema = z.object({ text: z.string().min(1).max(10000) });
