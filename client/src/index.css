@@ -446,8 +446,17 @@
   }
 }
 
+/* Table scroll wrapper - ensure smooth touch scrolling and don't get
+   squeezed by ancestors. Works on both mobile and desktop. */
+.table-scroll-wrapper {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  min-width: 0;
+}
+
 /* Mobile responsive fixes - prevent text overlap on small screens */
 @media (max-width: 767px) {
+  .table-scroll-wrapper > table,
   .relative.w-full.overflow-auto > table,
   .overflow-x-auto > table {
     min-width: 600px;

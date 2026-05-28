@@ -343,15 +343,17 @@ function installCloseInterceptor(): (() => void) {
 
     if (!bodyBlocked) return;
 
-    const overlay = document.querySelector(".sdx-overlay") as HTMLElement | null;
-    const widgetBtn = document.querySelector(".sdx-widget-btn") as HTMLElement | null;
+    // If a Radix dialog is genuinely open, leave body scroll alone.
+    if (document.querySelector('[data-state="open"][role="dialog"]')) return;
 
-    if (!overlay && !widgetBtn && bodyBlocked) {
+    // If the SynkDex overlay is not actually visible, the lock is stale —
+    // release the body scroll so the page (and tables) can scroll again.
+    if (!isOverlayVisible()) {
       document.body.style.overflow = "";
       document.body.style.pointerEvents = "";
       document.documentElement.style.overflow = "";
     }
-  }, 3000);
+  }, 1500);
 
   return () => {
     document.removeEventListener("click", clickHandler, true);
