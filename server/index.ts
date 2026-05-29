@@ -62,46 +62,61 @@ app.use((req, res, next) => {
   next();
 });
 
+// Startup database maintenance (schema migrations, data fixes, account recovery).
+// These run in the BACKGROUND after the HTTP port is open so they never delay the
+// server from accepting connections. If any of these block on the production
+// database (lock contention, heavy joins on large tables), the deployment health
+// check could otherwise time out waiting for the port to open.
+function runStartupMaintenance() {
+  storage.repairOrphanedInvoiceItems()
+    .then((count) => {
+      if (count > 0) {
+        log(`Repaired ${count} orphaned invoice items`);
+      }
+    })
+    .catch((err) => {
+      log(`Failed to repair orphaned invoice items: ${err.message}`);
+    });
+
+  storage.ensureInvoiceIdColumns()
+    .then(async () => {
+      log(`Ensured invoice_id columns exist on time_entries and time_logs`);
+      const count = await storage.migrateInvoiceIdToTimeEntries();
+      if (count > 0) {
+        log(`Migrated invoiceId to ${count} time logs/entries`);
+      }
+    })
+    .catch((err: any) =>
+      log(`Failed to ensure invoice_id columns or migrate: ${err.message}`),
+    );
+
+  // Account recovery writes to account_audit_logs, so ensure that table
+  // exists BEFORE running the recovery/enforcement routines.
+  storage.ensureAccountAuditLogsTable()
+    .then(() => {
+      log(`Ensured account_audit_logs table exists`);
+
+      ensureProtectedSuperAdmins()
+        .then((n) => {
+          if (n > 0) log(`Enforced super_admin on ${n} protected account(s)`);
+        })
+        .catch((err) =>
+          log(`Protected super admin enforcement failed: ${err.message}`),
+        );
+
+      restoreDemotedAdmins()
+        .then((n) => {
+          if (n > 0) log(`Restored ${n} demoted admin account(s)`);
+        })
+        .catch((err) => log(`Account restoration failed: ${err.message}`));
+    })
+    .catch((err: any) =>
+      log(`Failed to ensure account_audit_logs table: ${err.message}`),
+    );
+}
+
 (async () => {
   await registerRoutes(httpServer, app);
-
-  storage.repairOrphanedInvoiceItems().then((count) => {
-    if (count > 0) {
-      log(`Repaired ${count} orphaned invoice items`);
-    }
-  }).catch((err) => {
-    log(`Failed to repair orphaned invoice items: ${err.message}`);
-  });
-
-  try {
-    await storage.ensureAccountAuditLogsTable();
-    log(`Ensured account_audit_logs table exists`);
-  } catch (err: any) {
-    log(`Failed to ensure account_audit_logs table: ${err.message}`);
-  }
-
-  try {
-    await storage.ensureInvoiceIdColumns();
-    log(`Ensured invoice_id columns exist on time_entries and time_logs`);
-    const count = await storage.migrateInvoiceIdToTimeEntries();
-    if (count > 0) {
-      log(`Migrated invoiceId to ${count} time logs/entries`);
-    }
-  } catch (err: any) {
-    log(`Failed to ensure invoice_id columns or migrate: ${err.message}`);
-  }
-
-  ensureProtectedSuperAdmins()
-    .then((n) => {
-      if (n > 0) log(`Enforced super_admin on ${n} protected account(s)`);
-    })
-    .catch((err) => log(`Protected super admin enforcement failed: ${err.message}`));
-
-  restoreDemotedAdmins()
-    .then((n) => {
-      if (n > 0) log(`Restored ${n} demoted admin account(s)`);
-    })
-    .catch((err) => log(`Account restoration failed: ${err.message}`));
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -134,6 +149,9 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      // Open the port first so the deployment health check passes immediately,
+      // then run database maintenance in the background.
+      runStartupMaintenance();
     },
   );
 })();
