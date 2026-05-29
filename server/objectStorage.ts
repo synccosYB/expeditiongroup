@@ -518,17 +518,29 @@ export function invalidateDocumentTextCache(storagePath: string) {
   documentTextCache.delete(storagePath);
 }
 
+// Outcome of attempting to extract text from a single document. Distinguishes
+// "we read text" from "the file had no readable text" from "extraction failed",
+// so callers can log the real cause and tell the user something accurate.
+export type DocumentTextResult =
+  | { status: "success"; text: string; length: number }
+  | { status: "empty" }
+  | { status: "error"; error: string };
+
 // Given an object storage path (e.g. "/objects/uploads/<id>"), download the file
-// and return its extracted plain text, or null if it cannot be read. Results are
-// cached in memory (keyed by storage path) so repeat questions about the same
-// project don't re-download and re-parse the same files.
-export async function extractDocumentText(
+// and return a detailed extraction result. Successful (non-empty) and empty
+// results are cached in memory (keyed by storage path) so repeat questions about
+// the same project don't re-download and re-parse the same files. Errors are not
+// cached so transient failures can recover on a later question.
+export async function extractDocumentTextDetailed(
   storagePath: string,
   fileName: string,
-): Promise<string | null> {
+): Promise<DocumentTextResult> {
   const cached = documentTextCache.get(storagePath);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.text;
+    if (cached.text && cached.text.trim()) {
+      return { status: "success", text: cached.text, length: cached.text.length };
+    }
+    return { status: "empty" };
   }
 
   let text: string | null;
@@ -538,9 +550,10 @@ export async function extractDocumentText(
     const contentType = metadata.contentType || "application/octet-stream";
     const [buffer] = await file.download();
     text = await extractTextFromBuffer(buffer, contentType, fileName);
-  } catch (err) {
+  } catch (err: any) {
+    const message = err?.message || String(err);
     console.error(`Failed to read document "${fileName}" (${storagePath}):`, err);
-    return null;
+    return { status: "error", error: message };
   }
 
   documentTextCache.set(storagePath, {
@@ -548,7 +561,21 @@ export async function extractDocumentText(
     expiresAt: Date.now() + DOC_TEXT_CACHE_TTL_MS,
   });
   pruneDocumentTextCache();
-  return text;
+
+  if (text && text.trim()) {
+    return { status: "success", text, length: text.length };
+  }
+  return { status: "empty" };
+}
+
+// Backwards-compatible helper: return the extracted plain text, or null if it
+// cannot be read (empty or failed).
+export async function extractDocumentText(
+  storagePath: string,
+  fileName: string,
+): Promise<string | null> {
+  const result = await extractDocumentTextDetailed(storagePath, fileName);
+  return result.status === "success" ? result.text : null;
 }
 
 function parseObjectPath(path: string): {

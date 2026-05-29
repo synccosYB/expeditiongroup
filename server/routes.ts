@@ -4,7 +4,7 @@ import { storage, db } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageService, extractDocumentText, invalidateDocumentTextCache } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageService, extractDocumentText, extractDocumentTextDetailed, invalidateDocumentTextCache } from "./objectStorage";
 import { registerReportRoutes } from "./reports";
 import {
   applyAccountChange,
@@ -2672,27 +2672,50 @@ export async function registerRoutes(
       const PER_DOC_CHARS = 6000;
       const TOTAL_DOC_CHARS = 14000;
       let docsText = "";
+      // Names of documents we successfully read text from (for the prompt).
+      const readableDocNames: string[] = [];
+      // Names of documents that exist & are visible but produced no usable text.
+      const unreadableDocNames: string[] = [];
+      let totalDocCount = 0;
+      let visibleDocCount = 0;
       try {
         const allDocuments = await storage.getDocumentsByProjectId(projectId);
+        totalDocCount = allDocuments.length;
         const visibleDocuments = allDocuments.filter(
           (d) => d.isVisibleToClient && d.storagePath,
         );
+        visibleDocCount = visibleDocuments.length;
         const docBlocks: string[] = [];
         let docCharsUsed = 0;
         for (const doc of visibleDocuments) {
-          if (docCharsUsed >= TOTAL_DOC_CHARS) break;
-          let text: string | null = null;
-          try {
-            text = await extractDocumentText(doc.storagePath, doc.fileName);
-          } catch (docErr) {
-            console.error(
-              `Skipping unreadable document "${doc.fileName}":`,
-              docErr,
+          if (docCharsUsed >= TOTAL_DOC_CHARS) {
+            // Out of budget — still note the document exists for the user.
+            unreadableDocNames.push(doc.fileName);
+            console.log(
+              `[ClientAI] project=${projectId} doc="${doc.fileName}" extraction=skipped reason=document_budget_exhausted`,
             );
             continue;
           }
-          if (!text || !text.trim()) continue;
-          let cleaned = text.replace(/\s+\n/g, "\n").trim();
+          const result = await extractDocumentTextDetailed(
+            doc.storagePath,
+            doc.fileName,
+          );
+          if (result.status === "error") {
+            console.log(
+              `[ClientAI] project=${projectId} doc="${doc.fileName}" extraction=error reason="${result.error}"`,
+            );
+            unreadableDocNames.push(doc.fileName);
+            continue;
+          }
+          if (result.status === "empty") {
+            console.log(
+              `[ClientAI] project=${projectId} doc="${doc.fileName}" extraction=empty`,
+            );
+            unreadableDocNames.push(doc.fileName);
+            continue;
+          }
+          let cleaned = result.text.replace(/\s+\n/g, "\n").trim();
+          const originalLength = cleaned.length;
           if (cleaned.length > PER_DOC_CHARS) {
             cleaned =
               cleaned.slice(0, PER_DOC_CHARS) + "\n[Document truncated]";
@@ -2703,6 +2726,10 @@ export async function registerRoutes(
           }
           docBlocks.push(`Document: ${doc.fileName}\n${cleaned}`);
           docCharsUsed += cleaned.length;
+          readableDocNames.push(doc.fileName);
+          console.log(
+            `[ClientAI] project=${projectId} doc="${doc.fileName}" extraction=success chars=${originalLength}`,
+          );
         }
         if (docBlocks.length > 0) {
           docsText = docBlocks.join("\n\n---\n\n");
@@ -2711,13 +2738,41 @@ export async function registerRoutes(
         console.error("Client AI document extraction error:", docsErr);
       }
 
+      console.log(
+        `[ClientAI] project=${projectId} documents total=${totalDocCount} visibleToClient=${visibleDocCount} readable=${readableDocNames.length} unreadable=${unreadableDocNames.length}`,
+      );
+
       const OpenAI = (await import("openai")).default;
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
-      const systemPrompt = `You are an assistant that answers a client's questions about their permit-expediting project. Use ONLY the information in the provided project context and attached documents. The context may include the text of attached documents (such as contracts, permits, or letters) — you may quote and cite their contents. When your answer draws on a document, reference it by its file name (e.g. "according to contract.pdf"). If the answer is not in the context or documents, say so plainly. Be concise, friendly, and reference dates when helpful (entries are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+      // Always tell the model what documents it has (or doesn't have), so it
+      // never falsely claims it "cannot read documents" when some were provided.
+      let documentsAvailability: string;
+      if (readableDocNames.length > 0) {
+        documentsAvailability =
+          `You have access to the full text of ${readableDocNames.length} attached document(s): ` +
+          readableDocNames.map((n) => `"${n}"`).join(", ") +
+          `. You can and should read and quote from them when answering. When your answer draws on a document, cite it by its file name.`;
+        if (unreadableDocNames.length > 0) {
+          documentsAvailability +=
+            ` ${unreadableDocNames.length} other document(s) could not be read (${unreadableDocNames
+              .map((n) => `"${n}"`)
+              .join(", ")}); if the answer would require those, say you couldn't read them.`;
+        }
+      } else if (unreadableDocNames.length > 0) {
+        documentsAvailability =
+          `This project has ${unreadableDocNames.length} attached document(s) (${unreadableDocNames
+            .map((n) => `"${n}"`)
+            .join(", ")}), but their contents could not be read (for example, an unreadable scan or unsupported file). Do NOT claim you can read them. If asked about their contents, explain plainly that you don't have readable text for those documents yet.`;
+      } else {
+        documentsAvailability =
+          `This project has no documents available to you. If asked about documents, say there are no readable documents for this project yet rather than refusing generically.`;
+      }
+
+      const systemPrompt = `You are an assistant that answers a client's questions about their permit-expediting project. Use ONLY the information in the provided project context and attached documents. ${documentsAvailability} If the answer is not in the context or documents, say so plainly. Be concise, friendly, and reference dates when helpful (entries are timestamped). Today's date is ${new Date().toISOString().slice(0, 10)}.`;
 
       const documentsSection = docsText
         ? `\n\nAttached documents:\n\n${docsText}`
