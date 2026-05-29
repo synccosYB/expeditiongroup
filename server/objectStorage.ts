@@ -307,6 +307,130 @@ function ensureFileExtension(filename: string, contentType: string, originalFile
   return trimmedName;
 }
 
+// --- OCR support for scanned / photographed documents -----------------------
+// Image-based documents (photos, scans, image-only PDFs) have no embedded text,
+// so we use OpenAI vision (via Replit AI Integrations) to read their text.
+
+// Skip OCR for very large images to keep the request fast.
+const MAX_OCR_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+// Cap how many PDF pages we render+OCR so a long scan can't stall the answer.
+const MAX_OCR_PDF_PAGES = 5;
+// Overall wall-clock budget for a single document's OCR.
+const OCR_TIMEOUT_MS = 45000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+// Run OCR on a single image (given as a data URL) using OpenAI vision.
+async function ocrImageDataUrl(dataUrl: string): Promise<string | null> {
+  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) return null;
+  try {
+    const OpenAI = (await import("openai")).default;
+    const openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an OCR engine. Extract and return ALL readable text from the image exactly as written, preserving line breaks where reasonable. Do not summarize, explain, or add commentary. If the image contains no readable text, reply with an empty response.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract all text from this image." },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+      max_tokens: 1500,
+      temperature: 0,
+    });
+    const text = response.choices[0]?.message?.content?.trim() || "";
+    return text || null;
+  } catch (err) {
+    console.error("OCR (image) failed:", err);
+    return null;
+  }
+}
+
+// OCR a raw image buffer (PNG/JPG/etc.).
+async function ocrImageBuffer(
+  buffer: Buffer,
+  contentType: string,
+  fileName: string,
+): Promise<string | null> {
+  if (buffer.length > MAX_OCR_IMAGE_BYTES) {
+    console.warn(
+      `Skipping OCR for "${fileName}" (${buffer.length} bytes exceeds limit)`,
+    );
+    return null;
+  }
+  let mime = (contentType || "").toLowerCase();
+  if (!mime.startsWith("image/")) {
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith(".png")) mime = "image/png";
+    else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) mime = "image/jpeg";
+    else if (lower.endsWith(".webp")) mime = "image/webp";
+    else if (lower.endsWith(".gif")) mime = "image/gif";
+    else mime = "image/png";
+  }
+  const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+  return await withTimeout(ocrImageDataUrl(dataUrl), OCR_TIMEOUT_MS, "Image OCR");
+}
+
+// OCR an image-only PDF by rendering pages to images and reading each.
+async function ocrPdfBuffer(
+  buffer: Buffer,
+  fileName: string,
+): Promise<string | null> {
+  try {
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const shots = await parser.getScreenshot({
+      last: MAX_OCR_PDF_PAGES,
+      scale: 2,
+      imageDataUrl: true,
+      imageBuffer: false,
+    });
+    const pages = shots.pages || [];
+    const texts: string[] = [];
+    for (const page of pages) {
+      if (!page.dataUrl) continue;
+      const pageText = await withTimeout(
+        ocrImageDataUrl(page.dataUrl),
+        OCR_TIMEOUT_MS,
+        "PDF page OCR",
+      );
+      if (pageText && pageText.trim()) texts.push(pageText.trim());
+    }
+    await parser.destroy().catch(() => {});
+    return texts.length > 0 ? texts.join("\n\n") : null;
+  } catch (err) {
+    console.error(`OCR (pdf) failed for "${fileName}":`, err);
+    return null;
+  }
+}
+
 // Extract plain text from a stored file buffer based on its content type / filename.
 // Returns null when the file type is unsupported or extraction fails.
 async function extractTextFromBuffer(
@@ -320,6 +444,9 @@ async function extractTextFromBuffer(
   const isPdf = lowerType.includes("pdf") || lowerName.endsWith(".pdf");
   const isDocx =
     lowerType.includes("wordprocessingml") || lowerName.endsWith(".docx");
+  const isImage =
+    lowerType.startsWith("image/") ||
+    /\.(png|jpe?g|webp|gif|bmp|tiff?)$/.test(lowerName);
   const isPlainText =
     lowerType.startsWith("text/") ||
     lowerType.includes("json") ||
@@ -332,12 +459,23 @@ async function extractTextFromBuffer(
       const { PDFParse } = await import("pdf-parse");
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       const data = await parser.getText();
-      return data.text || null;
+      await parser.destroy().catch(() => {});
+      const embedded = (data.text || "").trim();
+      // A near-empty result usually means an image-only (scanned) PDF — fall
+      // back to OCR by rendering the pages to images.
+      if (embedded.length >= 20) {
+        return data.text;
+      }
+      const ocrText = await ocrPdfBuffer(buffer, fileName);
+      return ocrText || (embedded ? data.text : null);
     }
     if (isDocx) {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
       return result.value || null;
+    }
+    if (isImage) {
+      return await ocrImageBuffer(buffer, contentType, fileName);
     }
     if (isPlainText) {
       return buffer.toString("utf-8");
