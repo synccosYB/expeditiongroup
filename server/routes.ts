@@ -4,7 +4,7 @@ import { storage, db } from "./storage";
 import { setupAuth, isAuthenticated } from "./auth";
 import { sendWebhook } from "./webhook";
 import { z, ZodError } from "zod";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageService, extractDocumentText } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageService, extractDocumentText, invalidateDocumentTextCache } from "./objectStorage";
 import { registerReportRoutes } from "./reports";
 import {
   applyAccountChange,
@@ -1877,10 +1877,14 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateDocumentSchema.parse(req.body);
+      const existing = await storage.getDocument(parseInt(req.params.id));
       const document = await storage.updateDocument(parseInt(req.params.id), parsed);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
+      // Drop any cached extracted text so a replaced/updated file is re-read.
+      if (existing?.storagePath) invalidateDocumentTextCache(existing.storagePath);
+      if (document.storagePath) invalidateDocumentTextCache(document.storagePath);
       res.json(document);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -1897,10 +1901,12 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      const existing = await storage.getDocument(parseInt(req.params.id));
       const deleted = await storage.deleteDocument(parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Document not found" });
       }
+      if (existing?.storagePath) invalidateDocumentTextCache(existing.storagePath);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting document:", error);

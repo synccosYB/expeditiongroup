@@ -349,22 +349,68 @@ async function extractTextFromBuffer(
   return null;
 }
 
+// In-memory cache for extracted document text. Keyed by storage path, which is
+// unique per uploaded object — replacing a document produces a new path, so the
+// old entry is simply never read again. A short TTL bounds memory use and lets
+// transient extraction failures recover on a later question.
+const DOC_TEXT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const DOC_TEXT_CACHE_MAX_ENTRIES = 200;
+const documentTextCache = new Map<
+  string,
+  { text: string | null; expiresAt: number }
+>();
+
+function pruneDocumentTextCache() {
+  const now = Date.now();
+  Array.from(documentTextCache.entries()).forEach(([key, entry]) => {
+    if (entry.expiresAt <= now) {
+      documentTextCache.delete(key);
+    }
+  });
+  // If still too large, evict oldest insertion-order entries.
+  while (documentTextCache.size > DOC_TEXT_CACHE_MAX_ENTRIES) {
+    const oldestKey = documentTextCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    documentTextCache.delete(oldestKey);
+  }
+}
+
+// Drop a cached extraction (e.g. when a document is replaced or deleted).
+export function invalidateDocumentTextCache(storagePath: string) {
+  documentTextCache.delete(storagePath);
+}
+
 // Given an object storage path (e.g. "/objects/uploads/<id>"), download the file
-// and return its extracted plain text, or null if it cannot be read.
+// and return its extracted plain text, or null if it cannot be read. Results are
+// cached in memory (keyed by storage path) so repeat questions about the same
+// project don't re-download and re-parse the same files.
 export async function extractDocumentText(
   storagePath: string,
   fileName: string,
 ): Promise<string | null> {
+  const cached = documentTextCache.get(storagePath);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.text;
+  }
+
+  let text: string | null;
   try {
     const file = await objectStorageService.getObjectEntityFile(storagePath);
     const [metadata] = await file.getMetadata();
     const contentType = metadata.contentType || "application/octet-stream";
     const [buffer] = await file.download();
-    return await extractTextFromBuffer(buffer, contentType, fileName);
+    text = await extractTextFromBuffer(buffer, contentType, fileName);
   } catch (err) {
     console.error(`Failed to read document "${fileName}" (${storagePath}):`, err);
     return null;
   }
+
+  documentTextCache.set(storagePath, {
+    text,
+    expiresAt: Date.now() + DOC_TEXT_CACHE_TTL_MS,
+  });
+  pruneDocumentTextCache();
+  return text;
 }
 
 function parseObjectPath(path: string): {
