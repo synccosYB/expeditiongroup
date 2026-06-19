@@ -2781,13 +2781,12 @@ export async function registerRoutes(
       const userPrompt = `Project: ${project.name}\n\nProject context (oldest first):\n\n${joined}${documentsSection}\n\nQuestion: ${question}`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 800,
-        temperature: 0.3,
+        max_completion_tokens: 800,
       });
 
       const answer = response.choices[0]?.message?.content?.trim() || "";
@@ -7687,13 +7686,12 @@ export async function registerRoutes(
       const userPrompt = `Task: ${task.title}\n\nNotes and history (oldest first):\n\n${joined}\n\nQuestion: ${question}`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 800,
-        temperature: 0.3,
+        max_completion_tokens: 800,
       });
 
       const answer = response.choices[0]?.message?.content?.trim() || "";
@@ -7900,13 +7898,12 @@ export async function registerRoutes(
       const userPrompt = `Project context:\n\n${joined}\n\nQuestion: ${question}`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 900,
-        temperature: 0.3,
+        max_completion_tokens: 900,
       });
 
       const answer = response.choices[0]?.message?.content?.trim() || "";
@@ -7938,7 +7935,7 @@ export async function registerRoutes(
       });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -7949,8 +7946,7 @@ export async function registerRoutes(
             content: text,
           },
         ],
-        max_tokens: 2048,
-        temperature: 0.3,
+        max_completion_tokens: 2048,
       });
 
       const improved = response.choices[0]?.message?.content?.trim() || text;

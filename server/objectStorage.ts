@@ -347,7 +347,7 @@ async function ocrImageDataUrl(dataUrl: string): Promise<string | null> {
       baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
     });
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "system",
@@ -362,8 +362,7 @@ async function ocrImageDataUrl(dataUrl: string): Promise<string | null> {
           ],
         },
       ],
-      max_tokens: 1500,
-      temperature: 0,
+      max_completion_tokens: 1500,
     });
     const text = response.choices[0]?.message?.content?.trim() || "";
     return text || null;
