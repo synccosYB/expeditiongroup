@@ -436,6 +436,7 @@ export interface IStorage {
   deleteExpense(id: number): Promise<boolean>;
   markExpensesAsRebilled(expenseIds: number[], invoiceId: number): Promise<boolean>;
   resetExpensesForInvoice(invoiceId: number): Promise<boolean>;
+  removeExpenseRebillable(id: number): Promise<Expense | undefined>;
 
   // Bookkeeping - Bills
   getBills(): Promise<(Bill & { vendor: Vendor; items: BillItem[] })[]>;
@@ -447,6 +448,7 @@ export interface IStorage {
   getUnrebilledBillItems(): Promise<(BillItem & { bill?: Bill; vendor?: Vendor; rebillableClient?: Client; rebillableProject?: Project })[]>;
   markBillItemsAsRebilled(billItemIds: number[], invoiceId: number): Promise<boolean>;
   resetBillItemsForInvoice(invoiceId: number): Promise<boolean>;
+  removeBillItemRebillable(id: number): Promise<BillItem | undefined>;
 
   // Bookkeeping - Bill Payments
   getBillPayment(id: number): Promise<BillPayment | undefined>;
@@ -3094,6 +3096,21 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) >= 0;
   }
 
+  async removeExpenseRebillable(id: number): Promise<Expense | undefined> {
+    const [updated] = await db
+      .update(expenses)
+      .set({
+        isRebillable: false,
+        rebillableClientId: null,
+        rebillableProjectId: null,
+        markupPercent: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(expenses.id, id))
+      .returning();
+    return updated;
+  }
+
   // Bookkeeping - Bills
   async getBills(): Promise<(Bill & { vendor: Vendor; items: BillItem[] })[]> {
     const billList = await db
@@ -3221,6 +3238,20 @@ export class DatabaseStorage implements IStorage {
       .set({ isRebilled: false, rebilledInvoiceId: null, rebilledAt: null })
       .where(eq(billItems.rebilledInvoiceId, invoiceId));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async removeBillItemRebillable(id: number): Promise<BillItem | undefined> {
+    const [updated] = await db
+      .update(billItems)
+      .set({
+        isRebillable: false,
+        rebillableClientId: null,
+        rebillableProjectId: null,
+        markupPercent: null,
+      })
+      .where(eq(billItems.id, id))
+      .returning();
+    return updated;
   }
 
   // Bookkeeping - Bill Payments

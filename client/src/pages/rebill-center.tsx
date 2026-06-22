@@ -18,7 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Receipt, DollarSign, Calendar, FileText, Check } from "lucide-react";
+import { Search, Receipt, DollarSign, Calendar, FileText, Check, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -104,6 +114,7 @@ export default function RebillCenter() {
   const [filterClient, setFilterClient] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
   const [isCreateInvoiceOpen, setIsCreateInvoiceOpen] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<RebillableItem | null>(null);
   const [rebillInvoiceDate, setRebillInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [rebillDueDate, setRebillDueDate] = useState(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
 
@@ -230,6 +241,47 @@ export default function RebillCenter() {
       toast({
         title: "Error",
         description: "Failed to create invoice",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeRebillableMutation = useMutation({
+    mutationFn: async (item: RebillableItem) => {
+      const endpoint =
+        item.type === "expense"
+          ? `/api/expenses/${item.sourceId}/remove-rebillable`
+          : `/api/bill-items/${item.sourceId}/remove-rebillable`;
+      await apiRequest("POST", endpoint);
+    },
+    onSuccess: (_data, item) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses/rebillable"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bill-items/rebillable"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      setSelectedItems((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+      setItemToRemove(null);
+      toast({ title: "Removed from Rebill Center" });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          setLocation("/auth");
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to remove item from Rebill Center",
         variant: "destructive",
       });
     },
@@ -451,15 +503,27 @@ export default function RebillCenter() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium">
-                            {formatCurrency(calculateRebillAmount(item).toString())}
-                          </p>
-                          {item.markupPercent && parseFloat(item.markupPercent) > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              Cost: {formatCurrency(item.amount)} + {item.markupPercent}%
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="font-medium">
+                              {formatCurrency(calculateRebillAmount(item).toString())}
                             </p>
-                          )}
+                            {item.markupPercent && parseFloat(item.markupPercent) > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Cost: {formatCurrency(item.amount)} + {item.markupPercent}%
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setItemToRemove(item)}
+                            data-testid={`button-remove-item-${item.id}`}
+                            aria-label="Remove from Rebill Center"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -550,6 +614,33 @@ export default function RebillCenter() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from Rebill Center?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This takes "{itemToRemove?.description}" off the Rebill Center so it
+              can no longer be rebilled to a client. The underlying{" "}
+              {itemToRemove?.type === "expense" ? "expense" : "vendor bill"} record
+              will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-remove-item">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (itemToRemove) removeRebillableMutation.mutate(itemToRemove);
+              }}
+              disabled={removeRebillableMutation.isPending}
+              data-testid="button-confirm-remove-item"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

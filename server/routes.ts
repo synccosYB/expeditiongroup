@@ -6310,6 +6310,27 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/expenses/:id/remove-rebillable", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const id = parseInt(req.params.id);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ message: "Invalid expense id" });
+      }
+      const updated = await storage.removeExpenseRebillable(id);
+      if (!updated) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error removing expense from rebill center:", error);
+      res.status(500).json({ message: "Failed to remove expense from rebill center" });
+    }
+  });
+
   app.get("/api/bill-items/rebillable", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
@@ -6339,6 +6360,27 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error marking bill items as rebilled:", error);
       res.status(500).json({ message: "Failed to mark bill items as rebilled" });
+    }
+  });
+
+  app.post("/api/bill-items/:id/remove-rebillable", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const id = parseInt(req.params.id);
+      if (Number.isNaN(id)) {
+        return res.status(400).json({ message: "Invalid bill item id" });
+      }
+      const updated = await storage.removeBillItemRebillable(id);
+      if (!updated) {
+        return res.status(404).json({ message: "Bill item not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error removing bill item from rebill center:", error);
+      res.status(500).json({ message: "Failed to remove bill item from rebill center" });
     }
   });
 
