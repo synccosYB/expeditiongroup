@@ -97,7 +97,11 @@ export function AppSidebar() {
     { title: "Time & billing", items: menuItems.filter(i => ["Time Logs", "Invoices"].includes(i.title)) },
     { title: "Administration", items: menuItems.filter(i => ["Activity Logs", "Account Activity", "Associates", "Settings"].includes(i.title)) },
     { title: "Bookkeeping", items: bookkeepingMenuItems },
-  ] : [{ title: "Portal", items: menuItems }];
+  ] : [
+    { title: "Workspace", items: menuItems.filter(item => ["Overview", "Projects", "Tasks", "Calendar"].includes(item.title)) },
+    { title: "Time & billing", items: menuItems.filter(item => ["Time Logs", "Invoices"].includes(item.title)) },
+    { title: "Account", items: menuItems.filter(item => ["Activity Logs", "Associates", "Settings"].includes(item.title)) },
+  ];
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -111,17 +115,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <Link href="/" className="flex items-center gap-3">
-          <img src={logoIcon} alt="E+" className="h-9 w-9" />
-          <div className="flex flex-col">
-            <span className="text-base font-semibold text-sidebar-foreground">
-              Expedition Group
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Permit Expediting
-            </span>
-          </div>
+      <SidebarHeader className="h-[65px] justify-center px-4 border-b border-sidebar-border">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-sidebar-foreground">Expedition Group</span>
         </Link>
       </SidebarHeader>
 

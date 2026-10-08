@@ -1,3 +1,4 @@
+import { OverviewWorkspace, type OverviewProject, type OverviewTask } from "@/components/overview-workspace";
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -72,7 +73,6 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [dailyActivityDialogOpen, setDailyActivityDialogOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [, setNowTick] = useState(0);
 
   useEffect(() => {
@@ -97,6 +97,9 @@ export default function Dashboard() {
     },
     refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS,
   });
+
+  const { data: workspaceProjects } = useQuery<OverviewProject[]>({ queryKey: ["/api/projects"], refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS });
+  const { data: workspaceTasks } = useQuery<OverviewTask[]>({ queryKey: ["/api/tasks"], refetchInterval: DASHBOARD_REFETCH_INTERVAL_MS });
 
   const dashboardErrors: { label: string; error: unknown }[] = summaryError
     ? [{ label: "Dashboard", error: summaryError }]
@@ -383,33 +386,16 @@ export default function Dashboard() {
     setEndDate("");
   };
 
-  const selected = recentProjects?.find(p => p.id === selectedProjectId) ?? recentProjects?.[0];
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div><h1>Workspace overview</h1><p className="mt-1 text-sm text-muted-foreground">Your projects, priorities, and progress.</p></div>
+      <div><h1 className="font-semibold">Workspace overview</h1><p className="mt-1 text-sm text-muted-foreground">Your projects, priorities, and progress.</p></div>
       <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setDailyActivityDialogOpen(true)}><NotebookPen className="mr-2 h-4 w-4" />Log activity</Button><Button asChild><Link href="/projects">View projects<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></div>
     </div>
     {summaryError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">Dashboard data could not load. Please refresh.</p>}
     <div className="workspace-metrics">
       {[["Active projects", stats?.activeProjects, "/projects"], ["Pending tasks", stats?.pendingTasks, "/tasks"], ["Unpaid invoices", unpaidCount, "/invoices"], ["Unbilled hours", unbilledHours.toFixed(1), "/time-logs"]].map(([label,value,url]) => <Link key={label} href={String(url)} className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring"><div className="text-2xl font-semibold tabular-nums">{summaryError ? "—" : value ?? 0}</div><div className="text-sm text-muted-foreground">{label}</div></Link>)}
     </div>
-    <div className="workspace-split">
-      <div className="min-w-0">
-        <div className="flex items-center justify-between gap-3 border-b p-4"><h2 className="text-base font-semibold">Recent projects</h2><Link href="/projects" className="text-sm text-primary">View all</Link></div>
-        <Table><TableHeader><TableRow><TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Stage</TableHead><TableHead>Details</TableHead></TableRow></TableHeader><TableBody>
-          {recentProjects?.slice(0,6).map(project => <TableRow key={project.id} data-state={selected?.id === project.id ? "selected" : undefined}><TableCell><Link href={`/projects/${project.id}`} className="font-medium text-primary">{project.name}</Link></TableCell><TableCell>{project.client?.name ?? "—"}</TableCell><TableCell><StatusBadge status={project.status} type="project" /></TableCell><TableCell><Button size="sm" variant="ghost" onClick={() => setSelectedProjectId(project.id)} aria-label={`Preview ${project.name}`}>Preview</Button></TableCell></TableRow>)}
-          {!recentProjects?.length && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No projects yet.</TableCell></TableRow>}
-        </TableBody></Table>
-        <div className="border-t p-4"><h2 className="mb-3 text-sm font-semibold">Project pipeline · {totalPipelineProjects} jobs</h2><div className="flex flex-wrap gap-x-4 gap-y-2">{STATUS_PIPELINE_ORDER.map(stage => <Link key={stage.key} href={`/projects?status=${stage.key}`} className="flex items-center gap-2 text-xs"><span className={`h-2 w-2 rounded-full ${stage.color}`} />{stage.label}<strong>{statusCountMap.get(stage.key) ?? 0}</strong></Link>)}</div></div>
-      </div>
-      <aside className="workspace-detail flex flex-col gap-5" aria-label="Project preview">
-        {selected ? <><h2 className="text-lg font-semibold">{selected.name}</h2><dl><dt>Client</dt><dd>{selected.client?.name ?? "—"}</dd><dt>Stage</dt><dd><StatusBadge status={selected.status} type="project" /></dd><dt>County</dt><dd>{selected.county ?? "—"}</dd></dl>{selected.description && <p className="text-sm text-muted-foreground line-clamp-3">{selected.description}</p>}<Button asChild className="mt-auto"><Link href={`/projects/${selected.id}`}>Open project<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></> : <p className="text-sm text-muted-foreground">Select a project to see its details.</p>}
-      </aside>
-    </div>
-    <div className="grid gap-4 lg:grid-cols-2">
-      <section className="rounded-lg border"><div className="flex items-center justify-between border-b px-4 py-3"><h2 className="text-base font-semibold">Needs attention · {overdueTasks.length}</h2><Link href="/tasks?filter=overdue" className="text-sm text-primary">View all</Link></div><div className="divide-y">{overdueTasks.slice(0,3).map(task => <Link key={task.id} href={`/projects/${task.projectId}`} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block truncate text-sm font-medium">{task.title}</span><span className="text-xs text-muted-foreground">{task.project?.name}</span></span><Badge variant="outline" className="shrink-0 text-destructive">Due / overdue</Badge></Link>)}{!overdueTasks.length && <p className="px-4 py-3 text-sm text-muted-foreground">No due or overdue tasks.</p>}</div></section>
-      <section className="rounded-lg border"><div className="flex items-center justify-between border-b px-4 py-3"><h2 className="text-base font-semibold">Pending tasks</h2><Link href="/tasks" className="text-sm text-primary">View all</Link></div><div className="divide-y">{pendingTasks?.slice(0,3).map(task => <Link key={task.id} href={`/projects/${task.projectId}`} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block truncate text-sm font-medium">{task.title}</span><span className="text-xs text-muted-foreground">{task.project?.name}</span></span><Badge variant="outline" className="shrink-0">{task.type.replace(/_/g, " ")}</Badge></Link>)}{!pendingTasks?.length && <p className="px-4 py-3 text-sm text-muted-foreground">No pending tasks.</p>}</div></section>
-    </div>
+    <OverviewWorkspace projects={workspaceProjects ?? recentProjects ?? []} tasks={workspaceTasks ?? Array.from(new Map([...(pendingTasks ?? []), ...overdueTasks].map(task => [task.id, task])).values())} showClient statusCounts={projectsByStatus} />
     <details className="rounded-lg border px-4 py-3"><summary className="cursor-pointer text-sm font-medium">Hours filters & reports</summary><div className="mt-3 flex flex-wrap items-center gap-3"><Label htmlFor="startDate">From</Label><Input id="startDate" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-40" /><Label htmlFor="endDate">To</Label><Input id="endDate" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-40" /><Button variant="outline" size="sm" onClick={clearDateFilters}>Clear</Button>{statCards.map(stat => <Button key={stat.title} size="sm" variant="outline" onClick={() => handlePrintReport(stat.reportType)}><Printer className="mr-2 h-3 w-3" />{stat.title}</Button>)}</div></details>
     <DailyActivityDialog isOpen={dailyActivityDialogOpen} onClose={() => setDailyActivityDialogOpen(false)} />
   </div>;

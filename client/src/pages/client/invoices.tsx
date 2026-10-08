@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "@/components/record-workspace";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -135,46 +136,8 @@ export default function ClientInvoices() {
         </Button>
       </div>
 
-      <div className="print:hidden grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-chart-5/10">
-                <DollarSign className="h-5 w-5 text-chart-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{filteredInvoices.length}</p>
-                <p className="text-xs text-muted-foreground">Total Invoices</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-chart-3/10">
-                <Clock className="h-5 w-5 text-chart-3" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">${unpaidTotal.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Outstanding</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-chart-2/10">
-                <CheckCircle2 className="h-5 w-5 text-chart-2" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">${paidTotal.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Paid</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="workspace-metrics print:hidden">
+        {[["Invoices", filteredInvoices.length], ["Outstanding", `$${unpaidTotal.toLocaleString()}`], ["Paid", `$${paidTotal.toLocaleString()}`]].map(([label, value]) => <div key={label}><div className="text-2xl font-semibold tabular-nums">{value}</div><div className="text-sm text-muted-foreground">{label}</div></div>)}
       </div>
 
       <div className="print:hidden flex flex-col sm:flex-row gap-4">
@@ -203,50 +166,11 @@ export default function ClientInvoices() {
       </div>
 
       {filteredInvoices.length > 0 ? (
-        <Card className="print:hidden">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
-                    <TableCell className="font-mono font-medium">
-                      {invoice.invoiceNumber}
-                    </TableCell>
-                    <TableCell>{invoice.project?.name || "-"}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {invoice.createdAt ? format(new Date(invoice.createdAt), "MMM d, yyyy") : "-"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy") : "-"}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${parseFloat(invoice?.total || "0").toLocaleString()}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/invoices/${invoice.id}`} data-testid={`button-view-invoice-${invoice.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <div className="print:hidden"><RecordWorkspace key={`${searchTerm}:${statusFilter}`} records={filteredInvoices} title={invoice => invoice.invoiceNumber} href={invoice => `/invoices/${invoice.id}`}
+          columns={[{label: "Invoice", render: invoice => invoice.invoiceNumber}, {label: "Project", render: invoice => invoice.project?.name ?? "—"}, {label: "Amount", render: invoice => `$${parseFloat(invoice.total || "0").toLocaleString()}`}, {label: "Status", render: invoice => getStatusBadge(invoice.status)}]}
+          details={invoice => <dl><dt>Project</dt><dd>{invoice.project?.name ?? "—"}</dd><dt>Amount</dt><dd>${parseFloat(invoice.total || "0").toLocaleString()}</dd><dt>Status</dt><dd>{getStatusBadge(invoice.status)}</dd><dt>Issued</dt><dd>{invoice.createdAt ? format(new Date(invoice.createdAt), "MMM d, yyyy") : "—"}</dd><dt>Due</dt><dd>{invoice.dueDate ? format(parseLocalDateFromISO(invoice.dueDate)!, "MMM d, yyyy") : "—"}</dd></dl>}
+          actions={invoice => <Button asChild variant="ghost" size="icon"><Link href={`/invoices/${invoice.id}`} aria-label={`Open ${invoice.invoiceNumber}`} data-testid={`button-view-invoice-${invoice.id}`}><Eye className="h-4 w-4" /></Link></Button>}
+        /></div>
       ) : (
         <Card className="print:hidden">
           <CardContent className="p-0">

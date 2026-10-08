@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -172,7 +172,9 @@ function ClientRouter() {
 }
 
 function AuthenticatedLayout() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const [location] = useLocation();
+  const section = location === "/" || location === "/dashboard" ? "Overview" : location.split("/")[1]?.replace(/-/g, " ") || "Overview";
   
   const style = {
     "--sidebar-width": "13rem",
@@ -185,12 +187,13 @@ function AuthenticatedLayout() {
         <WorkspaceRail />
         <AppSidebar />
         <div className="workspace-main flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 px-4 py-3 border-b bg-background shrink-0 print:hidden">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
+          <header className="flex h-[65px] items-center justify-between gap-4 px-4 py-3 border-b bg-background shrink-0 print:hidden">
+            <div className="flex min-w-0 items-center gap-3"><SidebarTrigger data-testid="button-sidebar-toggle" /><span className="hidden text-sm text-muted-foreground sm:inline">Workspace <span className="mx-2">/</span><span className="capitalize text-foreground">{section}</span></span></div>
             {isAdmin && <GlobalSearch />}
             <div className="flex items-center gap-2">
               {isAdmin && <ReminderBell />}
               <ThemeToggle />
+              <Link href="/settings" aria-label="Profile and settings" className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">{`${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}` || "U"}</Link>
             </div>
           </header>
           <main className="workspace-main flex-1 overflow-auto p-4 md:p-6">

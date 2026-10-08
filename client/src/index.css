@@ -604,6 +604,26 @@ body:has([data-state="open"][role="dialog"]) .sdx-widget-btn {
 .workspace-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 16px; padding: 12px 0; }
 .workspace-metrics > * { border-right: 1px solid hsl(var(--border)); padding: 0 16px; }
 .workspace-metrics > :last-child { border-right: 0; }
+.workspace-metrics > :first-child { padding-left: 0; }
+.workspace-detail h2 { overflow-wrap: anywhere; }
 .workspace-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid hsl(var(--border)); }
 @media (max-width: 1100px) { .workspace-split { grid-template-columns: minmax(0,1fr); } .workspace-detail { border-left: 0; border-top: 1px solid hsl(var(--border)); } }
 @media (max-width: 767px) { .workspace-rail { display: none; } .workspace-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Overview uses one grid so the table and preview share their lower edge. */
+.workspace-overview { grid-template-columns: minmax(0, 1fr) 320px; }
+.workspace-overview > [data-orientation="horizontal"] { min-height: 360px; }
+.workspace-overview th { white-space: nowrap; }
+.workspace-overview td { padding-top: 10px; padding-bottom: 10px; }
+.workspace-overview-footer { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; border-top: 1px solid hsl(var(--border)); }
+.workspace-overview-footer .workspace-pagination { border-top: 0; flex-shrink: 0; gap: 16px; }
+.workspace-overview-footer > :last-child { flex: 1; border-left: 1px solid hsl(var(--border)); }
+@media (max-width: 1100px) {
+  .workspace-overview { grid-template-columns: minmax(0, 1fr); }
+  .workspace-overview > [data-orientation="horizontal"] { min-height: 0; }
+}
+@media (max-width: 767px) {
+  .workspace-overview-footer { align-items: stretch; }
+  .workspace-overview-footer .workspace-pagination { width: 100%; }
+  .workspace-overview-footer > :last-child { border-left: 0; border-top: 1px solid hsl(var(--border)); }
+}

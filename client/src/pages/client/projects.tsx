@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { RecordWorkspace } from "@/components/record-workspace";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +40,17 @@ const PROJECT_STATUSES = [
   { value: "with_dob", label: "With DOB" },
   { value: "on_hold", label: "On Hold" },
   { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 export default function ClientProjects() {
   const [searchTerm, setSearchTerm] = useState("");
+  const searchString = useSearch();
   const [statusFilter, setStatusFilter] = useState("all");
+  useEffect(() => {
+    const status = new URLSearchParams(searchString).get("status");
+    setStatusFilter(PROJECT_STATUSES.some(option => option.value === status) ? status! : "all");
+  }, [searchString]);
 
   const { data: projects, isLoading } = useQuery<ProjectWithRelations[]>({
     queryKey: ["/api/client/projects"],
@@ -106,68 +113,11 @@ export default function ClientProjects() {
       </div>
 
       {filteredProjects.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProjects.map((project) => {
-            const progress = getProgress(project);
-            return (
-              <Card key={project.id} className="hover-elevate" data-testid={`card-project-${project.id}`}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg font-semibold truncate">
-                      {project.name}
-                    </CardTitle>
-                    <StatusBadge status={project.status} type="project" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                    {project.address && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        <span className="truncate max-w-[150px]">{project.address}</span>
-                      </div>
-                    )}
-                    {project.startDate && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatLocalDate(project.startDate)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {project.county && (
-                    <Badge variant="outline" className="text-xs">
-                      {project.county}
-                    </Badge>
-                  )}
-
-                  {(project.tasks?.length || 0) > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{progress}%</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <Button variant="outline" size="sm" className="w-full mt-2" asChild>
-                    <Link href={`/projects/${project.id}`} data-testid={`button-view-project-${project.id}`}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                      <ChevronRight className="h-4 w-4 ml-auto" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <RecordWorkspace key={`${searchTerm}:${statusFilter}`} records={filteredProjects} title={project => project.name} href={project => `/projects/${project.id}`}
+          columns={[{label: "Project", render: project => project.name}, {label: "Stage", render: project => <StatusBadge status={project.status} type="project" />}, {label: "County", render: project => project.county ?? "—"}, {label: "Progress", render: project => project.tasks?.length ? `${getProgress(project)}%` : "—"}]}
+          details={project => <dl><dt>Address</dt><dd>{project.address ?? "—"}</dd><dt>County</dt><dd>{project.county ?? "—"}</dd><dt>Stage</dt><dd><StatusBadge status={project.status} type="project" /></dd><dt>Started</dt><dd>{project.startDate ? formatLocalDate(project.startDate) : "—"}</dd><dt>Progress</dt><dd>{project.tasks?.length ? `${getProgress(project)}% complete` : "No tasks yet"}</dd></dl>}
+          actions={project => <Button asChild size="icon" variant="ghost"><Link href={`/projects/${project.id}`} aria-label={`Open ${project.name}`} data-testid={`button-view-project-${project.id}`}><Eye className="h-4 w-4" /></Link></Button>}
+        />
       ) : (
         <Card>
           <CardContent className="p-0">
