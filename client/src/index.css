@@ -10,36 +10,36 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
-  --background: 200 20% 98%;
+  --background: 0 0% 100%;
   --foreground: 215 25% 15%;
   --border: 200 15% 88%;
   --card: 0 0% 100%;
   --card-foreground: 215 25% 15%;
   --card-border: 200 15% 90%;
-  --sidebar: 200 20% 97%;
+  --sidebar: 0 0% 100%;
   --sidebar-foreground: 215 25% 15%;
   --sidebar-border: 200 15% 85%;
-  --sidebar-primary: 166 76% 25%;
+  --sidebar-primary: 218 65% 40%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 166 40% 92%;
-  --sidebar-accent-foreground: 166 76% 20%;
-  --sidebar-ring: 166 76% 25%;
+  --sidebar-accent: 218 85% 96%;
+  --sidebar-accent-foreground: 218 65% 40%;
+  --sidebar-ring: 218 65% 40%;
   --popover: 0 0% 100%;
   --popover-foreground: 215 25% 15%;
   --popover-border: 200 15% 90%;
-  --primary: 166 76% 25%;
+  --primary: 218 65% 40%;
   --primary-foreground: 0 0% 100%;
-  --primary-soft: 166 70% 35%;
+  --primary-soft: 218 70% 50%;
   --secondary: 200 15% 94%;
   --secondary-foreground: 215 25% 15%;
   --muted: 200 15% 94%;
   --muted-foreground: 215 12% 45%;
-  --accent: 166 60% 90%;
-  --accent-foreground: 166 76% 20%;
+  --accent: 218 85% 96%;
+  --accent-foreground: 218 65% 40%;
   --destructive: 0 85% 55%;
   --destructive-foreground: 0 0% 100%;
   --input: 200 15% 88%;
-  --ring: 166 76% 25%;
+  --ring: 218 65% 40%;
   --chart-1: 166 76% 35%;
   --chart-2: 200 80% 50%;
   --chart-3: 45 90% 55%;
@@ -105,7 +105,7 @@
   --sidebar: 215 40% 7%;
   --sidebar-foreground: 210 20% 93%;
   --sidebar-border: 215 30% 15%;
-  --sidebar-primary: 158 64% 42%;
+  --sidebar-primary: 218 85% 65%;
   --sidebar-primary-foreground: 215 45% 5%;
   --sidebar-accent: 166 40% 15%;
   --sidebar-accent-foreground: 166 50% 80%;
@@ -113,9 +113,9 @@
   --popover: 215 40% 7%;
   --popover-foreground: 210 20% 95%;
   --popover-border: 215 30% 18%;
-  --primary: 158 64% 42%;
+  --primary: 218 85% 65%;
   --primary-foreground: 215 45% 5%;
-  --primary-soft: 158 60% 50%;
+  --primary-soft: 218 85% 70%;
   --secondary: 215 30% 16%;
   --secondary-foreground: 210 20% 95%;
   --muted: 215 30% 14%;
@@ -125,7 +125,7 @@
   --destructive: 0 85% 55%;
   --destructive-foreground: 0 0% 100%;
   --input: 215 30% 16%;
-  --ring: 158 64% 42%;
+  --ring: 218 85% 65%;
   --chart-1: 158 64% 45%;
   --chart-2: 200 80% 55%;
   --chart-3: 45 90% 55%;
@@ -470,9 +470,8 @@
 
   table td {
     max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   h1 {
@@ -579,3 +578,32 @@
 body:has([data-state="open"][role="dialog"]) .sdx-widget-btn {
   display: none !important;
 }
+
+/* Shared workspace rhythm: 8px spacing, compact readable rows, one page scroll. */
+.workspace-shell { height: 100dvh; }
+.workspace-main { min-width: 0; min-height: 0; }
+.workspace-page { width: 100%; min-width: 0; }
+.workspace-page > .space-y-6 > * + * { margin-top: 1rem; }
+.workspace-page h1 { font-size: clamp(1.5rem, 2vw, 1.875rem); line-height: 1.25; letter-spacing: -.035em; }
+.workspace-page .shadcn-card { box-shadow: none; }
+.workspace-page table { font-variant-numeric: tabular-nums; }
+.workspace-page th { background: hsl(var(--muted) / .4); }
+.workspace-rail { background: #2453a6; width: 56px; flex: 0 0 56px; }
+.workspace-rail { position: relative; z-index: 20; }
+@media (min-width: 768px) {
+  .workspace-shell [data-slot="sidebar-container"] { left: 56px; }
+  .workspace-shell [data-state="collapsed"][data-collapsible="offcanvas"] [data-slot="sidebar-container"] { left: calc(56px - var(--sidebar-width)); }
+}
+.workspace-rail a { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 6px; color: white; }
+.workspace-rail a:hover, .workspace-rail a[aria-current=page] { background: rgba(255,255,255,.18); }
+.workspace-split { display: grid; grid-template-columns: minmax(0, 1fr) 300px; border: 1px solid hsl(var(--border)); border-radius: 8px; overflow: hidden; }
+.workspace-detail { border-left: 1px solid hsl(var(--border)); padding: 20px; min-width: 0; background: hsl(var(--card)); }
+.workspace-detail dl { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 16px 12px; font-size: 14px; }
+.workspace-detail dt { color: hsl(var(--muted-foreground)); }
+.workspace-detail dd { overflow-wrap: anywhere; }
+.workspace-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 16px; padding: 12px 0; }
+.workspace-metrics > * { border-right: 1px solid hsl(var(--border)); padding: 0 16px; }
+.workspace-metrics > :last-child { border-right: 0; }
+.workspace-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid hsl(var(--border)); }
+@media (max-width: 1100px) { .workspace-split { grid-template-columns: minmax(0,1fr); } .workspace-detail { border-left: 0; border-top: 1px solid hsl(var(--border)); } }
+@media (max-width: 767px) { .workspace-rail { display: none; } .workspace-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }

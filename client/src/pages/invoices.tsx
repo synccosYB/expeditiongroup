@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "@/components/record-workspace";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -158,78 +159,15 @@ export default function Invoices() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card 
-          className="cursor-pointer hover-elevate" 
-          onClick={() => setStatusFilter("all")}
-          data-testid="card-total-invoiced"
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Invoiced</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-invoiced">
-              {formatCurrency(stats?.totalInvoiced || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Excludes cancelled</p>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover-elevate" 
-          onClick={() => setStatusFilter("paid")}
-          data-testid="card-total-paid"
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="text-total-paid">
-              {formatCurrency(stats?.totalPaid || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Payments received</p>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover-elevate" 
-          onClick={() => setStatusFilter("unpaid")}
-          data-testid="card-total-unpaid"
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Unpaid</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600" data-testid="text-total-unpaid">
-              {formatCurrency(stats?.totalUnpaid || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Outstanding balance</p>
-          </CardContent>
-        </Card>
-        <Card 
-          className="cursor-pointer hover-elevate" 
-          onClick={() => setStatusFilter("all")}
-          data-testid="card-unbilled-time"
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unbilled Time</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600" data-testid="text-total-unbilled">
-              {formatCurrency(stats?.totalUnbilled || 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Est. at $75/hr</p>
-          </CardContent>
-        </Card>
+      <div className="workspace-metrics">
+        {[{label:"Total invoiced",value:stats?.totalInvoiced,filter:"all"},{label:"Paid",value:stats?.totalPaid,filter:"paid"},{label:"Unpaid",value:stats?.totalUnpaid,filter:"unpaid"},{label:"Unbilled estimate",value:stats?.totalUnbilled,filter:"all"}].map(metric=><button key={metric.label} onClick={()=>setStatusFilter(metric.filter)} className="text-left focus-visible:ring-2 focus-visible:ring-ring"><div className="text-xl font-semibold tabular-nums">{formatCurrency(metric.value || 0)}</div><div className="text-sm text-muted-foreground">{metric.label}</div></button>)}
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Invoice List</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredInvoices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground" data-testid="empty-state-invoices">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -237,67 +175,12 @@ export default function Invoices() {
               <p className="text-sm">Create a manual invoice or generate one from project time logs</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInvoices.map((invoice) => (
-                  <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
-                    <TableCell className="font-medium">
-                      <Link href={`/invoices/${invoice.id}`} className="hover:underline" data-testid={`link-invoice-${invoice.id}`}>
-                        {invoice.invoiceNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {invoice.client && invoice.clientId ? (
-                        <Link href={`/clients/${invoice.clientId}`} className="hover:underline" data-testid={`link-client-${invoice.id}`}>
-                          {invoice.client.name}
-                        </Link>
-                      ) : (
-                        <span className="text-muted-foreground" data-testid={`text-client-${invoice.id}`}>
-                          {invoice.recipientName || "No Client"}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.project && invoice.projectId ? (
-                        <Link href={`/projects/${invoice.projectId}`} className="hover:underline" data-testid={`link-project-${invoice.id}`}>
-                          {invoice.project.name}
-                        </Link>
-                      ) : invoice.projectId && !invoice.project ? (
-                        <span className="text-muted-foreground italic" data-testid={`text-project-deleted-${invoice.id}`}>Deleted project</span>
-                      ) : (
-                        <span className="text-muted-foreground" data-testid={`text-project-${invoice.id}`}>-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[invoice.status] || ""} data-testid={`badge-status-${invoice.id}`}>
-                        {statusLabels[invoice.status] || invoice.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium" data-testid={`text-amount-${invoice.id}`}>
-                      {formatCurrency(parseFloat(invoice?.total || "0"))}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.dueDate ? formatLocalDate(parseLocalDateFromISO(invoice.dueDate)!) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {invoice.createdAt ? formatLocalDate(new Date(invoice.createdAt)) : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
+            <RecordWorkspace key={statusFilter} records={filteredInvoices} title={invoice=>invoice.invoiceNumber} href={invoice=>`/invoices/${invoice.id}`}
+              columns={[{label:"Invoice",render:invoice=>invoice.invoiceNumber},{label:"Client",render:invoice=>invoice.client?.name || invoice.recipientName || "—"},{label:"Amount",render:invoice=><span className="block text-right tabular-nums">{formatCurrency(parseFloat(invoice.total || "0"))}</span>},{label:"Status",render:invoice=><Badge className={statusColors[invoice.status]}>{statusLabels[invoice.status] || invoice.status}</Badge>},{label:"Due",render:invoice=>invoice.dueDate ? formatLocalDate(parseLocalDateFromISO(invoice.dueDate)!) : "—"}]}
+              details={invoice=><dl><dt>Client</dt><dd>{invoice.client?.name || invoice.recipientName || "—"}</dd><dt>Amount</dt><dd className="text-lg font-semibold tabular-nums">{formatCurrency(parseFloat(invoice.total || "0"))}</dd><dt>Status</dt><dd><Badge className={statusColors[invoice.status]}>{statusLabels[invoice.status] || invoice.status}</Badge></dd><dt>Project</dt><dd>{invoice.project?.name ?? "—"}</dd><dt>Due</dt><dd>{invoice.dueDate ? formatLocalDate(parseLocalDateFromISO(invoice.dueDate)!) : "—"}</dd></dl>}
+              actions={invoice=>                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-actions-${invoice.id}`}>
+                          <Button variant="ghost" size="icon" aria-label={`Actions for ${invoice.invoiceNumber}`} data-testid={`button-actions-${invoice.id}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -315,12 +198,8 @@ export default function Invoices() {
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </DropdownMenu>}
+            />
           )}
         </CardContent>
       </Card>

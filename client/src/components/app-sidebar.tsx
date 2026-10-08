@@ -45,7 +45,7 @@ import { Button } from "@/components/ui/button";
 import logoIcon from "@/assets/logo-checkbox-icon.svg";
 
 const adminMenuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Overview", url: "/", icon: LayoutDashboard },
   { title: "Intake", url: "/intake", icon: FilePlus2 },
   { title: "Sales Contacts", url: "/sales-contacts", icon: UserPlus },
   { title: "Sales Pipeline", url: "/sales-pipeline", icon: TrendingUp },
@@ -76,7 +76,7 @@ const bookkeepingMenuItems = [
 ];
 
 const clientMenuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Overview", url: "/", icon: LayoutDashboard },
   { title: "Projects", url: "/projects", icon: FolderKanban },
   { title: "Tasks", url: "/tasks", icon: ClipboardList },
   { title: "Calendar", url: "/reminders", icon: CalendarDays },
@@ -91,6 +91,13 @@ export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const { user, isAdmin } = useAuth();
   const menuItems = isAdmin ? adminMenuItems : clientMenuItems;
+  const groups = isAdmin ? [
+    { title: "Workspace", items: menuItems.filter(i => ["Overview", "Projects", "Tasks", "Clients", "Calendar"].includes(i.title)) },
+    { title: "Sales", items: menuItems.filter(i => ["Intake", "Sales Contacts", "Sales Pipeline"].includes(i.title)) },
+    { title: "Time & billing", items: menuItems.filter(i => ["Time Logs", "Invoices"].includes(i.title)) },
+    { title: "Administration", items: menuItems.filter(i => ["Activity Logs", "Account Activity", "Associates", "Settings"].includes(i.title)) },
+    { title: "Bookkeeping", items: bookkeepingMenuItems },
+  ] : [{ title: "Portal", items: menuItems }];
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -119,63 +126,13 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-auto">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wide font-medium text-muted-foreground px-4 py-2">
-            {isAdmin ? "Administration" : "Portal"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                const isActive = location === item.url || 
-                  (item.url !== "/" && location.startsWith(item.url));
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={isActive ? "bg-sidebar-accent" : ""}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        {isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-xs uppercase tracking-wide font-medium text-muted-foreground px-4 py-2">
-              Bookkeeping
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {bookkeepingMenuItems.map((item) => {
-                  const isActive = location === item.url || 
-                    (item.url !== "/" && location.startsWith(item.url));
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        className={isActive ? "bg-sidebar-accent" : ""}
-                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-                      >
-                        <Link href={item.url}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        {groups.map(group => <details key={group.title} open={group.title === "Workspace" || group.title === "Portal" || group.items.some(item => item.url !== "/" && location.startsWith(item.url))} className="px-2">
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-muted-foreground tracking-wide">{group.title}</summary>
+          <SidebarMenu>{group.items.map(item => {
+            const active = location === item.url || (item.url !== "/" && location.startsWith(item.url));
+            return <SidebarMenuItem key={item.title}><SidebarMenuButton asChild isActive={active} className={active ? "bg-sidebar-accent text-primary font-medium" : ""} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}><Link href={item.url} aria-current={active ? "page" : undefined}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link></SidebarMenuButton></SidebarMenuItem>;
+          })}</SidebarMenu>
+        </details>)}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

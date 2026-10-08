@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "@/components/record-workspace";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
@@ -762,25 +763,10 @@ export default function Projects() {
       </div>
 
       {filteredProjects && filteredProjects.length > 0 ? (
-        <div className="space-y-4">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="hover-elevate" data-testid={`card-project-${project.id}`}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <Link href={`/projects/${project.id}`}>
-                      <CardTitle className="text-lg font-semibold hover:text-primary transition-colors cursor-pointer">
-                        {project.name}
-                      </CardTitle>
-                    </Link>
-                    <StatusBadge status={project.status} type="project" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {project.client?.name}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DropdownMenu>
+        <RecordWorkspace key={`${searchQuery}:${statusFilter}`} records={filteredProjects} title={project => project.name} href={project => `/projects/${project.id}`}
+          columns={[{label:"Project",render:project=>project.name},{label:"Client",render:project=>project.client?.name ?? "—"},{label:"Stage",render:project=><StatusBadge status={project.status} type="project" />},{label:"County",render:project=>project.county ?? "—"}]}
+          details={project=><><dl><dt>Client</dt><dd>{project.client?.name ?? "—"}</dd><dt>Stage</dt><dd><StatusBadge status={project.status} type="project" /></dd><dt>Started</dt><dd>{project.startDate ? formatLocalDate(project.startDate) : "—"}</dd><dt>County</dt><dd>{project.county ?? "—"}</dd></dl>{project.description && <p className="text-sm text-muted-foreground">{project.description}</p>}<Button variant="outline" onClick={()=>handleOpenDialog(project)}>Edit project</Button></>}
+          actions={project=>                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button size="icon" variant="ghost" data-testid={`button-project-menu-${project.id}`}>
                         <MoreHorizontal className="h-4 w-4" />
@@ -808,38 +794,8 @@ export default function Projects() {
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button size="icon" variant="ghost" asChild>
-                    <Link href={`/projects/${project.id}`}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  {project.county && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{project.county} County</span>
-                    </div>
-                  )}
-                  {project.startDate && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Started {formatLocalDate(project.startDate)}</span>
-                    </div>
-                  )}
-                </div>
-                {project.description && (
-                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </DropdownMenu>}
+        />
       ) : (
         <Card>
           <CardContent className="p-0">

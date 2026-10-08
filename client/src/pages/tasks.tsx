@@ -1,3 +1,4 @@
+import { useWorkspacePage, WorkspacePagination } from "@/components/workspace-pagination";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -387,7 +388,7 @@ function TaskDetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="!left-auto !right-0 !top-0 !translate-x-0 !translate-y-0 !h-[100dvh] !max-h-[100dvh] !w-full sm:!w-[520px] !max-w-none !rounded-none overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
@@ -482,7 +483,7 @@ function TaskDetailDialog({
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={taskForm.control}
                       name="status"
@@ -702,7 +703,7 @@ function TaskDetailDialog({
               <h4 className="text-sm font-medium">Log Time</h4>
               <Form {...detailTimeLogForm}>
                 <form onSubmit={detailTimeLogForm.handleSubmit(onSubmitDetailTimeEntry)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={detailTimeLogForm.control}
                       name="date"
@@ -731,7 +732,7 @@ function TaskDetailDialog({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={detailTimeLogForm.control}
                       name="startTime"
@@ -1200,6 +1201,7 @@ export default function Tasks() {
   }), [tasks, searchQuery, statusFilter, priorityFilter, locationFilter]);
 
   const taskHierarchy = useMemo(() => filteredTasks ? buildTaskHierarchy(filteredTasks) : [], [filteredTasks]);
+  const taskPage = useWorkspacePage(taskHierarchy, 6, `${searchQuery}:${statusFilter}:${priorityFilter}:${locationFilter}`);
   const flatTaskList = useMemo(() => flattenTasks(taskHierarchy), [taskHierarchy]);
 
   const handleOpenTaskDetail = (task: TaskWithSubtasks) => {
@@ -1311,7 +1313,7 @@ export default function Tasks() {
 
       {taskHierarchy.length > 0 ? (
         <div className="space-y-3">
-          {taskHierarchy.map((task) => (
+          {taskPage.items.map((task) => (
             <TaskHierarchyItem
               key={task.id}
               task={task}
@@ -1322,6 +1324,7 @@ export default function Tasks() {
               toggleExpand={toggleExpand}
             />
           ))}
+          <WorkspacePagination {...taskPage} />
         </div>
       ) : (
         <Card>
@@ -1366,7 +1369,7 @@ export default function Tasks() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={timeLogForm.control}
                   name="startTime"

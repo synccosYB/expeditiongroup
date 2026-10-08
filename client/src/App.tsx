@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { WorkspaceRail } from "@/components/workspace-rail";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
@@ -174,16 +175,17 @@ function AuthenticatedLayout() {
   const { isAdmin } = useAuth();
   
   const style = {
-    "--sidebar-width": "16rem",
+    "--sidebar-width": "13rem",
     "--sidebar-width-icon": "3rem",
   };
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+      <div className="workspace-shell flex w-full">
+        <WorkspaceRail />
         <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 p-3 border-b bg-background shrink-0 print:hidden">
+        <div className="workspace-main flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between gap-4 px-4 py-3 border-b bg-background shrink-0 print:hidden">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             {isAdmin && <GlobalSearch />}
             <div className="flex items-center gap-2">
@@ -191,8 +193,8 @@ function AuthenticatedLayout() {
               <ThemeToggle />
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-3 md:p-6">
-            <div className="max-w-7xl mx-auto">
+          <main className="workspace-main flex-1 overflow-auto p-4 md:p-6">
+            <div className="workspace-page">
               {isAdmin ? <AdminRouter /> : <ClientRouter />}
             </div>
           </main>

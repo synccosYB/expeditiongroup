@@ -1,3 +1,4 @@
+import { RecordWorkspace } from "@/components/record-workspace";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -661,28 +662,12 @@ export default function Clients() {
       </div>
 
       {filteredClients && filteredClients.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((client) => (
-            <Card key={client.id} className="hover-elevate" data-testid={`card-client-${client.id}`}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg font-semibold truncate">
-                      {client.name}
-                    </CardTitle>
-                    {client.status === "archived" && (
-                      <Badge variant="secondary" className="text-xs">Archived</Badge>
-                    )}
-                  </div>
-                  {client.county && (
-                    <p className="text-sm text-muted-foreground">
-                      {client.county} County
-                    </p>
-                  )}
-                </div>
-                <DropdownMenu>
+        <RecordWorkspace key={searchQuery} records={filteredClients} title={client=>client.name} href={client=>`/clients/${client.id}`}
+          columns={[{label:"Client",render:client=>client.name},{label:"Email",render:client=>client.email ?? "—"},{label:"Phone",render:client=>client.phone ?? "—"},{label:"Status",render:client=><Badge variant="secondary">{client.status}</Badge>}]}
+          details={client=><><dl><dt>Email</dt><dd>{client.email ?? "—"}</dd><dt>Phone</dt><dd>{client.phone ?? "—"}</dd><dt>Address</dt><dd>{client.address ?? "—"}</dd><dt>County</dt><dd>{client.county ?? "—"}</dd></dl>{client.status !== "archived" && <Button variant="outline" onClick={()=>handleOpenDialog(client)}>Edit client</Button>}</>}
+          actions={client=>                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" data-testid={`button-client-menu-${client.id}`}>
+                    <Button size="icon" variant="ghost" aria-label={`Actions for ${client.name}`} data-testid={`button-client-menu-${client.id}`}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -713,31 +698,8 @@ export default function Clients() {
                       {client.status === "archived" ? "Permanently Delete" : "Delete"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {client.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{client.email}</span>
-                  </div>
-                )}
-                {client.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{client.phone}</span>
-                  </div>
-                )}
-                {client.address && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span className="truncate">{client.address}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </DropdownMenu>}
+        />
       ) : (
         <Card>
           <CardContent className="p-0">

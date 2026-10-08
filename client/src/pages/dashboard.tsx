@@ -1,3 +1,4 @@
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -26,7 +27,7 @@ import {
   NotebookPen,
   Loader2,
 } from "lucide-react";
-import { StatusBadge, TaskTypeBadge } from "@/components/status-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { DailyActivityDialog } from "@/components/daily-activity-dialog";
 import type { Project, Task, Client, Invoice } from "@shared/schema";
@@ -71,6 +72,7 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [dailyActivityDialogOpen, setDailyActivityDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [, setNowTick] = useState(0);
 
   useEffect(() => {
@@ -381,324 +383,34 @@ export default function Dashboard() {
     setEndDate("");
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Overview of your permit expediting operations
-          </p>
-          <div
-            className="mt-2 flex items-center gap-2 text-xs text-muted-foreground h-4"
-            aria-live="polite"
-            data-testid="status-dashboard-refresh"
-          >
-            {isFetching ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" data-testid="icon-dashboard-refreshing" />
-                <span>Updating…</span>
-              </>
-            ) : dataUpdatedAt ? (
-              <span data-testid="text-dashboard-last-updated">
-                Updated {formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <Button
-            onClick={() => setDailyActivityDialogOpen(true)}
-            className="gap-2"
-            data-testid="button-log-daily-activity"
-          >
-            <NotebookPen className="h-4 w-4" />
-            Log Daily Activity
-          </Button>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filter Hours:</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="startDate" className="text-sm text-muted-foreground">From</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-36"
-              data-testid="input-start-date"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="endDate" className="text-sm text-muted-foreground">To</Label>
-            <Input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-36"
-              data-testid="input-end-date"
-            />
-          </div>
-          {(startDate || endDate) && (
-            <Button variant="ghost" size="icon" onClick={clearDateFilters} data-testid="button-clear-date-filter">
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {dashboardErrors.length > 0 && (
-        <Card className="border-destructive/50 bg-destructive/5" data-testid="card-dashboard-errors">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">
-                  Some dashboard data failed to load
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Affected: {dashboardErrors.map(e => e.label).join(", ")}. Try refreshing the page; if the problem persists, you may have been signed out or lack permission for these endpoints.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {statCards.map((stat) => (
-          <Card 
-            key={stat.title} 
-            className={`cursor-pointer hover-elevate transition-all ${stat.hasError ? "border-destructive/50" : ""}`}
-            onClick={() => handlePrintReport(stat.reportType)}
-            data-testid={`stat-card-${stat.reportType}`}
-          >
-            <CardHeader className="flex flex-row items-center justify-between gap-4 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {stat.value}
-                  </div>
-                  {"subtitle" in stat && stat.subtitle && (
-                    <div className="text-sm text-muted-foreground">
-                      {stat.subtitle}
-                    </div>
-                  )}
-                </div>
-                <Printer className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card data-testid="card-job-pipeline" className={pipelineError ? "border-destructive/50" : ""}>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg font-semibold">Job Pipeline</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1" data-testid="text-pipeline-total">
-              {pipelineError
-                ? "Couldn't load job pipeline counts"
-                : `${totalPipelineProjects} total jobs across all stages`}
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/projects">
-              View All
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-            {STATUS_PIPELINE_ORDER.map((stage) => {
-              const count = statusCountMap.get(stage.key) ?? 0;
-              return (
-                <Link
-                  key={stage.key}
-                  href={`/projects?status=${stage.key}`}
-                  className="text-center p-3 rounded-lg bg-muted/30 hover-elevate cursor-pointer transition-all"
-                  data-testid={`pipeline-stage-${stage.key}`}
-                >
-                  <div className={`w-3 h-3 rounded-full ${stage.color} mx-auto mb-2`} />
-                  <div className="text-2xl font-bold text-foreground">
-                    {pipelineError ? "—" : count}
-                  </div>
-                  <div className="text-xs text-muted-foreground">{stage.label}</div>
-                </Link>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className={overdueTasks.length > 0 ? "border-destructive/50" : ""} data-testid="card-overdue-tasks">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className={`h-5 w-5 ${overdueTasks.length > 0 ? "text-destructive" : "text-muted-foreground"}`} />
-            <CardTitle className={`text-lg font-semibold ${overdueTasks.length > 0 ? "text-destructive" : ""}`}>
-              Due & Overdue Tasks ({overdueError ? "—" : overdueTasks.length})
-            </CardTitle>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/tasks?filter=overdue">
-              View All
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {overdueError ? (
-            <p className="text-sm text-destructive" data-testid="text-overdue-error">Failed to load overdue tasks. Try refreshing the page.</p>
-          ) : overdueTasks.length > 0 ? (
-            <div className="space-y-3">
-              {overdueTasks.slice(0, 5).map((task) => (
-                <Link
-                  key={task.id}
-                  href={`/projects/${task.projectId}`}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-destructive/5 hover-elevate cursor-pointer"
-                  data-testid={`overdue-task-${task.id}`}
-                >
-                  <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {task.project?.name}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <TaskTypeBadge type={task.type} />
-                    {task.dueDate && (
-                      <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {formatDistanceToNow(parseLocalDateFromISO(task.dueDate) || new Date(), { addSuffix: true })}
-                      </Badge>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground" data-testid="text-no-overdue-tasks">No tasks are due or overdue right now.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <CardTitle className="text-lg font-semibold">Recent Projects</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/projects">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {projectsError ? (
-              <p className="text-sm text-destructive py-4" data-testid="text-recent-projects-error">Failed to load recent projects.</p>
-            ) : recentProjects && recentProjects.length > 0 ? (
-              <div className="space-y-4">
-                {recentProjects.slice(0, 5).map((project) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="flex items-center justify-between gap-4 p-3 rounded-lg hover-elevate cursor-pointer"
-                    data-testid={`link-project-${project.id}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {project.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {project.client?.name} • {project.county || "No county"}
-                      </p>
-                    </div>
-                    <StatusBadge status={project.status} type="project" />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <FolderKanban className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No projects yet</p>
-                <Button size="sm" className="mt-2" asChild>
-                  <Link href="/projects">Create Project</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <CardTitle className="text-lg font-semibold">Pending Tasks</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/tasks">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {tasksError ? (
-              <p className="text-sm text-destructive py-4" data-testid="text-pending-tasks-error">Failed to load tasks.</p>
-            ) : pendingTasks && pendingTasks.length > 0 ? (
-              <div className="space-y-4">
-                {pendingTasks.slice(0, 5).map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30"
-                    data-testid={`task-item-${task.id}`}
-                  >
-                    {task.status === "done" ? (
-                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-chart-2" />
-                    ) : task.status === "waiting_on_client" ? (
-                      <AlertCircle className="h-4 w-4 mt-0.5 text-chart-3" />
-                    ) : (
-                      <Timer className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {task.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {task.project?.name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TaskTypeBadge type={task.type} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <ClipboardList className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No pending tasks</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <DailyActivityDialog
-        isOpen={dailyActivityDialogOpen}
-        onClose={() => setDailyActivityDialogOpen(false)}
-      />
+  const selected = recentProjects?.find(p => p.id === selectedProjectId) ?? recentProjects?.[0];
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div><h1>Workspace overview</h1><p className="mt-1 text-sm text-muted-foreground">Your projects, priorities, and progress.</p></div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setDailyActivityDialogOpen(true)}><NotebookPen className="mr-2 h-4 w-4" />Log activity</Button><Button asChild><Link href="/projects">View projects<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></div>
     </div>
-  );
+    {summaryError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">Dashboard data could not load. Please refresh.</p>}
+    <div className="workspace-metrics">
+      {[["Active projects", stats?.activeProjects, "/projects"], ["Pending tasks", stats?.pendingTasks, "/tasks"], ["Unpaid invoices", unpaidCount, "/invoices"], ["Unbilled hours", unbilledHours.toFixed(1), "/time-logs"]].map(([label,value,url]) => <Link key={label} href={String(url)} className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring"><div className="text-2xl font-semibold tabular-nums">{summaryError ? "—" : value ?? 0}</div><div className="text-sm text-muted-foreground">{label}</div></Link>)}
+    </div>
+    <div className="workspace-split">
+      <div className="min-w-0">
+        <div className="flex items-center justify-between gap-3 border-b p-4"><h2 className="text-base font-semibold">Recent projects</h2><Link href="/projects" className="text-sm text-primary">View all</Link></div>
+        <Table><TableHeader><TableRow><TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Stage</TableHead><TableHead>Details</TableHead></TableRow></TableHeader><TableBody>
+          {recentProjects?.slice(0,6).map(project => <TableRow key={project.id} data-state={selected?.id === project.id ? "selected" : undefined}><TableCell><Link href={`/projects/${project.id}`} className="font-medium text-primary">{project.name}</Link></TableCell><TableCell>{project.client?.name ?? "—"}</TableCell><TableCell><StatusBadge status={project.status} type="project" /></TableCell><TableCell><Button size="sm" variant="ghost" onClick={() => setSelectedProjectId(project.id)} aria-label={`Preview ${project.name}`}>Preview</Button></TableCell></TableRow>)}
+          {!recentProjects?.length && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No projects yet.</TableCell></TableRow>}
+        </TableBody></Table>
+        <div className="border-t p-4"><h2 className="mb-3 text-sm font-semibold">Project pipeline · {totalPipelineProjects} jobs</h2><div className="flex flex-wrap gap-x-4 gap-y-2">{STATUS_PIPELINE_ORDER.map(stage => <Link key={stage.key} href={`/projects?status=${stage.key}`} className="flex items-center gap-2 text-xs"><span className={`h-2 w-2 rounded-full ${stage.color}`} />{stage.label}<strong>{statusCountMap.get(stage.key) ?? 0}</strong></Link>)}</div></div>
+      </div>
+      <aside className="workspace-detail flex flex-col gap-5" aria-label="Project preview">
+        {selected ? <><h2 className="text-lg font-semibold">{selected.name}</h2><dl><dt>Client</dt><dd>{selected.client?.name ?? "—"}</dd><dt>Stage</dt><dd><StatusBadge status={selected.status} type="project" /></dd><dt>County</dt><dd>{selected.county ?? "—"}</dd></dl>{selected.description && <p className="text-sm text-muted-foreground line-clamp-3">{selected.description}</p>}<Button asChild className="mt-auto"><Link href={`/projects/${selected.id}`}>Open project<ArrowRight className="ml-2 h-4 w-4" /></Link></Button></> : <p className="text-sm text-muted-foreground">Select a project to see its details.</p>}
+      </aside>
+    </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section className="rounded-lg border"><div className="flex items-center justify-between border-b px-4 py-3"><h2 className="text-base font-semibold">Needs attention · {overdueTasks.length}</h2><Link href="/tasks?filter=overdue" className="text-sm text-primary">View all</Link></div><div className="divide-y">{overdueTasks.slice(0,3).map(task => <Link key={task.id} href={`/projects/${task.projectId}`} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block truncate text-sm font-medium">{task.title}</span><span className="text-xs text-muted-foreground">{task.project?.name}</span></span><Badge variant="outline" className="shrink-0 text-destructive">Due / overdue</Badge></Link>)}{!overdueTasks.length && <p className="px-4 py-3 text-sm text-muted-foreground">No due or overdue tasks.</p>}</div></section>
+      <section className="rounded-lg border"><div className="flex items-center justify-between border-b px-4 py-3"><h2 className="text-base font-semibold">Pending tasks</h2><Link href="/tasks" className="text-sm text-primary">View all</Link></div><div className="divide-y">{pendingTasks?.slice(0,3).map(task => <Link key={task.id} href={`/projects/${task.projectId}`} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0"><span className="block truncate text-sm font-medium">{task.title}</span><span className="text-xs text-muted-foreground">{task.project?.name}</span></span><Badge variant="outline" className="shrink-0">{task.type.replace(/_/g, " ")}</Badge></Link>)}{!pendingTasks?.length && <p className="px-4 py-3 text-sm text-muted-foreground">No pending tasks.</p>}</div></section>
+    </div>
+    <details className="rounded-lg border px-4 py-3"><summary className="cursor-pointer text-sm font-medium">Hours filters & reports</summary><div className="mt-3 flex flex-wrap items-center gap-3"><Label htmlFor="startDate">From</Label><Input id="startDate" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-40" /><Label htmlFor="endDate">To</Label><Input id="endDate" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-40" /><Button variant="outline" size="sm" onClick={clearDateFilters}>Clear</Button>{statCards.map(stat => <Button key={stat.title} size="sm" variant="outline" onClick={() => handlePrintReport(stat.reportType)}><Printer className="mr-2 h-3 w-3" />{stat.title}</Button>)}</div></details>
+    <DailyActivityDialog isOpen={dailyActivityDialogOpen} onClose={() => setDailyActivityDialogOpen(false)} />
+  </div>;
 }
