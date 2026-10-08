@@ -1,3 +1,4 @@
+import { removeSynkdexElements } from "./synkdex-cleanup";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -148,20 +149,7 @@ function restoreWidgetAfterScreenshot() {
 
 
 function removeSynkdex() {
-  const scripts = document.querySelectorAll('script[data-api-key]');
-  scripts.forEach((el) => el.remove());
-  const widgetEl = document.getElementById("synkdex-widget");
-  if (widgetEl) widgetEl.remove();
-  const overlays = document.querySelectorAll(".sdx-overlay");
-  overlays.forEach((el) => el.remove());
-  const buttons = document.querySelectorAll(".sdx-widget-btn");
-  buttons.forEach((el) => el.remove());
-  const styles = document.querySelectorAll("style");
-  styles.forEach((el) => {
-    if (el.textContent && el.textContent.includes("sdx-widget-btn")) {
-      el.remove();
-    }
-  });
+  removeSynkdexElements(document);
   window.__synkdexWidgetLoaded = false;
 }
 
