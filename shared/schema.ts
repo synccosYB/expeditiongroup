@@ -719,6 +719,9 @@ export const bankAccounts = pgTable("bank_accounts", {
   accountNumber: varchar("account_number", { length: 50 }),
   routingNumber: varchar("routing_number", { length: 50 }),
   bankName: varchar("bank_name", { length: 255 }),
+  checkCompanyName: varchar("check_company_name", { length: 255 }),
+  checkCompanyAddress: text("check_company_address"),
+  nextCheckNumber: integer("next_check_number").default(1),
   openingBalance: varchar("opening_balance", { length: 20 }).default("0"),
   currentBalance: varchar("current_balance", { length: 20 }).default("0"),
   linkedAccountId: integer("linked_account_id").references(() => accounts.id),
@@ -818,6 +821,7 @@ export const billItems = pgTable("bill_items", {
 
 // Bill Payments
 export const billPayments = pgTable("bill_payments", {
+  checkDetails: jsonb("check_details").$type<import("./checkwriter").CheckDetails>(),
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   billId: integer("bill_id").notNull().references(() => bills.id, { onDelete: "cascade" }),
   bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id),

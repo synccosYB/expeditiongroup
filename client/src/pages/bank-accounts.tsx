@@ -54,12 +54,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 const bankAccountFormSchema = z.object({
   name: z.string().min(1, "Account name is required"),
   bankName: z.string().min(1, "Bank name is required"),
   accountType: z.enum(["checking", "savings", "credit_card", "money_market", "other"]),
+  checkCompanyName: z.string().max(255).optional(),
+  checkCompanyAddress: z.string().max(1000).optional(),
+  nextCheckNumber: z.coerce.number().int().min(1).max(999999999),
   accountNumber: z.string().optional(),
   routingNumber: z.string().optional(),
   openingBalance: z.string().transform(v => v || "0"),
@@ -97,6 +101,9 @@ export default function BankAccounts() {
       name: "",
       bankName: "",
       accountType: "checking",
+      checkCompanyName: "Expedition Group",
+      checkCompanyAddress: "17 Sandybrook Drive\nSpring Valley, NY 10977",
+      nextCheckNumber: 1,
       accountNumber: "",
       routingNumber: "",
       openingBalance: "0",
@@ -202,6 +209,9 @@ export default function BankAccounts() {
         name: account.name,
         bankName: account.bankName || "",
         accountType: account.accountType as "checking" | "savings" | "credit_card" | "money_market" | "other",
+        checkCompanyName: account.checkCompanyName || "Expedition Group",
+        checkCompanyAddress: account.checkCompanyAddress || "",
+        nextCheckNumber: account.nextCheckNumber || 1,
         accountNumber: account.accountNumber || "",
         routingNumber: account.routingNumber || "",
         openingBalance: account.openingBalance || "0",
@@ -268,7 +278,7 @@ export default function BankAccounts() {
               Add Account
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingAccount ? "Edit Bank Account" : "Add Bank Account"}
@@ -346,7 +356,7 @@ export default function BankAccounts() {
                         <FormLabel>Account Number</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Last 4 digits"
+                            placeholder="Full account number"
                             {...field}
                             data-testid="input-account-number"
                           />
@@ -372,6 +382,13 @@ export default function BankAccounts() {
                       </FormItem>
                     )}
                   />
+                </div>
+                <div className="rounded-lg border p-3 space-y-3">
+                  <p className="font-medium">Check printing - check on top</p>
+                  <p className="text-xs text-muted-foreground">Uses the Expedition Group logo and preprinted check stock. Enter the full bank account and routing numbers above.</p>
+                  <FormField control={form.control} name="checkCompanyName" render={({ field }) => (<FormItem><FormLabel>Company name on checks</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="checkCompanyAddress" render={({ field }) => (<FormItem><FormLabel>Company address and information</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="nextCheckNumber" render={({ field }) => (<FormItem><FormLabel>Next check number</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
