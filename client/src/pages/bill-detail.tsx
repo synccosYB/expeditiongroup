@@ -1,3 +1,4 @@
+import { BillCheckwriter, CheckPaymentActions } from "@/components/bill-checkwriter";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
@@ -95,6 +96,7 @@ export default function BillDetail() {
           <Badge variant={statusInfo.variant} className="text-sm">
             {statusInfo.label}
           </Badge>
+          <BillCheckwriter bill={bill} accounts={bankAccounts || []} />
           <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -219,6 +221,7 @@ export default function BillDetail() {
                           {bankAccount?.name && <span> — {bankAccount.name}</span>}
                         </p>
                       </div>
+                      <CheckPaymentActions payment={payment} />
                       {payment.bankAccountId && payment.bankTransactionId && (
                         <Link href={`/bank-register/${payment.bankAccountId}?txn=${payment.bankTransactionId}`}>
                           <Button variant="ghost" size="sm" className="text-xs gap-1" data-testid={`link-bank-register-${payment.id}`}>

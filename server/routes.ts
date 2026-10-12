@@ -1,3 +1,4 @@
+import { registerCheckwriterRoutes } from "./checkwriter";
 import type { Express, Request } from "express";
 import type { Server } from "http";
 import { storage, db } from "./storage";
@@ -110,6 +111,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+  registerCheckwriterRoutes(app);
 
   db.execute(sql`
     ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS is_rebilled BOOLEAN DEFAULT false;
@@ -5811,6 +5813,10 @@ export async function registerRoutes(
       }
       const parsed = updateBankTransactionSchema.parse(req.body);
       const existingTx = await storage.getBankTransaction(parseInt(req.params.id));
+      const linkedCheckPayments = await db.select({ checkDetails: billPayments.checkDetails }).from(billPayments).where(eq(billPayments.bankTransactionId, parseInt(req.params.id)));
+      if (linkedCheckPayments.some(p => p.checkDetails) && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) {
+        return res.status(409).json({ message: "Printed check details cannot be edited in the bank register" });
+      }
       const transaction = await storage.updateBankTransaction(parseInt(req.params.id), parsed);
       if (!transaction) {
         return res.status(404).json({ message: "Bank transaction not found" });
@@ -5868,6 +5874,8 @@ export async function registerRoutes(
         .select()
         .from(billPayments)
         .where(eq(billPayments.bankTransactionId, transactionId));
+
+      if (associatedBillPayments.some(payment => payment.checkDetails)) return res.status(409).json({ message: "Use Void check to preserve check history" });
 
       for (const payment of associatedBillPayments) {
         const bill = await storage.getBill(payment.billId);
@@ -6595,6 +6603,8 @@ export async function registerRoutes(
         .from(billPayments)
         .where(eq(billPayments.billId, billId));
       
+      if (associatedPayments.some(payment => payment.checkDetails)) return res.status(409).json({ message: "Bills with printed check history cannot be deleted" });
+
       const accountsToRecalc = new Set<number>();
       for (const payment of associatedPayments) {
         if (payment.bankTransactionId) {
@@ -6741,6 +6751,8 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Bank account not found" });
       }
 
+      if (existingPayment.checkDetails) return res.status(409).json({ message: "Printed checks cannot be edited; void and issue a new check" });
+
       const oldAmount = parseFloat(existingPayment.amount);
       const newAmount = parseFloat(parsedAmount);
       
@@ -6823,6 +6835,8 @@ export async function registerRoutes(
       if (!payment) {
         return res.status(404).json({ message: "Bill payment not found" });
       }
+
+      if (payment.checkDetails) return res.status(409).json({ message: "Use Void check to preserve check history" });
 
       if (payment.bankTransactionId) {
         await storage.deleteBankTransaction(payment.bankTransactionId);
