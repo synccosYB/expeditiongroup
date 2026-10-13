@@ -195,7 +195,7 @@ export function InvoiceGenerationDialog({
 
     unbilledTimeEntries.forEach((entry) => {
       if (selectedTimeEntries.has(entry.id)) {
-        const hours = (entry.totalMinutes || 0) / 60;
+        const hours = Number(((entry.totalMinutes || 0) / 60).toFixed(2));
         const selected = billingItems.find((item) => item.id === sourceItems["entry-" + entry.id]);
         const price = selected ? Number(selected.defaultRate) : rate;
         const amount = hours * price;

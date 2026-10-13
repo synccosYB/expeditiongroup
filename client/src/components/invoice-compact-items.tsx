@@ -12,7 +12,7 @@ export function summarizeInvoiceItems(items: InvoiceLine[]) {
   for (const entry of items) {
     const raw = entry.description.replace(/^\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*/, "").trim();
     const description = (entry.catalogItemId ? raw.split(" — ")[0] : raw) || "Uncategorized work";
-    const key = (entry.catalogItemId ? "catalog:" + entry.catalogItemId : "description:" + description.toLowerCase()) + "|rate:" + entry.unitPrice;
+    const key = (entry.catalogItemId ? "catalog:" + entry.catalogItemId : "description:" + description.toLowerCase()) + "|rate:" + Number(entry.unitPrice);
     let group = buckets.get(key);
     if (!group) {
       group = { name: description, rate: entry.unitPrice, qty: 0, cents: 0, lines: [] };
