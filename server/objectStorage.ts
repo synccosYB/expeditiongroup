@@ -1,3 +1,4 @@
+import { hasReadablePdfText } from "./pdf-text-quality";
 import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
@@ -462,11 +463,11 @@ async function extractTextFromBuffer(
       const embedded = (data.text || "").trim();
       // A near-empty result usually means an image-only (scanned) PDF — fall
       // back to OCR by rendering the pages to images.
-      if (embedded.length >= 20) {
+      if (hasReadablePdfText(embedded)) {
         return data.text;
       }
       const ocrText = await ocrPdfBuffer(buffer, fileName);
-      return ocrText || (embedded ? data.text : null);
+      return ocrText || null;
     }
     if (isDocx) {
       const mammoth = await import("mammoth");
