@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { InvoiceItem } from "@shared/schema";
 
 type InvoiceLine = Pick<InvoiceItem, "id" | "description" | "quantity" | "unitPrice" | "amount" | "catalogItemId">;
@@ -9,7 +10,8 @@ const money = (amountCents: number) => "$" + (amountCents / 100).toLocaleString(
 export function summarizeInvoiceItems(items: InvoiceLine[]) {
   const buckets = new Map<string, { name: string; rate: string; qty: number; cents: number; lines: InvoiceLine[] }>();
   for (const entry of items) {
-    const description = entry.description.replace(/^\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*/, "").trim() || "Uncategorized work";
+    const raw = entry.description.replace(/^\d{1,2}\/\d{1,2}\/\d{4}\s*-\s*/, "").trim();
+    const description = (entry.catalogItemId ? raw.split(" — ")[0] : raw) || "Uncategorized work";
     const key = (entry.catalogItemId ? "catalog:" + entry.catalogItemId : "description:" + description.toLowerCase()) + "|rate:" + entry.unitPrice;
     let group = buckets.get(key);
     if (!group) {
@@ -35,9 +37,19 @@ export function InvoiceSummaryRows({ items }: { items: InvoiceLine[] }) {
 }
 
 export function InvoiceDetailAppendix({ items }: { items: InvoiceLine[] }) {
-  return <details className="mt-3 text-sm print:hidden" data-testid="invoice-details-appendix">
-    <summary className="cursor-pointer font-medium underline underline-offset-2">View all {items.length} original entries (full audit detail)</summary>
-    <div className="mt-3 space-y-3">
+  const [expanded, setExpanded] = useState(false);
+  const [includeInPrint, setIncludeInPrint] = useState(false);
+  return <section className="mt-3 text-sm" data-testid="invoice-details-appendix">
+    <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <button type="button" className="underline underline-offset-2 font-medium" onClick={() => setExpanded(!expanded)}>
+        {expanded ? "Hide" : "View"} all {items.length} original entries
+      </button>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={includeInPrint} onChange={(e) => setIncludeInPrint(e.target.checked)} />
+        Include full entry breakdown when printing
+      </label>
+    </div>
+    <div className={expanded || includeInPrint ? "mt-3 space-y-3" : "hidden"}>
       {summarizeInvoiceItems(items).map((group, index) => (
         <div key={index} className="break-inside-avoid border rounded p-2">
           <div className="font-semibold">{group.name} — {money(group.cents)}</div>
@@ -50,5 +62,5 @@ export function InvoiceDetailAppendix({ items }: { items: InvoiceLine[] }) {
         </div>
       ))}
     </div>
-  </details>;
+  </section>;
 }
