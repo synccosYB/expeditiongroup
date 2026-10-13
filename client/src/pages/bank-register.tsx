@@ -1006,6 +1006,7 @@ export default function BankRegister() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
+                            {transaction.checkDetails && <Link href="/write-check"><Badge variant="outline" className="text-xs cursor-pointer">Check history</Badge></Link>}
                             {transaction.linkedExpenseId && (
                               <Link href={`/expenses?highlight=${transaction.linkedExpenseId}`}>
                                 <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1" data-testid={`link-expense-${transaction.id}`}>

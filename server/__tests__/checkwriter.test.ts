@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { amountInWords, moneyToCents, validateCheckPayment, type CheckDetails } from "../../shared/checkwriter";
+import { amountInWords, checkRequestSchema, validateCheckAttachment, moneyToCents, validateCheckPayment, type CheckDetails } from "../../shared/checkwriter";
 import { buildCheckPdf } from "../../client/src/lib/checkPdf";
 
 test("money uses exact cents, including decimal boundaries", () => {
@@ -36,4 +36,25 @@ test("void PDF visibly marks original check void", () => {
 });
 test("overlong payee cannot silently clip or disappear", () => {
   assert.throws(() => buildCheckPdf({ ...check, payee: "Long vendor name ".repeat(30) }), /too long/);
+});
+
+test("standalone PDF vouchers do not pretend a bill exists", () => {
+  const content = buildCheckPdf({ ...check, billNumber: "" }).output();
+  assert.equal((content.match(/Standalone check/g) || []).length, 2);
+  assert.ok(!content.includes("(Bill: )"));
+});
+
+test("standalone checks require a payee and expense category, while linked bills do not", () => {
+  const common = { bankAccountId: 1, number: "100", date: "2026-10-13", amount: "10" };
+  assert.equal(checkRequestSchema.safeParse(common).success, false);
+  assert.equal(checkRequestSchema.safeParse({ ...common, payee: "Payee", accountId: 1 }).success, true);
+  assert.equal(checkRequestSchema.safeParse({ ...common, billId: 1 }).success, true);
+});
+test("attachment requests reject external URLs and object paths outside check bill storage", () => {
+  const common = { bankAccountId: 1, number: "100", date: "2026-10-13", amount: "10", billId: 1 };
+  for (const path of ["https://example.com/bill.pdf", "/objects/other/secret", "/objects/check-bills/../../secret"]) assert.equal(checkRequestSchema.safeParse({ ...common, attachment: { path, name: "bill.pdf" } }).success, false);
+});
+test("attachment validation rejects oversized, empty, unknown and mismatched file metadata", () => {
+  validateCheckAttachment("application/pdf", 100, "application/pdf");
+  for (const [type, size, reserved] of [["image/svg+xml", 100, "image/svg+xml"], ["application/pdf", 100, "image/png"], ["application/pdf", 0, "application/pdf"], ["application/pdf", 11 * 1024 * 1024, "application/pdf"], ["application/pdf", NaN, "application/pdf"]] as [string, number, string][]) assert.throws(() => validateCheckAttachment(type, size, reserved));
 });

@@ -1,3 +1,4 @@
+import WriteCheck from "@/pages/write-check";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -123,6 +124,7 @@ function AdminRouter() {
       <Route path="/proposals/:id" component={ProposalDetail} />
       <Route path="/chart-of-accounts" component={ChartOfAccounts} />
       <Route path="/vendors" component={Vendors} />
+      <Route path="/write-check" component={WriteCheck} />
       <Route path="/bank-accounts" component={BankAccounts} />
       <Route path="/bank-accounts/:id" component={BankAccountDetail} />
       <Route path="/bank-register/:id" component={BankRegister} />

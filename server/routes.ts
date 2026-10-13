@@ -5814,7 +5814,7 @@ export async function registerRoutes(
       const parsed = updateBankTransactionSchema.parse(req.body);
       const existingTx = await storage.getBankTransaction(parseInt(req.params.id));
       const linkedCheckPayments = await db.select({ checkDetails: billPayments.checkDetails }).from(billPayments).where(eq(billPayments.bankTransactionId, parseInt(req.params.id)));
-      if (linkedCheckPayments.some(p => p.checkDetails) && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) {
+      if ((existingTx?.checkDetails || linkedCheckPayments.some(p => p.checkDetails)) && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) {
         return res.status(409).json({ message: "Printed check details cannot be edited in the bank register" });
       }
       const transaction = await storage.updateBankTransaction(parseInt(req.params.id), parsed);
@@ -5869,6 +5869,9 @@ export async function registerRoutes(
       }
 
       const transactionId = parseInt(req.params.id);
+
+      const printedTransaction = await storage.getBankTransaction(transactionId);
+      if (printedTransaction?.checkDetails) return res.status(409).json({ message: "Use Void check to preserve check history" });
 
       const associatedBillPayments = await db
         .select()
@@ -6068,6 +6071,8 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      const existingExpense = await storage.getExpense(parseInt(req.params.id));
+      if (existingExpense?.bankTransactionId && (await storage.getBankTransaction(existingExpense.bankTransactionId))?.checkDetails) return res.status(409).json({ message: "Printed check expenses cannot be edited; use Void check and issue a replacement" });
       const data = { ...req.body };
       
       // Normalize and validate receiptUrl if provided
@@ -6256,6 +6261,8 @@ export async function registerRoutes(
       // Get expense before deletion to handle bill status and bank transaction cleanup
       const expense = await storage.getExpense(parseInt(req.params.id));
       
+      if (expense?.bankTransactionId && (await storage.getBankTransaction(expense.bankTransactionId))?.checkDetails) return res.status(409).json({ message: "Use Void check to preserve the expense and check history" });
+
       const success = await storage.deleteExpense(parseInt(req.params.id));
       if (!success) {
         return res.status(404).json({ message: "Expense not found" });
