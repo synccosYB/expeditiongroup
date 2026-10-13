@@ -64,6 +64,20 @@ export function InvoiceGenerationDialog({
   const [selectedTimeLogs, setSelectedTimeLogs] = useState<Set<number>>(new Set());
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<Set<number>>(new Set());
   const [customItems, setCustomItems] = useState<CustomLineItem[]>([]);
+  const [sourceItems, setSourceItems] = useState<Record<string, number>>({});
+  const selectSourceItem = (key: string, id: string) => setSourceItems((prev) => {
+    const next = { ...prev };
+    if (id === "none") delete next[key]; else next[key] = Number(id);
+    return next;
+  });
+  const sourceItemControl = (key: string) => (
+    <Select value={sourceItems[key] ? String(sourceItems[key]) : "none"} onValueChange={(value) => selectSourceItem(key, value)}>
+      <SelectTrigger className="h-8 min-w-[130px]" aria-label="Service item"><SelectValue placeholder="Service item" /></SelectTrigger>
+      <SelectContent><SelectItem value="none">Original description</SelectItem>
+        {billingItems.filter((item) => item.isActive && item.unit === "hour").map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
   const [notes, setNotes] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [dueDate, setDueDate] = useState(
@@ -125,6 +139,7 @@ export function InvoiceGenerationDialog({
     setSelectedTimeLogs(new Set());
     setSelectedTimeEntries(new Set());
     setCustomItems([]);
+    setSourceItems({});
     setNotes("");
   };
 
@@ -162,12 +177,15 @@ export function InvoiceGenerationDialog({
     unbilledTimeLogs.forEach((log) => {
       if (selectedTimeLogs.has(log.id)) {
         const hours = parseFloat(log.totalHours) || 0;
-        const amount = hours * rate;
+        const selected = billingItems.find((item) => item.id === sourceItems["log-" + log.id]);
+        const price = selected ? Number(selected.defaultRate) : rate;
+        const amount = hours * price;
         timeTotal += amount;
         items.push({
-          description: `${formatLocalDate(log.date)} - ${log.taskDescription}`,
+          description: `${formatLocalDate(log.date)} - ${selected ? selected.name + " — " : ""}${log.taskDescription}`,
+          catalogItemId: selected?.id || null,
           quantity: log.totalHours,
-          unitPrice: hourlyRate,
+          unitPrice: price.toFixed(2),
           amount: amount.toFixed(2),
           timeLogId: log.id,
           isCustom: false,
@@ -178,12 +196,15 @@ export function InvoiceGenerationDialog({
     unbilledTimeEntries.forEach((entry) => {
       if (selectedTimeEntries.has(entry.id)) {
         const hours = (entry.totalMinutes || 0) / 60;
-        const amount = hours * rate;
+        const selected = billingItems.find((item) => item.id === sourceItems["entry-" + entry.id]);
+        const price = selected ? Number(selected.defaultRate) : rate;
+        const amount = hours * price;
         timeTotal += amount;
         items.push({
-          description: `${formatLocalDate(entry.date)} - ${entry.notes || "Task work"}`,
+          description: `${formatLocalDate(entry.date)} - ${selected ? selected.name + " — " : ""}${entry.notes || "Task work"}`,
+          catalogItemId: selected?.id || null,
           quantity: hours.toFixed(2),
-          unitPrice: hourlyRate,
+          unitPrice: price.toFixed(2),
           amount: amount.toFixed(2),
           timeEntryId: entry.id,
           isCustom: false,
@@ -215,7 +236,7 @@ export function InvoiceGenerationDialog({
       grandTotal: timeTotal + customTotal,
       lineItems: items,
     };
-  }, [selectedTimeLogs, selectedTimeEntries, customItems, hourlyRate, unbilledTimeLogs, unbilledTimeEntries]);
+  }, [selectedTimeLogs, selectedTimeEntries, customItems, hourlyRate, unbilledTimeLogs, unbilledTimeEntries, billingItems, sourceItems]);
 
   const handleSubmit = () => {
     if (lineItems.length === 0) {
@@ -343,6 +364,7 @@ export function InvoiceGenerationDialog({
                       <th className="p-2 text-left w-10"></th>
                       <th className="p-2 text-left">Date</th>
                       <th className="p-2 text-left">Description</th>
+                      <th className="p-2 text-left">Item</th>
                       <th className="p-2 text-right">Hours</th>
                     </tr>
                   </thead>
@@ -363,6 +385,7 @@ export function InvoiceGenerationDialog({
                         </td>
                         <td className="p-2">{formatLocalDate(entry.date)}</td>
                         <td className="p-2 truncate max-w-[200px]">{entry.notes || "Task work"}</td>
+                        <td className="p-2">{sourceItemControl("entry-" + entry.id)}</td>
                         <td className="p-2 text-right">{((entry.totalMinutes || 0) / 60).toFixed(2)}</td>
                       </tr>
                     ))}
@@ -382,6 +405,7 @@ export function InvoiceGenerationDialog({
                         </td>
                         <td className="p-2">{formatLocalDate(log.date)}</td>
                         <td className="p-2 truncate max-w-[200px]">{log.taskDescription}</td>
+                        <td className="p-2">{sourceItemControl("log-" + log.id)}</td>
                         <td className="p-2 text-right">{log.totalHours}</td>
                       </tr>
                     ))}
