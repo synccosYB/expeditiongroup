@@ -404,7 +404,7 @@ export const invoices = pgTable("invoices", {
 // Reusable billable services. Changes to this catalog never reprice prior invoice lines.
 export const billingCatalogItems = pgTable("billing_catalog_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  name: varchar("name", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
   description: text("description"),
   unit: varchar("unit", { length: 20 }).notNull().default("hour"),
   defaultRate: varchar("default_rate", { length: 20 }).notNull().default("0"),

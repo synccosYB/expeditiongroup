@@ -30,6 +30,7 @@ export function BillingItemsManager() {
     <DialogTrigger asChild><Button variant="outline" size="sm" data-testid="button-manage-billing-items">Items & rates</Button></DialogTrigger>
     <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
       <DialogHeader><DialogTitle>Billable items & hourly rates</DialogTitle></DialogHeader>
+      <p className="text-xs text-muted-foreground">Preset services start disabled until you configure their prices. Enabling an item makes it available on new invoices; older invoices never change.</p>
       <div className="space-y-2">
         {items.map((item) => <div key={item.id} className="grid grid-cols-[1fr_100px_auto] gap-2 items-center border-b pb-2">
           <span className={item.isActive ? "text-sm" : "text-sm text-muted-foreground line-through"}>{item.name} ({item.unit})</span>
