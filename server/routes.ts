@@ -3684,7 +3684,7 @@ export async function registerRoutes(
     name: z.string().trim().min(1).max(255),
     description: z.string().nullable().optional(),
     unit: z.enum(["hour", "each", "flat"]).default("hour"),
-    defaultRate: z.string().regex(/^\\d+(?:\\.\\d{1,2})?$/),
+    defaultRate: z.string().regex(/^\d+(?:\.\d{1,2})?$/),
     isActive: z.boolean().default(true),
     sortOrder: z.number().int().default(0),
   });

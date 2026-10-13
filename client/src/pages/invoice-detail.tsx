@@ -684,7 +684,6 @@ function EditInvoiceDialog({
           timeLogId: i.timeLogId ?? null,
           timeEntryId: i.timeEntryId ?? null,
           catalogItemId: i.catalogItemId ?? null,
-          catalogItemId: i.catalogItemId ?? null,
           isCustom: i.isCustom ?? false,
         }))
       : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0", isCustom: true }]
@@ -739,6 +738,7 @@ function EditInvoiceDialog({
           isCustom: i.isCustom ?? true,
           timeLogId: i.timeLogId ?? null,
           timeEntryId: i.timeEntryId ?? null,
+          catalogItemId: i.catalogItemId ?? null,
         })),
       };
       await apiRequest("PATCH", `/api/invoices/${invoiceId}`, body);
