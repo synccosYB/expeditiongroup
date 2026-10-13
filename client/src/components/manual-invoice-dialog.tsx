@@ -30,15 +30,30 @@ interface ManualInvoiceDialogProps {
   onClose: () => void;
 }
 
+type BillingItemOption = { id: number; name: string; description: string | null; unit: string; defaultRate: string; isActive: boolean };
 interface CustomLineItem {
   id: string;
   description: string;
   quantity: string;
   unitPrice: string;
+  catalogItemId?: number | null;
 }
 
 export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProps) {
   const { toast } = useToast();
+  const { data: billingItems = [] } = useQuery<BillingItemOption[]>({
+    queryKey: ["/api/billing-items"],
+    enabled: isOpen,
+  });
+  const chooseBillingItem = (id: string, catalogId: string) => {
+    const catalog = billingItems.find((candidate) => candidate.id === Number(catalogId));
+    if (!catalog) return;
+    setCustomItems((current) => current.map((line) => line.id === id ? {
+      ...line, catalogItemId: catalog.id, description: catalog.name,
+      unitPrice: catalog.defaultRate, quantity: catalog.unit === "flat" ? "1" : line.quantity,
+    } : line));
+  };
+
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [recipientName, setRecipientName] = useState("");
@@ -151,6 +166,7 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
       if (item.description && (qty > 0 || price > 0)) {
         items.push({
           description: item.description,
+          catalogItemId: item.catalogItemId || null,
           quantity: item.quantity || "1",
           unitPrice: item.unitPrice || "0",
           amount: amount.toFixed(2),
@@ -326,13 +342,20 @@ export function ManualInvoiceDialog({ isOpen, onClose }: ManualInvoiceDialogProp
               <div className="space-y-2">
                 {customItems.map((item) => (
                   <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-6 flex flex-col gap-1">
+                      <Select value={item.catalogItemId ? String(item.catalogItemId) : "custom"} onValueChange={(value) => value === "custom" ? updateCustomItem(item.id, "catalogItemId", null as any) : chooseBillingItem(item.id, value)}>
+                        <SelectTrigger aria-label="Billable item"><SelectValue placeholder="Choose item" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">Custom item</SelectItem>
+                          {billingItems.filter((option) => option.isActive).map((option) => <SelectItem key={option.id} value={String(option.id)}>{option.name} ({option.unit})</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     <Input
-                      className="col-span-6"
                       placeholder="Description"
                       value={item.description}
                       onChange={(e) => updateCustomItem(item.id, "description", e.target.value)}
                       data-testid={`input-manual-desc-${item.id}`}
-                    />
+                    /></div>
                     <Input
                       className="col-span-2"
                       type="number"

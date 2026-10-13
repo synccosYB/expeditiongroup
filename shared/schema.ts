@@ -401,10 +401,23 @@ export const invoices = pgTable("invoices", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Reusable billable services. Changes to this catalog never reprice prior invoice lines.
+export const billingCatalogItems = pgTable("billing_catalog_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  unit: varchar("unit", { length: 20 }).notNull().default("hour"),
+  defaultRate: varchar("default_rate", { length: 20 }).notNull().default("0"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Invoice Items table
 export const invoiceItems = pgTable("invoice_items", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  catalogItemId: integer("catalog_item_id").references(() => billingCatalogItems.id, { onDelete: "set null" }),
   description: text("description").notNull(),
   quantity: varchar("quantity", { length: 20 }).notNull(),
   unitPrice: varchar("unit_price", { length: 20 }).notNull(),
@@ -1592,6 +1605,7 @@ export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
+export type BillingCatalogItem = typeof billingCatalogItems.$inferSelect;
 export type InsertDailyActivityLog = z.infer<typeof insertDailyActivityLogSchema>;
 export type DailyActivityLog = typeof dailyActivityLogs.$inferSelect;
 

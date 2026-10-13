@@ -18,7 +18,7 @@ import {
 } from "./accountGuard";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users } from "@shared/schema";
+import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users, billingCatalogItems } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -3666,6 +3666,49 @@ export async function registerRoutes(
       }
       console.error("Error serving object:", error);
       res.status(500).json({ message: "Failed to serve object" });
+    }
+  });
+
+  // One shared billable Items catalog for manual invoices and time-based invoices.
+  app.get("/api/billing-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      res.json(await db.select().from(billingCatalogItems).orderBy(billingCatalogItems.sortOrder, billingCatalogItems.name));
+    } catch (error) {
+      console.error("Error listing billing items:", error);
+      res.status(500).json({ message: "Could not load billing items" });
+    }
+  });
+  const billingItemInput = z.object({
+    name: z.string().trim().min(1).max(255),
+    description: z.string().nullable().optional(),
+    unit: z.enum(["hour", "each", "flat"]).default("hour"),
+    defaultRate: z.string().regex(/^\\d+(?:\\.\\d{1,2})?$/),
+    isActive: z.boolean().default(true),
+    sortOrder: z.number().int().default(0),
+  });
+  app.post("/api/billing-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      const [created] = await db.insert(billingCatalogItems).values(billingItemInput.parse(req.body)).returning();
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof ZodError) return res.status(400).json({ message: "Invalid billing item", errors: error.errors });
+      res.status(500).json({ message: "Could not create billing item" });
+    }
+  });
+  app.patch("/api/billing-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      const [item] = await db.update(billingCatalogItems).set(billingItemInput.partial().parse(req.body)).where(eq(billingCatalogItems.id, Number(req.params.id))).returning();
+      if (!item) return res.status(404).json({ message: "Billing item not found" });
+      res.json(item);
+    } catch (error) {
+      if (error instanceof ZodError) return res.status(400).json({ message: "Invalid billing item", errors: error.errors });
+      res.status(500).json({ message: "Could not update billing item" });
     }
   });
 
