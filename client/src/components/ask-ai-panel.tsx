@@ -67,7 +67,7 @@ const SCOPE_CONFIG: Record<
     availabilityUrl: (id) => `/api/ai/projects/${id}/data-availability`,
     askUrl: (id) => `/api/ai/projects/${id}/ask`,
     intro:
-      "Ask AI a question about this project. Answers are drawn from all of its tasks, notes, milestones, and history, and aren't saved.",
+      "Ask AI a question about this project. Answers use its tasks, notes, milestones, and history. Select a document below to read a PDF or image scan as well. Answers aren't saved.",
     emptyText:
       "Not enough project info to summarize yet. Add tasks, notes, or milestones and try again.",
     loadingText: "Reading the project and writing an answer...",
@@ -84,10 +84,11 @@ export function AskAiPanel({
   const cfg = SCOPE_CONFIG[scope];
   const { toast } = useToast();
   const [question, setQuestion] = useState("");
+  const [documentId, setDocumentId] = useState<string>("");
   const [history, setHistory] = useState<QAItem[]>([]);
 
   const { data: availability, isLoading: availabilityLoading } = useQuery<
-    Record<string, boolean>
+    { hasData?: boolean; hasNotes?: boolean; documents?: { id: number; fileName: string }[] }
   >({
     queryKey: entityId ? cfg.availabilityKey(entityId) : ["ask-ai", scope, "no-id"],
     queryFn: async () => {
@@ -101,6 +102,7 @@ export function AskAiPanel({
     mutationFn: async (q: string) => {
       const res = await apiRequest("POST", cfg.askUrl(entityId!), {
         question: q,
+        ...(scope === "project" && documentId ? { documentId: Number(documentId) } : {}),
       });
       return (await res.json()) as { answer: string };
     },
@@ -156,6 +158,16 @@ export function AskAiPanel({
       ) : (
         <>
           <div className="space-y-2">
+            {scope === "project" && !!availability?.documents?.length && (
+              <div className="space-y-1">
+                <label htmlFor={`${testIdPrefix}-document`} className="text-sm font-medium">Read a document</label>
+                <select id={`${testIdPrefix}-document`} data-testid={`${testIdPrefix}-document`} className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={documentId} onChange={(event) => setDocumentId(event.target.value)} disabled={askMutation.isPending}>
+                  <option value="">Project information only</option>
+                  {availability.documents.map((doc) => <option key={doc.id} value={doc.id}>{doc.fileName}</option>)}
+                </select>
+                <p className="text-xs text-muted-foreground">Choose the file you want AI to read. Scanned PDFs and images may take longer.</p>
+              </div>
+            )}
             <label className="text-sm font-medium">Your question</label>
             <Textarea
               value={question}
