@@ -59,6 +59,7 @@ export function registerCheckwriterRoutes(app: Express) {
       const details = transaction?.checkDetails || payment?.checkDetails;
       let path = details?.attachment?.path;
       if (!path && payment) { const bill = await storage.getBill(payment.billId); path = bill?.documentUrl || undefined; }
+      if (path) path = objectStorageService.normalizeObjectEntityPath(path);
       if (!details || !path?.startsWith("/objects/")) return res.status(404).json({ message: "No bill document attached" });
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("Content-Security-Policy", "sandbox");
