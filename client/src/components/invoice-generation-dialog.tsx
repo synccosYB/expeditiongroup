@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -28,11 +29,13 @@ interface InvoiceGenerationDialogProps {
   timeEntries: TimeEntry[];
 }
 
+type BillingItemOption = { id: number; name: string; unit: string; defaultRate: string; isActive: boolean };
 interface CustomLineItem {
   id: string;
   description: string;
   quantity: string;
   unitPrice: string;
+  catalogItemId?: number | null;
 }
 
 interface BilledItems {
@@ -48,6 +51,15 @@ export function InvoiceGenerationDialog({
   timeEntries,
 }: InvoiceGenerationDialogProps) {
   const { toast } = useToast();
+  const { data: billingItems = [] } = useQuery<BillingItemOption[]>({ queryKey: ["/api/billing-items"], enabled: isOpen });
+  const selectItem = (id: string, catalogId: string) => {
+    const entry = billingItems.find((item) => String(item.id) === catalogId);
+    if (!entry) return;
+    setCustomItems((current) => current.map((line) => line.id === id ? { ...line,
+      catalogItemId: entry.id, description: entry.name,
+      unitPrice: entry.defaultRate, quantity: entry.unit === "flat" ? "1" : line.quantity,
+    } : line));
+  };
   const [hourlyRate, setHourlyRate] = useState(project.client.hourlyRate || "75");
   const [selectedTimeLogs, setSelectedTimeLogs] = useState<Set<number>>(new Set());
   const [selectedTimeEntries, setSelectedTimeEntries] = useState<Set<number>>(new Set());
@@ -188,6 +200,7 @@ export function InvoiceGenerationDialog({
       if (item.description && (qty > 0 || price > 0)) {
         items.push({
           description: item.description,
+          catalogItemId: item.catalogItemId || null,
           quantity: item.quantity || "1",
           unitPrice: item.unitPrice || "0",
           amount: amount.toFixed(2),
