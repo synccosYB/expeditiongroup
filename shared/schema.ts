@@ -9,6 +9,7 @@ import {
   integer,
   pgEnum,
   boolean,
+  check,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -411,7 +412,9 @@ export const billingCatalogItems = pgTable("billing_catalog_items", {
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  check("billing_catalog_items_unit_check", sql`${table.unit} IN ('hour', 'each', 'flat')`),
+]);
 
 // Invoice Items table
 export const invoiceItems = pgTable("invoice_items", {
@@ -1131,6 +1134,10 @@ export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
   invoice: one(invoices, {
     fields: [invoiceItems.invoiceId],
     references: [invoices.id],
+  }),
+  catalogItem: one(billingCatalogItems, {
+    fields: [invoiceItems.catalogItemId],
+    references: [billingCatalogItems.id],
   }),
   timeLog: one(timeLogs, {
     fields: [invoiceItems.timeLogId],
