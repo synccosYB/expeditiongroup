@@ -24,6 +24,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run check
       - run: node --import tsx --test client/src/components/invoice-compact-items.test.ts
       - run: npm run build
+      - run: npm run check

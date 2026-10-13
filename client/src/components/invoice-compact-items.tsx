@@ -22,7 +22,7 @@ export function summarizeInvoiceItems(items: InvoiceLine[]) {
     group.cents += cents(entry.amount);
     group.lines.push(entry);
   }
-  return [...buckets.values()];
+  return Array.from(buckets.values());
 }
 
 export function InvoiceSummaryRows({ items }: { items: InvoiceLine[] }) {
