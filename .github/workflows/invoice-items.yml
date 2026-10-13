@@ -1,0 +1,29 @@
+name: Invoice Items Validation
+on:
+  pull_request:
+    paths:
+      - 'client/src/components/invoice-*'
+      - 'client/src/components/billing-items-manager.tsx'
+      - 'client/src/components/manual-invoice-dialog.tsx'
+      - 'client/src/pages/invoice-detail.tsx'
+      - 'client/src/pages/client/invoice-detail.tsx'
+      - 'client/src/pages/invoices.tsx'
+      - 'server/routes.ts'
+      - 'shared/schema.ts'
+      - 'migrations/**'
+      - '.github/workflows/invoice-items.yml'
+  push:
+    branches: ['feat/invoice-items-compact-summary']
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node --import tsx --test client/src/components/invoice-compact-items.test.ts
+      - run: npm run build
