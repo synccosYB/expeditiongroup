@@ -732,6 +732,7 @@ export const bankAccounts = pgTable("bank_accounts", {
 
 // Bank Transactions (Register entries)
 export const bankTransactions = pgTable("bank_transactions", {
+  checkDetails: jsonb("check_details").$type<import("./checkwriter").CheckDetails>(),
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   bankAccountId: integer("bank_account_id").notNull().references(() => bankAccounts.id, { onDelete: "cascade" }),
   transactionDate: timestamp("transaction_date").notNull(),
@@ -1526,7 +1527,7 @@ export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({
 export const insertAccountSchema = createInsertSchema(accounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({ id: true, createdAt: true, updatedAt: true, checkDetails: true }).extend({
   transactionDate: requiredDateCoercion,
 });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true, rebilledAt: true }).extend({
@@ -1537,7 +1538,7 @@ export const insertBillSchema = createInsertSchema(bills).omit({ id: true, creat
   dueDate: dateCoercion,
 });
 export const insertBillItemSchema = createInsertSchema(billItems).omit({ id: true, billId: true, createdAt: true });
-export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ id: true, createdAt: true }).extend({
+export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({ id: true, createdAt: true, checkDetails: true }).extend({
   paymentDate: requiredDateCoercion,
 });
 export const insertBankReconciliationSchema = createInsertSchema(bankReconciliations).omit({ id: true, createdAt: true, updatedAt: true, completedAt: true, lastActivityAt: true }).extend({

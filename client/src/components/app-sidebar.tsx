@@ -64,6 +64,7 @@ const adminMenuItems = [
 const bookkeepingMenuItems = [
   { title: "Chart of Accounts", url: "/chart-of-accounts", icon: BookOpen },
   { title: "Bank Accounts", url: "/bank-accounts", icon: Landmark },
+  { title: "Write Check", url: "/write-check", icon: FileText },
   { title: "Reconciliation", url: "/reconciliation", icon: Scale },
   { title: "Undeposited Funds", url: "/undeposited-funds", icon: Wallet },
   { title: "Deposits", url: "/deposits", icon: ArrowDownToLine },

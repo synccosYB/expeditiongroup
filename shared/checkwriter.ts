@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface CheckDetails {
   number: string;
   date: string;
@@ -10,8 +12,10 @@ export interface CheckDetails {
   billNumber: string;
   memo: string;
   status: "issued" | "void";
-  issuedBy: number;
-  voidedBy?: number;
+  issuedBy: string | number;
+  billId?: number;
+  attachment?: { path: string; name: string };
+  voidedBy?: string | number;
   voidedAt?: string;
 }
 
@@ -40,4 +44,27 @@ export function amountInWords(amount: string): string {
     return "";
   };
   return `${words(Math.floor(cents / 100))} and ${String(cents % 100).padStart(2, "0")}/100 Dollars`;
+}
+
+export const checkRequestSchema = z.object({
+  bankAccountId: z.number().int().positive(),
+  amount: z.string(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => !isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Invalid check date"),
+  number: z.string().regex(/^[1-9]\d{0,8}$/),
+  memo: z.string().max(150).default(""),
+  billId: z.number().int().positive().optional(),
+  vendorId: z.number().int().positive().optional(),
+  payee: z.string().trim().max(255).optional(),
+  payeeAddress: z.string().trim().max(500).optional(),
+  accountId: z.number().int().positive().optional(),
+  attachment: z.object({ path: z.string().regex(/^\/objects\/check-bills\/[a-f0-9-]{36}$/), name: z.string().trim().min(1).max(255) }).optional(),
+}).superRefine((value, ctx) => {
+  if (!value.billId && !value.vendorId && !value.payee) ctx.addIssue({ code: "custom", message: "Select a vendor or enter a payee", path: ["payee"] });
+  if (!value.billId && !value.accountId) ctx.addIssue({ code: "custom", message: "Select an expense account", path: ["accountId"] });
+});
+export type CheckRequest = z.infer<typeof checkRequestSchema>;
+export interface CheckRecord { id: number; bankAccountId: number; amount: string; checkDetails: CheckDetails; }
+
+export function validateCheckAttachment(contentType: string | undefined, size: number, reservedType: string): void {
+  if (!["application/pdf", "image/png", "image/jpeg"].includes(contentType || "") || contentType !== reservedType || !Number.isFinite(size) || size <= 0 || size > 10 * 1024 * 1024) throw new Error("Attach a PDF, JPG or PNG bill smaller than 10 MB");
 }
