@@ -1,4 +1,5 @@
 import { readProjectDocument } from "./ai-document-context";
+import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
 import type { Express, Request } from "express";
 import type { Server } from "http";
@@ -4231,32 +4232,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const updateSchema = z.object({
-        invoiceNumber: z.string().trim().min(1, "Invoice number is required").optional(),
-        status: z.enum(["draft", "sent", "paid", "cancelled"]).optional(),
-        notes: z.string().nullable().optional(),
-        createdAt: z.string().nullable().optional(),
-        dueDate: z.string().nullable().optional(),
-        paidAt: z.string().nullable().optional(),
-        isVisibleToClient: z.boolean().optional(),
-        recipientName: z.string().nullable().optional(),
-        recipientEmail: z.string().nullable().optional(),
-        recipientAddress: z.string().nullable().optional(),
-        clientId: z.number().nullable().optional(),
-        subtotal: z.string().optional(),
-        total: z.string().optional(),
-        items: z.array(z.object({
-          description: z.string(),
-          quantity: z.string(),
-          unitPrice: z.string(),
-          amount: z.string(),
-          isCustom: z.boolean().optional(),
-          timeLogId: z.number().nullable().optional(),
-          timeEntryId: z.number().nullable().optional(),
-        })).optional(),
-      });
-      
-      const parsed = updateSchema.parse(req.body);
+      const parsed = invoiceUpdateSchema.parse(req.body);
       const invoiceId = parseInt(req.params.id);
       
       const currentInvoice = await storage.getInvoice(invoiceId);
