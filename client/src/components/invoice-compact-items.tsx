@@ -36,11 +36,11 @@ export function InvoiceSummaryRows({ items }: { items: InvoiceLine[] }) {
   ))}</>;
 }
 
-export function InvoiceDetailAppendix({ items }: { items: InvoiceLine[] }) {
+export function InvoiceDetailAppendix({ items, forcePrint = false }: { items: InvoiceLine[]; forcePrint?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [includeInPrint, setIncludeInPrint] = useState(false);
   return <section className="mt-3 text-sm" data-testid="invoice-details-appendix">
-    <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+    {!forcePrint && <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
       <button type="button" className="underline underline-offset-2 font-medium" onClick={() => setExpanded(!expanded)}>
         {expanded ? "Hide" : "View"} all {items.length} original entries
       </button>
@@ -48,8 +48,8 @@ export function InvoiceDetailAppendix({ items }: { items: InvoiceLine[] }) {
         <input type="checkbox" checked={includeInPrint} onChange={(e) => setIncludeInPrint(e.target.checked)} />
         Include full entry breakdown when printing
       </label>
-    </div>
-    <div className={expanded || includeInPrint ? `mt-3 space-y-3 ${includeInPrint ? "" : "print:hidden"}` : "hidden"}>
+    </div>}
+    <div className={expanded || includeInPrint || forcePrint ? `mt-3 space-y-3 ${includeInPrint || forcePrint ? "" : "print:hidden"}` : "hidden"}>
       {summarizeInvoiceItems(items).map((group, index) => (
         <div key={index} className="break-inside-avoid border rounded p-2">
           <div className="font-semibold">{group.name} — {money(group.cents)}</div>

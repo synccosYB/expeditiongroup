@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { handlePrintWithWidgetRemoval, installPrintListeners } from "@/lib/printUtils";
@@ -47,6 +47,7 @@ export default function ClientInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
 
   const invoiceId = parseInt(id || "0");
+  const [printFullDetail, setPrintFullDetail] = useState(false);
 
   useEffect(() => {
     const cleanup = installPrintListeners();
@@ -167,6 +168,10 @@ export default function ClientInvoiceDetail() {
             {getStatusBadge(invoice.status)}
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={printFullDetail} onChange={(event) => setPrintFullDetail(event.target.checked)} />
+          Include full breakdown in PDF
+        </label>
         <Button variant="outline" onClick={handlePrint} data-testid="button-print-invoice">
           <Printer className="h-4 w-4 mr-2" />
           Print
@@ -438,18 +443,12 @@ export default function ClientInvoiceDetail() {
                 </tr>
               </thead>
               <tbody>
-                {invoice.items?.map((item, index) => (
-                  <tr key={item.id || index} className="border-b">
-                    <td className="py-3 whitespace-pre-wrap break-words">{item.description}</td>
-                    <td className="text-right py-3">{item.quantity}</td>
-                    <td className="text-right py-3">${parseFloat(item.unitPrice || "0").toFixed(2)}</td>
-                    <td className="text-right py-3 font-medium">${parseFloat(item.amount || "0").toFixed(2)}</td>
-                  </tr>
-                ))}
+                <InvoiceSummaryRows items={invoice.items || []} />
               </tbody>
             </table>
           </div>
 
+          {printFullDetail && <InvoiceDetailAppendix items={invoice.items || []} forcePrint />}
           <div className="flex justify-end" data-testid="invoice-totals">
             <div className="w-72 space-y-2">
               <div className="flex justify-between gap-4 text-sm">
