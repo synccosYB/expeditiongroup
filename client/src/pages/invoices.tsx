@@ -42,6 +42,7 @@ import { formatLocalDate, parseLocalDateFromISO } from "@/lib/dateUtils";
 import { DollarSign, FileText, Clock, CheckCircle, AlertCircle, MoreHorizontal, Eye, Trash2, Plus } from "lucide-react";
 import { useState } from "react";
 import type { Invoice, Project, Client, InvoiceItem } from "@shared/schema";
+import { BillingItemsManager } from "@/components/billing-items-manager";
 import { ManualInvoiceDialog } from "@/components/manual-invoice-dialog";
 
 type InvoiceWithDetails = Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] };
@@ -139,6 +140,7 @@ export default function Invoices() {
           <p className="text-muted-foreground">Manage invoices and billing</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <BillingItemsManager />
           <Button onClick={() => setShowManualDialog(true)} data-testid="button-create-manual-invoice">
             <Plus className="h-4 w-4 mr-2" />
             Create Invoice

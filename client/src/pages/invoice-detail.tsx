@@ -54,6 +54,7 @@ import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/li
 import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
+import { InvoiceSummaryRows, InvoiceDetailAppendix } from "@/components/invoice-compact-items";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
 import { Landmark } from "lucide-react";
 
@@ -80,6 +81,7 @@ interface LineItem {
   amount: string;
   timeLogId?: number | null;
   timeEntryId?: number | null;
+  catalogItemId?: number | null;
   isCustom?: boolean;
 }
 
@@ -462,18 +464,12 @@ export default function InvoiceDetail() {
                 </tr>
               </thead>
               <tbody>
-                {invoice.items?.map((item, index) => (
-                  <tr key={item.id || index} className="border-b" data-testid={`row-item-${item.id}`}>
-                    <td className="py-3 whitespace-pre-wrap break-words">{item.description}</td>
-                    <td className="text-right py-3">{item.quantity}</td>
-                    <td className="text-right py-3">${parseFloat(item.unitPrice || "0").toFixed(2)}</td>
-                    <td className="text-right py-3 font-medium">${parseFloat(item.amount || "0").toFixed(2)}</td>
-                  </tr>
-                ))}
+                <InvoiceSummaryRows items={invoice.items || []} />
               </tbody>
             </table>
           </div>
 
+          <InvoiceDetailAppendix items={invoice.items || []} />
           <div className="flex justify-end" data-testid="invoice-totals">
             <div className="w-72 space-y-2">
               <div className="flex justify-between gap-4 text-sm">
@@ -687,6 +683,7 @@ function EditInvoiceDialog({
           amount: i.amount || "0",
           timeLogId: i.timeLogId ?? null,
           timeEntryId: i.timeEntryId ?? null,
+          catalogItemId: i.catalogItemId ?? null,
           isCustom: i.isCustom ?? false,
         }))
       : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0", isCustom: true }]
@@ -741,6 +738,7 @@ function EditInvoiceDialog({
           isCustom: i.isCustom ?? true,
           timeLogId: i.timeLogId ?? null,
           timeEntryId: i.timeEntryId ?? null,
+          catalogItemId: i.catalogItemId ?? null,
         })),
       };
       await apiRequest("PATCH", `/api/invoices/${invoiceId}`, body);
