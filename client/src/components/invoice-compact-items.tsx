@@ -49,7 +49,7 @@ export function InvoiceDetailAppendix({ items }: { items: InvoiceLine[] }) {
         Include full entry breakdown when printing
       </label>
     </div>
-    <div className={expanded || includeInPrint ? "mt-3 space-y-3" : "hidden"}>
+    <div className={expanded || includeInPrint ? `mt-3 space-y-3 ${includeInPrint ? "" : "print:hidden"}` : "hidden"}>
       {summarizeInvoiceItems(items).map((group, index) => (
         <div key={index} className="break-inside-avoid border rounded p-2">
           <div className="font-semibold">{group.name} — {money(group.cents)}</div>

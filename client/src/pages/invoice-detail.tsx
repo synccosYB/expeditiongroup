@@ -81,6 +81,7 @@ interface LineItem {
   amount: string;
   timeLogId?: number | null;
   timeEntryId?: number | null;
+  catalogItemId?: number | null;
   isCustom?: boolean;
 }
 
@@ -682,6 +683,8 @@ function EditInvoiceDialog({
           amount: i.amount || "0",
           timeLogId: i.timeLogId ?? null,
           timeEntryId: i.timeEntryId ?? null,
+          catalogItemId: i.catalogItemId ?? null,
+          catalogItemId: i.catalogItemId ?? null,
           isCustom: i.isCustom ?? false,
         }))
       : [{ _key: crypto.randomUUID(), description: "", quantity: "1", unitPrice: "0", amount: "0", isCustom: true }]
