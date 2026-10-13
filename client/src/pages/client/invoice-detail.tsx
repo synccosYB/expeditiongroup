@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { InvoiceSummaryRows, InvoiceDetailAppendix } from "@/components/invoice-compact-items";
 import type { Invoice, Project, Client, InvoiceItem, Payment } from "@shared/schema";
 import { format } from "date-fns";
 import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
@@ -292,14 +293,7 @@ export default function ClientInvoiceDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoice.items?.map((item, index) => (
-                  <TableRow key={item.id || index}>
-                    <TableCell className="whitespace-pre-wrap break-words">{item.description}</TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">${parseFloat(item.unitPrice || "0").toFixed(2)}</TableCell>
-                    <TableCell className="text-right">${parseFloat(item.amount || "0").toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
+                <InvoiceSummaryRows items={invoice.items || []} />
               </TableBody>
               <TableFooter>
                 <TableRow>
@@ -353,6 +347,7 @@ export default function ClientInvoiceDetail() {
                 )}
               </TableFooter>
             </Table>
+            <InvoiceDetailAppendix items={invoice.items || []} />
           </CardContent>
         </Card>
 

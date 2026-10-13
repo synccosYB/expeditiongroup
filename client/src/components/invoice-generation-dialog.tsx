@@ -418,13 +418,19 @@ export function InvoiceGenerationDialog({
               <div className="space-y-2">
                 {customItems.map((item) => (
                   <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-6 flex flex-col gap-1">
+                      <Select value={item.catalogItemId ? String(item.catalogItemId) : "custom"} onValueChange={(value) => value === "custom" ? updateCustomItem(item.id, "catalogItemId", null as any) : selectItem(item.id, value)}>
+                        <SelectTrigger aria-label="Billable item"><SelectValue placeholder="Choose item" /></SelectTrigger>
+                        <SelectContent><SelectItem value="custom">Custom item</SelectItem>
+                          {billingItems.filter((option) => option.isActive).map((option) => <SelectItem key={option.id} value={String(option.id)}>{option.name} ({option.unit})</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     <Input
-                      className="col-span-6"
                       placeholder="Description (e.g., Filing fee)"
                       value={item.description}
                       onChange={(e) => updateCustomItem(item.id, "description", e.target.value)}
                       data-testid={`input-custom-desc-${item.id}`}
-                    />
+                    /></div>
                     <Input
                       className="col-span-2"
                       type="number"
