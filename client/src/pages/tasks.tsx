@@ -1,3 +1,4 @@
+import { buildTaskHierarchy } from "@/lib/task-hierarchy";
 import { useWorkspacePage, WorkspacePagination } from "@/components/workspace-pagination";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -865,26 +866,6 @@ function TaskDetailDialog({
   );
 }
 
-function buildTaskHierarchy(tasks: TaskWithProject[]): TaskWithSubtasks[] {
-  const taskMap = new Map<number, TaskWithSubtasks>();
-  const rootTasks: TaskWithSubtasks[] = [];
-  
-  tasks.forEach(task => {
-    taskMap.set(task.id, { ...task, subtasks: [] });
-  });
-  
-  tasks.forEach(task => {
-    const taskWithSubtasks = taskMap.get(task.id)!;
-    if (task.parentTaskId && taskMap.has(task.parentTaskId)) {
-      const parent = taskMap.get(task.parentTaskId)!;
-      parent.subtasks!.push(taskWithSubtasks);
-    } else if (!task.parentTaskId) {
-      rootTasks.push(taskWithSubtasks);
-    }
-  });
-  
-  return rootTasks;
-}
 
 function TaskHierarchyItem({ 
   task, 
