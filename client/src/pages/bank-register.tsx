@@ -1,3 +1,4 @@
+import type { CheckRecord } from "@shared/checkwriter";
 import { CheckRecordActions } from "@/components/bill-checkwriter";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -128,6 +129,9 @@ export default function BankRegister() {
     queryKey: ["/api/bank-accounts", accountId, "transactions"],
     enabled: !!accountId,
   });
+
+  const { data: checkRecords } = useQuery<CheckRecord[]>({ queryKey: ["/api/checks"], enabled: !!accountId });
+  const checkDetailsById = new Map((checkRecords || []).map(check => [check.id, check.checkDetails]));
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -382,7 +386,7 @@ export default function BankRegister() {
           balance -= amount;
         }
       }
-      return { ...t, runningBalance: balance };
+      return { ...t, checkDetails: t.checkDetails || checkDetailsById.get(t.id) || null, runningBalance: balance };
     }).reverse();
   };
 
