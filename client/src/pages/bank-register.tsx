@@ -1,3 +1,4 @@
+import { CheckRecordActions } from "@/components/bill-checkwriter";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
@@ -1048,7 +1049,7 @@ export default function BankRegister() {
                         {formatCurrency(transaction.runningBalance?.toString() || "0")}
                       </td>
                       <td className="p-3">
-                        <DropdownMenu>
+                        {transaction.checkDetails ? <CheckRecordActions check={{ id: transaction.id, bankAccountId: transaction.bankAccountId, amount: transaction.amount, checkDetails: transaction.checkDetails }} /> : <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button size="icon" variant="ghost">
                               <MoreHorizontal className="h-4 w-4" />
@@ -1067,7 +1068,7 @@ export default function BankRegister() {
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                        </DropdownMenu>}
                       </td>
                     </tr>
                   ))}

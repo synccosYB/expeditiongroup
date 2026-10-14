@@ -68,6 +68,21 @@ test("PostgreSQL check payment lifecycle", async t => {
     const [expense] = await database.select().from(expenses); assert.equal(expense.status, "void"); assert.equal(expense.amount, "0.00");
     const [before] = await database.select().from(bankAccounts); await voidCheck(serviceDb, standalone.transaction.id, bank.id, "admin"); const [after] = await database.select().from(bankAccounts); assert.equal(after.currentBalance, before.currentBalance); assert.equal(Number(after.currentBalance), 1000);
   });
+  await t.test("issued checks snapshot banking and optional signature independently of future settings", async () => {
+    const signature = "data:image/png;base64,iVBORw0KGgoTEST";
+    await database.update(bankAccounts).set({ checkSignature: signature }).where(eq(bankAccounts.id, bank.id));
+    const signed = await issueCheck(serviceDb, input("501", { printSignature: true }), "admin");
+    assert.equal(signed.transaction.checkDetails?.signature, signature);
+    assert.equal(signed.transaction.checkDetails?.routingNumber, bank.routingNumber);
+    assert.equal(signed.transaction.checkDetails?.accountNumber, bank.accountNumber);
+    await database.update(bankAccounts).set({ checkSignature: null }).where(eq(bankAccounts.id, bank.id));
+    const [saved] = await database.select().from(bankTransactions).where(eq(bankTransactions.id, signed.transaction.id));
+    assert.equal(saved.checkDetails?.signature, signature);
+    const unsigned = await issueCheck(serviceDb, input("502"), "admin");
+    assert.equal(unsigned.transaction.checkDetails?.signature, undefined);
+    await voidCheck(serviceDb, signed.transaction.id, bank.id, "admin");
+    await voidCheck(serviceDb, unsigned.transaction.id, bank.id, "admin");
+  });
   await t.test("repeated submissions with the same number result in only one payment", async () => {
     const results = await Promise.allSettled([issueCheck(serviceDb, input("102"), "admin"), issueCheck(serviceDb, input("102"), "admin")]);
     assert.equal(results.filter(r => r.status === "fulfilled").length, 1); assert.equal(results.filter(r => r.status === "rejected").length, 1);

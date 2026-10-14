@@ -14,6 +14,8 @@ export function buildCheckPdf(check: CheckDetails, logoPng?: string): jsPDF {
   text(check.companyName, 30, 65, 300, 11, 1);
   text(check.companyAddress, 30, 80, 300, 9, 3);
   text(check.bankName, 355, 40, 160, 9, 2);
+  if (check.routingNumber) text(`Routing: ${check.routingNumber}`, 355, 62, 230, 8, 1);
+  if (check.accountNumber) text(`Account: ${check.accountNumber}`, 355, 74, 230, 8, 1);
   text(check.number, 550, 30, 40, 12, 1);
   text(`Date: ${check.date}`, 420, 88, 165, 10, 1);
   text("PAY TO THE ORDER OF", 30, 125, 120, 8, 1);
@@ -22,6 +24,7 @@ export function buildCheckPdf(check: CheckDetails, logoPng?: string): jsPDF {
   text(amountInWords(check.amount), 30, 160, 550, 10, 2);
   text(check.payeeAddress, 150, 184, 280, 9, 2);
   text(`Memo: ${check.memo || check.billNumber}`, 30, 217, 340, 9, 1);
+  if (check.signature && check.status !== "void") doc.addImage(check.signature, "PNG", 420, 178, 160, 40);
   doc.line(420, 218, 580, 218);
   text("AUTHORIZED SIGNATURE", 440, 230, 140, 7, 1);
   for (const y of [264, 528]) {

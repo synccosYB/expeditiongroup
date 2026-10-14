@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { checkSignatureSchema } from "./checkwriter";
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["super_admin", "admin", "client"]);
@@ -737,6 +738,7 @@ export const bankAccounts = pgTable("bank_accounts", {
   bankName: varchar("bank_name", { length: 255 }),
   checkCompanyName: varchar("check_company_name", { length: 255 }),
   checkCompanyAddress: text("check_company_address"),
+  checkSignature: text("check_signature"),
   nextCheckNumber: integer("next_check_number").default(1),
   openingBalance: varchar("opening_balance", { length: 20 }).default("0"),
   currentBalance: varchar("current_balance", { length: 20 }).default("0"),
@@ -1546,7 +1548,7 @@ export const insertProposalItemSchema = createInsertSchema(proposalItems).omit({
 // Bookkeeping insert schemas
 export const insertAccountSchema = createInsertSchema(accounts).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).extend({ checkSignature: checkSignatureSchema.nullable().optional() }).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({ id: true, createdAt: true, updatedAt: true, checkDetails: true }).extend({
   transactionDate: requiredDateCoercion,
 });

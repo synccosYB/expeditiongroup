@@ -63,6 +63,7 @@ const bankAccountFormSchema = z.object({
   accountType: z.enum(["checking", "savings", "credit_card", "money_market", "other"]),
   checkCompanyName: z.string().max(255).optional(),
   checkCompanyAddress: z.string().max(1000).optional(),
+  checkSignature: z.string().nullable().optional(),
   nextCheckNumber: z.coerce.number().int().min(1).max(999999999),
   accountNumber: z.string().optional(),
   routingNumber: z.string().optional(),
@@ -101,6 +102,7 @@ export default function BankAccounts() {
       name: "",
       bankName: "",
       accountType: "checking",
+      checkSignature: null,
       checkCompanyName: "Expedition Group",
       checkCompanyAddress: "17 Sandybrook Drive\nSpring Valley, NY 10977",
       nextCheckNumber: 1,
@@ -209,6 +211,7 @@ export default function BankAccounts() {
         name: account.name,
         bankName: account.bankName || "",
         accountType: account.accountType as "checking" | "savings" | "credit_card" | "money_market" | "other",
+        checkSignature: account.checkSignature || null,
         checkCompanyName: account.checkCompanyName || "Expedition Group",
         checkCompanyAddress: account.checkCompanyAddress || "",
         nextCheckNumber: account.nextCheckNumber || 1,
@@ -388,6 +391,7 @@ export default function BankAccounts() {
                   <p className="text-xs text-muted-foreground">Uses the Expedition Group logo and preprinted check stock. Enter the full bank account and routing numbers above.</p>
                   <FormField control={form.control} name="checkCompanyName" render={({ field }) => (<FormItem><FormLabel>Company name on checks</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="checkCompanyAddress" render={({ field }) => (<FormItem><FormLabel>Company address and information</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="checkSignature" render={({ field }) => (<FormItem><FormLabel>Saved authorized signature</FormLabel><FormControl><Input type="file" accept="image/png,image/jpeg" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ""; if (!file) return; try { if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 2 * 1024 * 1024) throw new Error("Use a PNG or JPG smaller than 2 MB"); const url = URL.createObjectURL(file); try { const img = new Image(); img.src = url; await img.decode(); const canvas = document.createElement("canvas"); canvas.width = 480; canvas.height = 120; const context = canvas.getContext("2d"); if (!context) throw new Error("Cannot prepare signature"); const scale = Math.min(480 / img.width, 120 / img.height); context.drawImage(img, (480 - img.width * scale) / 2, (120 - img.height * scale) / 2, img.width * scale, img.height * scale); field.onChange(canvas.toDataURL("image/png")); } finally { URL.revokeObjectURL(url); } } catch (error) { toast({ title: "Cannot save signature", description: (error as Error).message, variant: "destructive" }); } }} /></FormControl>{field.value && <><img src={field.value} alt="Saved signature" className="h-16 w-64 object-contain bg-white border rounded" /><Button type="button" variant="outline" size="sm" onClick={() => field.onChange(null)}>Remove signature</Button></>}<p className="text-xs text-muted-foreground">Save this account to store the signature. Choose whether to print it when issuing each check.</p><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="nextCheckNumber" render={({ field }) => (<FormItem><FormLabel>Next check number</FormLabel><FormControl><Input type="number" min="1" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
