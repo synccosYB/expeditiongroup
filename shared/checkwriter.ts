@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Only raster PNG signatures; no executable SVG or remote URLs.
+export const checkSignatureSchema = z.string().max(200000).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, "Upload a PNG signature smaller than 150 KB");
+
 export interface CheckDetails {
   number: string;
   date: string;
@@ -9,6 +12,9 @@ export interface CheckDetails {
   companyName: string;
   companyAddress: string;
   bankName: string;
+  routingNumber?: string;
+  accountNumber?: string;
+  signature?: string;
   billNumber: string;
   memo: string;
   status: "issued" | "void";
@@ -57,6 +63,7 @@ export const checkRequestSchema = z.object({
   payee: z.string().trim().max(255).optional(),
   payeeAddress: z.string().trim().max(500).optional(),
   accountId: z.number().int().positive().optional(),
+  printSignature: z.boolean().default(false),
   attachment: z.object({ path: z.string().regex(/^\/objects\/check-bills\/[a-f0-9-]{36}$/), name: z.string().trim().min(1).max(255) }).optional(),
 }).superRefine((value, ctx) => {
   if (!value.billId && !value.vendorId && !value.payee) ctx.addIssue({ code: "custom", message: "Select a vendor or enter a payee", path: ["payee"] });

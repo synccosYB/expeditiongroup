@@ -58,3 +58,21 @@ test("attachment validation rejects oversized, empty, unknown and mismatched fil
   validateCheckAttachment("application/pdf", 100, "application/pdf");
   for (const [type, size, reserved] of [["image/svg+xml", 100, "image/svg+xml"], ["application/pdf", 100, "image/png"], ["application/pdf", 0, "application/pdf"], ["application/pdf", 11 * 1024 * 1024, "application/pdf"], ["application/pdf", NaN, "application/pdf"]] as [string, number, string][]) assert.throws(() => validateCheckAttachment(type, size, reserved));
 });
+
+test("bank numbers print with leading zeroes and legacy checks remain printable", () => {
+  const content = buildCheckPdf({ ...check, routingNumber: "012345678", accountNumber: "000123456789" }).output();
+  assert.ok(content.includes("Routing: 012345678"));
+  assert.ok(content.includes("Account: 000123456789"));
+  assert.ok(!buildCheckPdf(check).output().includes("undefined"));
+});
+
+ test("signature inputs reject remote URLs, SVG and oversized values", async () => {
+  const { checkSignatureSchema } = await import("../../shared/checkwriter");
+  for (const value of ["https://example.com/signature.png", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/png;base64,iVBORw0KGgo" + "A".repeat(200000)]) assert.equal(checkSignatureSchema.safeParse(value).success, false);
+ });
+
+test("saved signature is embedded in issued PDF and omitted from void copies", () => {
+  const signature = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNkYGD4z8DAwMDEAAUADigBA0dwHFEAAAAASUVORK5CYII=";
+  assert.ok(buildCheckPdf({ ...check, signature }).output().includes("/Subtype /Image"));
+  assert.ok(!buildCheckPdf({ ...check, signature, status: "void" }).output().includes("/Subtype /Image"));
+});

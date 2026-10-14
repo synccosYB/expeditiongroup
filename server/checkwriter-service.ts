@@ -29,11 +29,14 @@ export async function issueCheck(database: Database, input: CheckRequest, actor:
     }
     const payee = vendor?.name || input.payee?.trim();
     if (!payee) throw new CheckError("Enter a payee");
+    if (input.printSignature && !bank.checkSignature) throw new CheckError("Save an authorized signature in Bank Accounts first");
     const amount = (cents / 100).toFixed(2);
     const details: CheckDetails = {
       number: input.number, date: input.date, amount, payee,
       payeeAddress: vendor ? [vendor.address, [vendor.city, vendor.state, vendor.zip].filter(Boolean).join(", ")].filter(Boolean).join("\n") : input.payeeAddress || "",
       companyName: bank.checkCompanyName, companyAddress: bank.checkCompanyAddress,
+      routingNumber: bank.routingNumber || "", accountNumber: bank.accountNumber || "",
+      signature: input.printSignature ? bank.checkSignature || undefined : undefined,
       bankName: bank.bankName || "", billNumber: bill?.billNumber || "", billId: bill?.id,
       memo: input.memo, attachment: input.attachment, status: "issued", issuedBy: actor,
     };
