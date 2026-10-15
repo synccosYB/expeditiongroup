@@ -105,8 +105,11 @@ def build_sql(snapshots, baseline_rows=None):
         column = 'check_signature' if table == 'bank_accounts' else 'check_details'
         # Match the saved baseline's normalization of absent optional columns.
         row_json = f"to_jsonb(x)||jsonb_build_object('{column}',to_jsonb(x)->'{column}')"
+        # COPY encodes JSONB as JSON text. Populate-record otherwise retains it
+        # as a JSON string, producing a false difference for non-null details.
+        archived_row_json = row_json if column == 'check_signature' else "to_jsonb(x)||jsonb_build_object('check_details',(to_jsonb(x)->>'check_details')::jsonb)"
         ctes.extend([
-            f'{old} AS (SELECT id,{row_json} AS j FROM jsonb_populate_recordset(NULL::public.{table},{sql_json(snapshots[table])}) x)',
+            f'{old} AS (SELECT id,{archived_row_json} AS j FROM jsonb_populate_recordset(NULL::public.{table},{sql_json(snapshots[table])}) x)',
             f'{current} AS (SELECT id,{row_json} AS j FROM public.{table} x)',
             f'{added} AS (SELECT c.* FROM {current} c WHERE NOT EXISTS (SELECT 1 FROM {old} o WHERE o.id=c.id))',
             f'{partition} AS (SELECT * FROM {current} ORDER BY id LIMIT {count})',
@@ -151,6 +154,19 @@ def build_sql(snapshots, baseline_rows=None):
 )"""
     ctes.append(balance_sql)
     ctes.append(balance_sql.replace('new_net','baseline_net').replace('balance_deltas','baseline_balance_deltas').replace('added_bank_transactions','later_bank_transactions'))
+    ctes.append(r"""later_check_numbers AS (
+ SELECT j->>'bank_account_id' AS bank_id,count(*) AS checks,
+ count(*) FILTER (WHERE j->>'check_number' ~ '^[0-9]{1,20}$') AS numeric_checks,
+ max(CASE WHEN j->>'check_number' ~ '^[0-9]{1,20}$' THEN (j->>'check_number')::numeric END) AS highest_number
+ FROM later_bank_transactions WHERE j->>'transaction_type'='check' GROUP BY j->>'bank_account_id'
+), counter_deltas AS (
+ SELECT CASE WHEN COALESCE(n.checks,0)<>COALESCE(n.numeric_checks,0) THEN false
+ ELSE (c.j->>'next_check_number')::numeric IS NOT DISTINCT FROM
+ CASE WHEN COALESCE(n.checks,0)=0 THEN (o.j->>'next_check_number')::numeric
+ ELSE greatest(COALESCE(NULLIF((o.j->>'next_check_number')::numeric,0),1),n.highest_number+1) END END AS explained
+ FROM old_bank_accounts o JOIN current_bank_accounts c USING(id)
+ LEFT JOIN later_check_numbers n ON n.bank_id=o.id::text
+)""")
     body = "WITH " + ',\n'.join(ctes) + r"""
 SELECT jsonb_build_object(
  'read_only',current_setting('transaction_read_only'),
@@ -164,6 +180,19 @@ SELECT jsonb_build_object(
  'bill_payments_outside_baseline_partition',(SELECT count(*) FROM later_bill_payments),
  'later_bill_payments_linked_to_later_transactions',(SELECT count(*) FROM later_bill_payments bp WHERE EXISTS (
    SELECT 1 FROM later_bank_transactions bt WHERE bt.id::text=bp.j->>'bank_transaction_id')),
+ 'next_check_counter_accounts_checked',(SELECT count(*) FROM counter_deltas),
+ 'next_check_counters_unexplained',(SELECT count(*) FROM counter_deltas WHERE NOT explained),
+ 'later_checks',(SELECT count(*) FROM later_bank_transactions WHERE j->>'transaction_type'='check'),
+ 'later_checks_invalid_number',(SELECT COALESCE(sum(checks-numeric_checks),0) FROM later_check_numbers),
+ 'later_checks_with_duplicate_number',(SELECT count(*) FROM later_bank_transactions n WHERE n.j->>'transaction_type'='check'
+   AND n.j->>'check_number' IS NOT NULL AND EXISTS (SELECT 1 FROM current_bank_transactions c
+     WHERE c.id<>n.id AND c.j->>'bank_account_id'=n.j->>'bank_account_id' AND c.j->>'check_number'=n.j->>'check_number')),
+ 'later_checks_void',(SELECT count(*) FROM later_bank_transactions WHERE j->>'transaction_type'='check' AND j->'check_details'->>'status'='void'),
+ 'later_checks_issued',(SELECT count(*) FROM later_bank_transactions WHERE j->>'transaction_type'='check' AND j->'check_details'->>'status'='issued'),
+ 'later_checks_zero_amount',(SELECT count(*) FROM later_bank_transactions WHERE j->>'transaction_type'='check'
+   AND CASE WHEN j->>'amount' ~ '^[+-]?[0-9]+([.][0-9]+)?$' THEN (j->>'amount')::numeric=0 ELSE false END),
+ 'later_checks_test_labeled',(SELECT count(*) FROM later_bank_transactions WHERE j->>'transaction_type'='check'
+   AND concat_ws(' ',j->>'payee',j->>'description',j->'check_details'->>'memo') ~* '(TEST[ _-]*ONLY|SMOKE[ _-]*TEST)'),
  'added_transactions_with_malformed_amounts',(SELECT COALESCE(sum(malformed),0) FROM new_net),
  'new_bill_payments_linked_to_added_transactions',(SELECT count(*) FROM added_bill_payments bp WHERE EXISTS (
    SELECT 1 FROM added_bank_transactions bt WHERE bt.id::text=bp.j->>'bank_transaction_id')),
@@ -194,6 +223,7 @@ def classify_report(report, prior):
     bank = report['tables']['bank_accounts']
     balances_explained = all(archive_matches.values()) and archive_originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','updated_at'} and report['bank_balance_delta_accounts_checked'] == bank['archive_rows'] and report['bank_balance_deltas_unexplained'] == 0 and report['added_transactions_with_malformed_amounts'] == 0
     baseline_balances_explained = archive_matches['bank_accounts'] and baseline_originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','updated_at'} and report['baseline_balance_delta_accounts_checked'] == bank['archive_rows'] and report['baseline_balance_deltas_unexplained'] == 0 and report['later_transactions_with_malformed_amounts'] == 0
+    bank_state_explained = archive_matches['bank_accounts'] and baseline_originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','next_check_number','updated_at'} and report['baseline_balance_delta_accounts_checked'] == bank['archive_rows'] and report['baseline_balance_deltas_unexplained'] == 0 and report['later_transactions_with_malformed_amounts'] == 0 and report['next_check_counter_accounts_checked'] == bank['archive_rows'] and report['next_check_counters_unexplained'] == 0 and report['later_checks_invalid_number'] == 0 and report['later_checks_with_duplicate_number'] == 0
     # The archive comparison remains useful even if it predates the saved baseline.
     # Label it explicitly; it cannot silently substitute for the baseline proof.
     for table in TABLES:
@@ -212,12 +242,13 @@ def classify_report(report, prior):
         bank_balance_explanation_basis='Archive rows; conclusion withheld unless archive matches saved baseline for all three tables.',
         bank_changes_explained_relative_to_saved_baseline=baseline_balances_explained if archive_matches['bank_accounts'] and baseline_originals_unchanged else None,
         saved_baseline_balance_explanation_basis='Archive bank-account rows must match saved baseline; full transaction/payment baseline partition digests must match. Then compare balance changes with transactions outside that proven original set.',
+        bank_state_preserved_with_explained_balance_and_check_counter=bank_state_explained if archive_matches['bank_accounts'] and baseline_originals_unchanged else None,
         comparison=report,
         publishing_ready=False,
     )
 
 
-def run():
+def run(extra_queries=None, finalize=None):
     os.umask(0o077)
     stage = 'validate-existing-recovery-evidence'
     attempted = False
@@ -275,11 +306,15 @@ def run():
         env['PGAPPNAME'] = 'expedition_readonly_bank_preservation_diagnosis'
         stage = 'read-only-original-row-comparison'
         attempted = True
-        p = subprocess.run(['psql','--no-psqlrc','--no-password','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose'],env=env,input=build_sql(snapshots,{r['table_name']:r['row_count'] for r in rows}).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
+        query = build_sql(snapshots,{r['table_name']:r['row_count'] for r in rows})
+        if extra_queries:
+            query = query.removesuffix('ROLLBACK;') + extra_queries(rows) + '\nROLLBACK;'
+        p = subprocess.run(['psql','--no-psqlrc','--no-password','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose'],env=env,input=query.encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
         if p.returncode or p.stderr.strip():
             match = re.search(rb'(?:ERROR|FATAL|PANIC):\s+([0-9A-Z]{5}):',p.stderr)
             stop('Read-only query failed or warned; raw errors withheld.',exit_code=p.returncode,sqlstate=match.group(1).decode() if match else None)
-        report = json.loads(p.stdout.decode().strip())
+        reports = [json.loads(line) for line in p.stdout.decode().splitlines() if line.strip()]
+        report = reports[0]
         require(report.get('read_only') == 'on', 'Read-only transaction not confirmed.')
         prior = {r['table_name']:r for r in rows}
         stage = 'compare-archive-and-saved-baseline-separately'
@@ -312,6 +347,12 @@ def run():
         result['hosted_source'] = dict(success=True,head=head,parents=metadata[1].split(),subject_is_replit_publish=metadata[2].casefold()=='published your app',commit_time=metadata[3],fresh_origin_main=git('rev-parse','origin/main'),backup_branch=backup,checkout_clean=not bool(git('status','--porcelain')),divergence_head_vs_main=git('rev-list','--left-right','--count','HEAD...origin/main').split(),different_paths_from_main=git('diff','--name-status','origin/main','HEAD').splitlines(),source_paths_differing_from_original_release=git('diff','--name-only','5a8d1814934f6719eda1581287f5b220a6839156','HEAD').splitlines(),checkout_switched=False)
     except Exception:
         result['hosted_source'] = dict(success=False,message='Hosted source inspection/preservation failed; raw authentication errors withheld.',checkout_switched=False)
+    if finalize:
+        stage = 'verify-release-and-history-readiness'
+        try:
+            result = finalize(result, reports[1:], prior)
+        except Exception:
+            stop('Release/history readiness analysis failed; raw errors withheld.')
     now = datetime.datetime.now(datetime.timezone.utc)
     result['verified_at_utc'] = now.isoformat()
     try:
