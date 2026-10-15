@@ -97,9 +97,12 @@ def build_sql(snapshots):
     reports = []
     for table in TABLES:
         old, current, added = ('old_' + table, 'current_' + table, 'added_' + table)
+        column = 'check_signature' if table == 'bank_accounts' else 'check_details'
+        # Match the saved baseline's normalization of absent optional columns.
+        row_json = f"to_jsonb(x)||jsonb_build_object('{column}',to_jsonb(x)->'{column}')"
         ctes.extend([
-            f'{old} AS (SELECT id,to_jsonb(x) AS j FROM jsonb_populate_recordset(NULL::public.{table},{sql_json(snapshots[table])}) x)',
-            f'{current} AS (SELECT id,to_jsonb(x) AS j FROM public.{table} x)',
+            f'{old} AS (SELECT id,{row_json} AS j FROM jsonb_populate_recordset(NULL::public.{table},{sql_json(snapshots[table])}) x)',
+            f'{current} AS (SELECT id,{row_json} AS j FROM public.{table} x)',
             f'{added} AS (SELECT c.* FROM {current} c WHERE NOT EXISTS (SELECT 1 FROM {old} o WHERE o.id=c.id))',
         ])
         reports.append(f"""SELECT '{table}'::text AS table_name,jsonb_build_object(
