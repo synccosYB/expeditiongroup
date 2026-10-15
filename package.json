@@ -104,6 +104,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.9",
+    "@napi-rs/canvas": "0.1.80",
     "@replit/vite-plugin-cartographer": "^0.4.4",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
@@ -121,6 +122,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.4",
+    "pdfjs-dist": "5.4.296",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
     "typescript": "5.6.3"

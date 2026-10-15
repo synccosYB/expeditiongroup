@@ -27,7 +27,7 @@ export function CheckRecordActions({ check, paymentId }: { check: CheckRecord; p
   if (!details) return null;
   const download = async () => {
     setBusy(true);
-    try { buildCheckPdf(details as CheckDetails, await checkLogo()).save(`check-${details.number}.pdf`); }
+    try { (await buildCheckPdf(details as CheckDetails, await checkLogo())).save(`check-${details.number}.pdf`); }
     catch (e) { toast({ title: "PDF unavailable", description: (e as Error).message, variant: "destructive" }); }
     finally { setBusy(false); }
   };
