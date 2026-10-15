@@ -92,11 +92,16 @@ def sql_json(value):
     return delimiter + text + delimiter + '::jsonb'
 
 
-def build_sql(snapshots):
+def build_sql(snapshots, baseline_rows=None):
     ctes = []
     reports = []
+    baseline_rows = baseline_rows or {table: len(snapshots[table]) for table in TABLES}
     for table in TABLES:
         old, current, added = ('old_' + table, 'current_' + table, 'added_' + table)
+        partition = 'baseline_partition_' + table
+        count = int(baseline_rows[table])
+        if count < 0:
+            raise ValueError('Invalid baseline count')
         column = 'check_signature' if table == 'bank_accounts' else 'check_details'
         # Match the saved baseline's normalization of absent optional columns.
         row_json = f"to_jsonb(x)||jsonb_build_object('{column}',to_jsonb(x)->'{column}')"
@@ -104,12 +109,22 @@ def build_sql(snapshots):
             f'{old} AS (SELECT id,{row_json} AS j FROM jsonb_populate_recordset(NULL::public.{table},{sql_json(snapshots[table])}) x)',
             f'{current} AS (SELECT id,{row_json} AS j FROM public.{table} x)',
             f'{added} AS (SELECT c.* FROM {current} c WHERE NOT EXISTS (SELECT 1 FROM {old} o WHERE o.id=c.id))',
+            f'{partition} AS (SELECT * FROM {current} ORDER BY id LIMIT {count})',
+            f'later_{table} AS (SELECT c.* FROM {current} c WHERE NOT EXISTS (SELECT 1 FROM {partition} p WHERE p.id=c.id))',
         ])
         reports.append(f"""SELECT '{table}'::text AS table_name,jsonb_build_object(
  'archive_rows',(SELECT count(*) FROM {old}),
  'archive_all_columns_digest',(SELECT md5(COALESCE(string_agg(md5(j::text),'' ORDER BY id),'')) FROM {old}),
  'archive_excluding_updated_at_digest',(SELECT md5(COALESCE(string_agg(md5((j-'updated_at')::text),'' ORDER BY id),'')) FROM {old}),
  'current_rows',(SELECT count(*) FROM {current}),
+ 'current_all_columns_digest',(SELECT md5(COALESCE(string_agg(md5(j::text),'' ORDER BY id),'')) FROM {current}),
+ 'current_excluding_updated_at_digest',(SELECT md5(COALESCE(string_agg(md5((j-'updated_at')::text),'' ORDER BY id),'')) FROM {current}),
+ 'baseline_partition_rows',(SELECT count(*) FROM {partition}),
+ 'baseline_partition_all_columns_digest',(SELECT md5(COALESCE(string_agg(md5(j::text),'' ORDER BY id),'')) FROM {partition}),
+ 'baseline_partition_excluding_updated_at_digest',(SELECT md5(COALESCE(string_agg(md5((j-'updated_at')::text),'' ORDER BY id),'')) FROM {partition}),
+ 'archive_column_names',{sql_json(sorted(snapshots[table][0]) if snapshots[table] else [])},
+ 'current_columns',COALESCE((SELECT jsonb_agg(jsonb_build_object('column',attname,'type',format_type(atttypid,atttypmod)) ORDER BY attnum)
+   FROM pg_attribute WHERE attrelid='public.{table}'::regclass AND attnum>0 AND NOT attisdropped),'[]'::jsonb),
  'original_rows_missing',(SELECT count(*) FROM {old} o WHERE NOT EXISTS (SELECT 1 FROM {current} c WHERE c.id=o.id)),
  'original_rows_changed',(SELECT count(*) FROM {old} o JOIN {current} c USING(id) WHERE o.j IS DISTINCT FROM c.j),
  'original_rows_changed_excluding_updated_at',(SELECT count(*) FROM {old} o JOIN {current} c USING(id) WHERE o.j-'updated_at' IS DISTINCT FROM c.j-'updated_at'),
@@ -121,7 +136,7 @@ def build_sql(snapshots):
  'additions_created_before_first_publish',(SELECT count(*) FROM {added} WHERE (j->>'created_at')::timestamptz<'2026-10-15T18:06:33Z')
  ) AS report""")
     ctes.append('table_reports AS (' + ' UNION ALL '.join(reports) + ')')
-    ctes.append(r"""new_net AS (
+    balance_sql = r"""new_net AS (
  SELECT j->>'bank_account_id' AS bank_id,
  count(*) FILTER (WHERE j->>'amount' IS NULL OR j->>'amount' !~ '^[+-]?[0-9]+([.][0-9]+)?$') AS malformed,
  sum(CASE WHEN j->>'amount' ~ '^[+-]?[0-9]+([.][0-9]+)?$'
@@ -133,13 +148,22 @@ def build_sql(snapshots):
  THEN round((c.j->>'current_balance')::numeric-(o.j->>'current_balance')::numeric-COALESCE(n.net,0),2)=0 ELSE false END AS explained
  FROM old_bank_accounts o JOIN current_bank_accounts c USING(id)
  LEFT JOIN new_net n ON n.bank_id=o.id::text
-)""")
+)"""
+    ctes.append(balance_sql)
+    ctes.append(balance_sql.replace('new_net','baseline_net').replace('balance_deltas','baseline_balance_deltas').replace('added_bank_transactions','later_bank_transactions'))
     body = "WITH " + ',\n'.join(ctes) + r"""
 SELECT jsonb_build_object(
  'read_only',current_setting('transaction_read_only'),
  'tables',(SELECT jsonb_object_agg(table_name,report) FROM table_reports),
  'bank_balance_delta_accounts_checked',(SELECT count(*) FROM balance_deltas),
  'bank_balance_deltas_unexplained',(SELECT count(*) FROM balance_deltas WHERE NOT explained),
+ 'baseline_balance_delta_accounts_checked',(SELECT count(*) FROM baseline_balance_deltas),
+ 'baseline_balance_deltas_unexplained',(SELECT count(*) FROM baseline_balance_deltas WHERE NOT explained),
+ 'later_transactions_with_malformed_amounts',(SELECT COALESCE(sum(malformed),0) FROM baseline_net),
+ 'transactions_outside_baseline_partition',(SELECT count(*) FROM later_bank_transactions),
+ 'bill_payments_outside_baseline_partition',(SELECT count(*) FROM later_bill_payments),
+ 'later_bill_payments_linked_to_later_transactions',(SELECT count(*) FROM later_bill_payments bp WHERE EXISTS (
+   SELECT 1 FROM later_bank_transactions bt WHERE bt.id::text=bp.j->>'bank_transaction_id')),
  'added_transactions_with_malformed_amounts',(SELECT COALESCE(sum(malformed),0) FROM new_net),
  'new_bill_payments_linked_to_added_transactions',(SELECT count(*) FROM added_bill_payments bp WHERE EXISTS (
    SELECT 1 FROM added_bank_transactions bt WHERE bt.id::text=bp.j->>'bank_transaction_id')),
@@ -149,6 +173,48 @@ SELECT jsonb_build_object(
 );
 """
     return "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL lock_timeout='5s'; SET LOCAL statement_timeout='60s'; SET LOCAL timezone='UTC'; SET LOCAL search_path=pg_catalog,public;\n" + body + 'ROLLBACK;'
+
+
+def classify_report(report, prior):
+    archive_matches = {}
+    baseline_matches = {}
+    for table in TABLES:
+        old, data = prior[table], report['tables'][table]
+        archive_key = 'excluding_updated_at_digest' if table == 'bank_accounts' else 'all_columns_digest'
+        archive_matches[table] = data['archive_rows'] == old['row_count'] and data['archive_'+archive_key] == old[archive_key]
+        count_same = data['baseline_partition_rows'] == old['row_count']
+        baseline_matches[table] = dict(
+            expected_rows=old['row_count'],
+            lowest_id_partition_rows=data['baseline_partition_rows'],
+            all_columns_same=count_same and data['baseline_partition_all_columns_digest'] == old['all_columns_digest'],
+            excluding_updated_at_same=count_same and data['baseline_partition_excluding_updated_at_digest'] == old['excluding_updated_at_digest'],
+        )
+    archive_originals_unchanged = all(report['tables'][t]['original_rows_missing'] == 0 and report['tables'][t]['original_rows_changed'] == 0 for t in ('bank_transactions','bill_payments'))
+    baseline_originals_unchanged = all(baseline_matches[t]['all_columns_same'] for t in ('bank_transactions','bill_payments'))
+    bank = report['tables']['bank_accounts']
+    balances_explained = all(archive_matches.values()) and archive_originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','updated_at'} and report['bank_balance_delta_accounts_checked'] == bank['archive_rows'] and report['bank_balance_deltas_unexplained'] == 0 and report['added_transactions_with_malformed_amounts'] == 0
+    baseline_balances_explained = archive_matches['bank_accounts'] and baseline_originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','updated_at'} and report['baseline_balance_delta_accounts_checked'] == bank['archive_rows'] and report['baseline_balance_deltas_unexplained'] == 0 and report['later_transactions_with_malformed_amounts'] == 0
+    # The archive comparison remains useful even if it predates the saved baseline.
+    # Label it explicitly; it cannot silently substitute for the baseline proof.
+    for table in TABLES:
+        data = report['tables'][table]
+        for source, target in [('original_rows_missing','archive_rows_missing'),('original_rows_changed','archive_rows_changed'),('original_rows_changed_excluding_updated_at','archive_rows_changed_excluding_updated_at'),('changed_columns','archive_rows_changed_columns'),('added_rows','rows_added_since_archive')]:
+            data[target] = data.pop(source)
+    return dict(
+        success=True,
+        archive_matches_saved_baseline_by_table=archive_matches,
+        archive_business_rows_match_saved_baseline=all(archive_matches.values()),
+        saved_baseline_partition_comparison=baseline_matches,
+        partition_comparison_basis='Lowest current IDs up to saved baseline count. Matching full digest proves that saved original set unchanged; a mismatch alone does not identify edits or missing rows.',
+        original_saved_baseline_transactions_and_bill_payments_unchanged=baseline_originals_unchanged,
+        archived_transactions_and_bill_payments_unchanged=archive_originals_unchanged,
+        bank_changes_explained_only_by_added_transactions_and_timestamps=balances_explained if all(archive_matches.values()) else None,
+        bank_balance_explanation_basis='Archive rows; conclusion withheld unless archive matches saved baseline for all three tables.',
+        bank_changes_explained_relative_to_saved_baseline=baseline_balances_explained if archive_matches['bank_accounts'] and baseline_originals_unchanged else None,
+        saved_baseline_balance_explanation_basis='Archive bank-account rows must match saved baseline; full transaction/payment baseline partition digests must match. Then compare balance changes with transactions outside that proven original set.',
+        comparison=report,
+        publishing_ready=False,
+    )
 
 
 def run():
@@ -209,22 +275,16 @@ def run():
         env['PGAPPNAME'] = 'expedition_readonly_bank_preservation_diagnosis'
         stage = 'read-only-original-row-comparison'
         attempted = True
-        p = subprocess.run(['psql','--no-psqlrc','--no-password','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose'],env=env,input=build_sql(snapshots).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
+        p = subprocess.run(['psql','--no-psqlrc','--no-password','-qAt','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose'],env=env,input=build_sql(snapshots,{r['table_name']:r['row_count'] for r in rows}).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
         if p.returncode or p.stderr.strip():
             match = re.search(rb'(?:ERROR|FATAL|PANIC):\s+([0-9A-Z]{5}):',p.stderr)
             stop('Read-only query failed or warned; raw errors withheld.',exit_code=p.returncode,sqlstate=match.group(1).decode() if match else None)
         report = json.loads(p.stdout.decode().strip())
         require(report.get('read_only') == 'on', 'Read-only transaction not confirmed.')
-        stage = 'validate-archive-against-prepublish-baseline'
         prior = {r['table_name']:r for r in rows}
-        for table in TABLES:
-            old, data = prior[table], report['tables'][table]
-            key = 'excluding_updated_at_digest' if table == 'bank_accounts' else 'all_columns_digest'
-            require(data['archive_rows'] == old['row_count'] and data['archive_'+key] == old[key], 'Decoded archive does not match the saved baseline for '+table+'; no conclusion about original rows.')
-        originals_unchanged = all(report['tables'][t]['original_rows_missing'] == 0 and report['tables'][t]['original_rows_changed'] == 0 for t in ('bank_transactions','bill_payments'))
-        bank = report['tables']['bank_accounts']
-        balances_explained = originals_unchanged and bank['original_rows_missing'] == 0 and bank['added_rows'] == 0 and set(bank['changed_columns']) <= {'current_balance','updated_at'} and report['bank_balance_delta_accounts_checked'] == bank['archive_rows'] and report['bank_balance_deltas_unexplained'] == 0 and report['added_transactions_with_malformed_amounts'] == 0
-        result = dict(success=True,archive_business_rows_match_saved_baseline=True,original_bank_transactions_and_bill_payments_unchanged=originals_unchanged,bank_changes_explained_only_by_added_transactions_and_timestamps=balances_explained,comparison=report,production_target_fingerprint=TARGET,financial_baseline_sha256=BASELINE,verified_archive_sha256=ARCHIVE,production_writes_performed=False,restore_performed=False,publishing_performed=False,activity_attribution='unconfirmed; user reports no known relevant activity')
+        stage = 'compare-archive-and-saved-baseline-separately'
+        result = classify_report(report, prior)
+        result.update(production_target_fingerprint=TARGET,financial_baseline_sha256=BASELINE,verified_archive_sha256=ARCHIVE,production_writes_performed=False,restore_performed=False,publishing_performed=False,activity_attribution='unconfirmed; user reports no known relevant activity')
     except SystemExit:
         raise
     except Exception:
