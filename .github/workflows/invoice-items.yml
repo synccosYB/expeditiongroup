@@ -8,6 +8,7 @@ on:
       - 'client/src/pages/invoice-detail.tsx'
       - 'client/src/pages/client/invoice-detail.tsx'
       - 'client/src/pages/invoices.tsx'
+      - 'client/src/lib/print*'
       - 'server/routes.ts'
       - 'shared/schema.ts'
       - 'migrations/**'
@@ -24,7 +25,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node --import tsx --test client/src/components/invoice-compact-items.test.ts
+      - run: node --import tsx --test client/src/components/invoice-compact-items.test.ts client/src/lib/printAssets.test.ts
       - run: npm run build
       - name: TypeScript baseline audit
         shell: bash
@@ -34,9 +35,9 @@ jobs:
           code=$?
           if [ "$code" -ne 0 ]; then
             echo "::warning::Repository-wide TypeScript check has pre-existing errors; inspect logged errors."
-            grep -E '^((client/src/components/(invoice-compact-items|invoice-generation-dialog|manual-invoice-dialog|billing-items-manager)|client/src/pages/(invoice-detail|invoices|client/invoice-detail))\\.(tsx|ts))\\(' /tmp/tsc-output.log > /tmp/invoice-errors.log || true
+            grep -E '^(client/src/components/(invoice-compact-items|invoice-generation-dialog|manual-invoice-dialog|billing-items-manager)\.tsx|client/src/pages/(invoice-detail|invoices|client/invoice-detail)\.tsx|client/src/lib/print(Assets|Utils)\.ts)\(' /tmp/tsc-output.log > /tmp/invoice-errors.log || true
             if [ -s /tmp/invoice-errors.log ]; then cat /tmp/invoice-errors.log; exit 1; fi
-            echo "No TypeScript errors reported in changed invoice UI files."
+            echo "No TypeScript errors reported in invoice UI or print helper files."
           else
             echo "Repository-wide TypeScript check passed."
           fi
