@@ -194,6 +194,11 @@ export default function InvoiceDetail() {
   const handlePrint = () => {
     handlePrintWithWidgetRemoval({
       documentTitle: invoice?.invoiceNumber || "Invoice",
+      onError: () => toast({
+        title: "Couldn't prepare the invoice for printing",
+        description: "The page layout could not load. Please try again.",
+        variant: "destructive",
+      }),
     });
   };
 
@@ -553,6 +558,7 @@ export default function InvoiceDetail() {
 
       <PrintStyles
         extraCss={`
+          @page { size: portrait; }
           @media print {
             html {
               color: #111 !important;
