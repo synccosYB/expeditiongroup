@@ -48,7 +48,7 @@ export function registerCheckwriterRoutes(app: Express) {
       const rows = await db.select({ transaction: bankTransactions, payment: billPayments, billDocument: bills.documentUrl }).from(bankTransactions)
         .leftJoin(billPayments, eq(billPayments.bankTransactionId, bankTransactions.id)).leftJoin(bills, eq(bills.id, billPayments.billId))
         .where(or(isNotNull(bankTransactions.checkDetails), isNotNull(billPayments.checkDetails))).orderBy(desc(bankTransactions.id));
-      res.json(rows.map(({ transaction, payment, billDocument }) => ({ id: transaction.id, bankAccountId: transaction.bankAccountId, amount: transaction.amount, checkDetails: transaction.checkDetails || payment?.checkDetails, linkedBillId: payment?.billId || null, hasAttachment: !!((transaction.checkDetails || payment?.checkDetails)?.attachment || billDocument) })));
+      res.json(rows.map(({ transaction, payment, billDocument }) => ({ id: transaction.id, bankAccountId: transaction.bankAccountId, amount: transaction.amount, checkDetails: transaction.checkDetails || payment?.checkDetails, linkedBillId: payment?.billId || null, hasAttachment: !!((transaction.checkDetails || payment?.checkDetails)?.attachment || (transaction.checkDetails || payment?.checkDetails)?.expenseReceiptUrl || billDocument) })));
     } catch (e) { fail(res, e); }
   });
   app.get("/api/checks/:id/attachment", isAuthenticated, admin, async (req: any, res) => {
@@ -57,7 +57,7 @@ export function registerCheckwriterRoutes(app: Express) {
       const [transaction] = await db.select().from(bankTransactions).where(eq(bankTransactions.id, id));
       const [payment] = await db.select().from(billPayments).where(eq(billPayments.bankTransactionId, id));
       const details = transaction?.checkDetails || payment?.checkDetails;
-      let path = details?.attachment?.path;
+      let path = details?.attachment?.path || details?.expenseReceiptUrl;
       if (!path && payment) { const bill = await storage.getBill(payment.billId); path = bill?.documentUrl || undefined; }
       if (path) path = objectStorageService.normalizeObjectEntityPath(path);
       if (!details || !path?.startsWith("/objects/")) return res.status(404).json({ message: "No bill document attached" });

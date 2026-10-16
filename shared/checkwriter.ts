@@ -20,6 +20,9 @@ export interface CheckDetails {
   status: "issued" | "void";
   issuedBy: string | number;
   billId?: number;
+  expenseId?: number;
+  expenseReceiptUrl?: string;
+  expensePaymentType?: "expense" | "pay_bill" | "check" | "transfer" | "other" | null;
   attachment?: { path: string; name: string };
   voidedBy?: string | number;
   voidedAt?: string;
@@ -59,6 +62,7 @@ export const checkRequestSchema = z.object({
   number: z.string().regex(/^[1-9]\d{0,8}$/),
   memo: z.string().max(150).default(""),
   billId: z.number().int().positive().optional(),
+  expenseId: z.number().int().positive().optional(),
   vendorId: z.number().int().positive().optional(),
   payee: z.string().trim().max(255).optional(),
   payeeAddress: z.string().trim().max(500).optional(),
@@ -66,8 +70,9 @@ export const checkRequestSchema = z.object({
   printSignature: z.boolean().default(false),
   attachment: z.object({ path: z.string().regex(/^\/objects\/check-bills\/[a-f0-9-]{36}$/), name: z.string().trim().min(1).max(255) }).optional(),
 }).superRefine((value, ctx) => {
-  if (!value.billId && !value.vendorId && !value.payee) ctx.addIssue({ code: "custom", message: "Select a vendor or enter a payee", path: ["payee"] });
-  if (!value.billId && !value.accountId) ctx.addIssue({ code: "custom", message: "Select an expense account", path: ["accountId"] });
+  if (value.billId && value.expenseId) ctx.addIssue({ code: "custom", message: "Choose either a bill or an existing expense", path: ["expenseId"] });
+  if (!value.billId && !value.expenseId && !value.vendorId && !value.payee) ctx.addIssue({ code: "custom", message: "Select a vendor or enter a payee", path: ["payee"] });
+  if (!value.billId && !value.expenseId && !value.accountId) ctx.addIssue({ code: "custom", message: "Select an expense account", path: ["accountId"] });
 });
 export type CheckRequest = z.infer<typeof checkRequestSchema>;
 export interface CheckRecord { id: number; bankAccountId: number; amount: string; checkDetails: CheckDetails; }

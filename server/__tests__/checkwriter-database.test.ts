@@ -152,6 +152,79 @@ test("PostgreSQL check payment lifecycle", async t => {
     const [after] = await database.select().from(bankAccounts); assert.equal(after.currentBalance, before.currentBalance);
     await pg.exec("DROP TRIGGER fail_check_delete ON bank_transactions; DROP FUNCTION fail_check_delete();");
   });
+  const newExpense = async (overrides: object = {}) => (await database.insert(expenses).values({ expenseDate: new Date("2026-10-01T12:00:00"), vendorId: vendor.id, accountId: category.id, amount: "100.00", description: "Original expense", reference: "VENDOR-REF", status: "pending", paymentType: "expense", receiptUrl: "/objects/expense-receipt", notes: "Keep these notes", isRebillable: true, markupPercent: "15", ...overrides }).returning())[0];
+  await t.test("pay existing expense once, retaining its original ID, receipt, date and rebill fields", async () => {
+    const original = await newExpense();
+    const expenseCount = (await database.select().from(expenses)).length;
+    const transactionCount = (await database.select().from(bankTransactions)).length;
+    const [before] = await database.select().from(bankAccounts);
+    const issued = await issueCheck(serviceDb, input("800", { expenseId: original.id }), "admin");
+    assert.equal((await database.select().from(expenses)).length, expenseCount);
+    assert.equal((await database.select().from(bankTransactions)).length, transactionCount + 1);
+    const [saved] = await database.select().from(expenses).where(eq(expenses.id, original.id));
+    assert.deepEqual(saved, { ...original, bankAccountId: bank.id, bankTransactionId: issued.transaction.id, paymentType: "check", status: "paid" });
+    assert.equal(issued.transaction.checkDetails?.expenseId, original.id);
+    assert.equal(issued.transaction.checkDetails?.expenseReceiptUrl, original.receiptUrl);
+    const [after] = await database.select().from(bankAccounts); assert.equal(Number(after.currentBalance), Number(before.currentBalance) - 100);
+    await assert.rejects(() => issueCheck(serviceDb, input("801", { expenseId: original.id }), "admin"), /already has a printed check/);
+    await voidCheck(serviceDb, issued.transaction.id, bank.id, "admin");
+    const [restored] = await database.select().from(expenses).where(eq(expenses.id, original.id));
+    assert.deepEqual(restored, original);
+    const replacement = await issueCheck(serviceDb, input("801", { expenseId: original.id }), "admin");
+    await deleteCheck(serviceDb, issued.transaction.id, bank.id, "admin"); // Old void deletion must not touch the replacement.
+    const [stillPaid] = await database.select().from(expenses).where(eq(expenses.id, original.id)); assert.equal(stillPaid.bankTransactionId, replacement.transaction.id);
+    await deleteCheck(serviceDb, replacement.transaction.id, bank.id, "admin");
+    const [retained] = await database.select().from(expenses).where(eq(expenses.id, original.id)); assert.deepEqual(retained, original);
+    const [balance] = await database.select().from(bankAccounts); assert.equal(Number(balance.currentBalance), Number(before.currentBalance));
+  });
+  await t.test("an already recorded uncleared expense check reuses the register entry without a second debit", async () => {
+    const [transaction] = await database.insert(bankTransactions).values({ bankAccountId: bank.id, transactionDate: new Date(), transactionType: "check", amount: "100.00", checkNumber: "802", isCleared: false }).returning();
+    await database.update(bankAccounts).set({ currentBalance: "900.00" }).where(eq(bankAccounts.id, bank.id));
+    const original = await newExpense({ bankAccountId: bank.id, bankTransactionId: transaction.id, status: "paid", paymentType: "check", reference: "802" });
+    const count = (await database.select().from(bankTransactions)).length;
+    const result = await issueCheck(serviceDb, input("802", { expenseId: original.id }), "admin");
+    assert.equal(result.transaction.id, transaction.id);
+    assert.equal((await database.select().from(bankTransactions)).length, count);
+    const [after] = await database.select().from(bankAccounts); assert.equal(after.currentBalance, "900.00");
+    await voidCheck(serviceDb, transaction.id, bank.id, "admin");
+    const [restored] = await database.select().from(bankAccounts); assert.equal(Number(restored.currentBalance), 1000);
+    const [retained] = await database.select().from(expenses).where(eq(expenses.id, original.id)); assert.equal(retained.amount, original.amount); assert.equal(retained.status, "pending"); assert.equal(retained.receiptUrl, original.receiptUrl);
+  });
+  await t.test("existing expense payments reject amount changes, paid expenses and bill payment duplication", async () => {
+    const original = await newExpense();
+    await assert.rejects(() => issueCheck(serviceDb, input("803", { expenseId: original.id, amount: "99" }), "admin"), /must equal/);
+    await assert.rejects(() => issueCheck(serviceDb, input("803", { expenseId: 999999 }), "admin"), /not found/);
+    for (const overrides of [{ status: "paid" }, { status: "void" }, { billId: (await newBill()).id }, { bankAccountId: bank.id }]) {
+      const invalid = await newExpense(overrides);
+      await assert.rejects(() => issueCheck(serviceDb, input("803", { expenseId: invalid.id }), "admin"));
+    }
+    const [transaction] = await database.insert(bankTransactions).values({ bankAccountId: bank.id, transactionDate: new Date(), transactionType: "withdrawal", amount: "100" }).returning();
+    const paid = await newExpense({ status: "paid", bankAccountId: bank.id, bankTransactionId: transaction.id });
+    await assert.rejects(() => issueCheck(serviceDb, input("803", { expenseId: paid.id }), "admin"), /already has a payment/);
+    await database.update(expenses).set({ paymentType: "check" }).where(eq(expenses.id, paid.id));
+    await database.update(bankTransactions).set({ transactionType: "check", isCleared: true }).where(eq(bankTransactions.id, transaction.id));
+    await assert.rejects(() => issueCheck(serviceDb, input("803", { expenseId: paid.id }), "admin"), /cleared/);
+  });
+  await t.test("concurrent expense check requests with different numbers pay the expense only once", async () => {
+    const original = await newExpense();
+    const count = (await database.select().from(expenses)).length;
+    const [before] = await database.select().from(bankAccounts);
+    const results = await Promise.allSettled([issueCheck(serviceDb, input("804", { expenseId: original.id }), "admin"), issueCheck(serviceDb, input("805", { expenseId: original.id }), "admin")]);
+    assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
+    assert.equal(results.filter(r => r.status === "rejected").length, 1);
+    assert.equal((await database.select().from(expenses)).length, count);
+    const [after] = await database.select().from(bankAccounts); assert.equal(Number(after.currentBalance), Number(before.currentBalance) - 100);
+  });
+  await t.test("failure linking the original expense rolls back the check and balance", async () => {
+    const original = await newExpense(); const count = (await database.select().from(bankTransactions)).length;
+    const [before] = await database.select().from(bankAccounts);
+    await pg.exec("CREATE FUNCTION fail_expense_link() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected expense link failure'; END $$; CREATE TRIGGER fail_expense_link BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION fail_expense_link();");
+    await assert.rejects(() => issueCheck(serviceDb, input("806", { expenseId: original.id }), "admin"), /injected expense link failure/);
+    const [after] = await database.select().from(bankAccounts); assert.equal(after.currentBalance, before.currentBalance); assert.equal(after.nextCheckNumber, before.nextCheckNumber);
+    assert.equal((await database.select().from(bankTransactions)).length, count);
+    const [retained] = await database.select().from(expenses).where(eq(expenses.id, original.id)); assert.deepEqual(retained, original);
+    await pg.exec("DROP TRIGGER fail_expense_link ON expenses; DROP FUNCTION fail_expense_link();");
+  });
   await t.test("failure after register insertion rolls back the expense and bank balance", async () => {
     await pg.exec("CREATE FUNCTION fail_expense() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected expense failure'; END $$; CREATE TRIGGER fail_expense_insert BEFORE INSERT ON expenses FOR EACH ROW EXECUTE FUNCTION fail_expense();");
     const count = (await database.select().from(bankTransactions)).length; const [before] = await database.select().from(bankAccounts);
