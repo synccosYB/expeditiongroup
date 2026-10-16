@@ -60,32 +60,69 @@ export async function issueCheck(database: Database, input: CheckRequest, actor:
   });
 }
 
-export async function voidCheck(database: Database, transactionId: number, bankAccountId: number, actor: string) {
+export async function voidCheck(database: Database, transactionId: number, bankAccountId: number, actor: string, remove = false) {
   return database.transaction(async tx => {
     // Match issuance's lock order. The bank id comes from a read before the transaction.
     await tx.select().from(bankAccounts).where(eq(bankAccounts.id, bankAccountId)).for("update");
-    const [payment] = await tx.select().from(billPayments).where(eq(billPayments.bankTransactionId, transactionId));
+    const payments = await tx.select().from(billPayments).where(eq(billPayments.bankTransactionId, transactionId));
+    if (payments.length > 1) throw new CheckError("Multiple bill payments are linked to this check; review before reversing");
+    const [payment] = payments;
     const [bill] = payment ? await tx.select().from(bills).where(eq(bills.id, payment.billId)).for("update") : [];
     const [transaction] = await tx.select().from(bankTransactions).where(eq(bankTransactions.id, transactionId)).for("update");
     const details = transaction?.checkDetails || payment?.checkDetails;
     if (!transaction || transaction.bankAccountId !== bankAccountId || !details) throw new CheckError("Printed check not found");
-    if (details.status === "void") return transaction;
-    if (transaction.isCleared || transaction.isReconciled || transaction.reconciliationId) throw new CheckError("A cleared check or a check assigned to reconciliation cannot be voided here");
-    if (payment) {
-      if (moneyToCents(payment.amount) !== moneyToCents(transaction.amount)) throw new CheckError("Check and bill payment amounts differ; review them before voiding");
-      if (!bill) throw new CheckError("Linked bill no longer exists");
-      const paid = moneyToCents(bill.amountPaid || "0") - moneyToCents(payment.amount), due = moneyToCents(bill.total) - paid;
-      if (paid < 0) throw new CheckError("Bill balance needs review before voiding");
-      await tx.update(bills).set({ amountPaid: (paid / 100).toFixed(2), amountDue: (due / 100).toFixed(2), status: paid === 0 ? "pending" : due === 0 ? "paid" : "partial" }).where(eq(bills.id, bill.id));
-    } else {
-      const linkedExpenses = await tx.select().from(expenses).where(eq(expenses.bankTransactionId, transactionId)).for("update");
-      if (linkedExpenses.some(e => e.isRebilled)) throw new CheckError("This expense has been rebilled; review it before voiding the check");
-      await tx.update(expenses).set({ amount: "0.00", status: "void" }).where(eq(expenses.bankTransactionId, transactionId));
+    if (transaction.linkedTransactionId) throw new CheckError("This check is linked to another bank transaction; review before reversing");
+    if (details.status === "void" && !remove) return transaction;
+    if (transaction.isCleared || transaction.isReconciled || transaction.reconciliationId) throw new CheckError("A cleared check or a check assigned to reconciliation cannot be voided or deleted here");
+    const linkedExpenses = await tx.select().from(expenses).where(eq(expenses.bankTransactionId, transactionId)).for("update");
+    if (linkedExpenses.some(e => e.isRebilled)) throw new CheckError("This expense has been rebilled; review it before voiding or deleting the check");
+    if (details.status !== "void") {
+      if (payment) {
+        if (moneyToCents(payment.amount) !== moneyToCents(transaction.amount)) throw new CheckError("Check and bill payment amounts differ; review them before voiding");
+        if (!bill) throw new CheckError("Linked bill no longer exists");
+        const paid = moneyToCents(bill.amountPaid || "0") - moneyToCents(payment.amount), due = moneyToCents(bill.total) - paid;
+        if (paid < 0) throw new CheckError("Bill balance needs review before voiding");
+        await tx.update(bills).set({ amountPaid: (paid / 100).toFixed(2), amountDue: (due / 100).toFixed(2), status: paid === 0 ? "pending" : due === 0 ? "paid" : "partial" }).where(eq(bills.id, bill.id));
+      } else {
+        await tx.update(expenses).set({ amount: "0.00", status: "void" }).where(eq(expenses.bankTransactionId, transactionId));
+      }
+    }
+    if (remove) {
+      await tx.delete(expenses).where(eq(expenses.bankTransactionId, transactionId));
+      await tx.delete(billPayments).where(eq(billPayments.bankTransactionId, transactionId));
+      await tx.delete(bankTransactions).where(eq(bankTransactions.id, transactionId));
+      if (details.status !== "void") await tx.update(bankAccounts).set({ currentBalance: sql`(coalesce(nullif(${bankAccounts.currentBalance}, ''), '0')::numeric + ${transaction.amount}::numeric)::text` }).where(eq(bankAccounts.id, bankAccountId));
+      return transaction;
     }
     const voided: CheckDetails = { ...details, status: "void", voidedAt: new Date().toISOString(), voidedBy: actor };
     await tx.update(bankAccounts).set({ currentBalance: sql`(${bankAccounts.currentBalance}::numeric + ${transaction.amount}::numeric)::text` }).where(eq(bankAccounts.id, bankAccountId));
     if (payment) await tx.update(billPayments).set({ amount: "0.00", checkDetails: voided }).where(eq(billPayments.id, payment.id));
     const [result] = await tx.update(bankTransactions).set({ amount: "0.00", description: `VOID check ${details.number}`, checkDetails: voided }).where(eq(bankTransactions.id, transactionId)).returning();
     return result;
+  });
+}
+
+export async function deleteCheck(database: Database, transactionId: number, bankAccountId: number, actor: string) {
+  return voidCheck(database, transactionId, bankAccountId, actor, true);
+}
+
+// Fill missing print fields only. Never silently replace a previously saved bank number or signature.
+export async function completeCheckPrintDetails(database: Database, transactionId: number, bankAccountId: number) {
+  return database.transaction(async tx => {
+    const [bank] = await tx.select().from(bankAccounts).where(eq(bankAccounts.id, bankAccountId)).for("update");
+    const [transaction] = await tx.select().from(bankTransactions).where(eq(bankTransactions.id, transactionId)).for("update");
+    const [payment] = await tx.select().from(billPayments).where(eq(billPayments.bankTransactionId, transactionId));
+    const details = transaction?.checkDetails || payment?.checkDetails;
+    if (!bank || !transaction || transaction.bankAccountId !== bankAccountId || !details) throw new CheckError("Printed check not found");
+    if (details.status === "void") throw new CheckError("A void check cannot be signed");
+    const updated: CheckDetails = { ...details,
+      routingNumber: details.routingNumber || bank.routingNumber || "",
+      accountNumber: details.accountNumber || bank.accountNumber || "",
+      signature: details.signature || bank.checkSignature || undefined,
+    };
+    if (!/^\d{9}$/.test(updated.routingNumber || "") || !/^\d{5,17}$/.test(updated.accountNumber || "")) throw new CheckError("Save the full routing and account numbers in Bank Accounts first");
+    await tx.update(bankTransactions).set({ checkDetails: updated }).where(eq(bankTransactions.id, transactionId));
+    if (payment) await tx.update(billPayments).set({ checkDetails: updated }).where(eq(billPayments.id, payment.id));
+    return updated;
   });
 }

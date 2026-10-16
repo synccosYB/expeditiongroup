@@ -5,7 +5,7 @@ import { db, storage } from "./storage";
 import { isAuthenticated } from "./auth";
 import { bankTransactions, billPayments, bills } from "@shared/schema";
 import { checkRequestSchema, validateCheckAttachment } from "@shared/checkwriter";
-import { CheckError, issueCheck, voidCheck } from "./checkwriter-service";
+import { CheckError, issueCheck, voidCheck, deleteCheck, completeCheckPrintDetails } from "./checkwriter-service";
 import { objectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export function registerCheckwriterRoutes(app: Express) {
@@ -78,6 +78,23 @@ export function registerCheckwriterRoutes(app: Express) {
       res.json(payment ? await storage.getBillPayment(payment.id) : result);
     } catch (e) { fail(res, e); }
   };
+  app.delete("/api/checks/:id", isAuthenticated, admin, async (req: any, res) => {
+    try {
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      const transaction = await storage.getBankTransaction(id);
+      if (!transaction) return res.status(404).json({ message: "Printed check not found" });
+      await deleteCheck(db, id, transaction.bankAccountId, req.session.userId);
+      res.json({ message: "Check deleted and payment reversed" });
+    } catch (e) { fail(res, e); }
+  });
+  app.post("/api/checks/:id/print-details", isAuthenticated, admin, async (req: any, res) => {
+    try {
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      const transaction = await storage.getBankTransaction(id);
+      if (!transaction) return res.status(404).json({ message: "Printed check not found" });
+      res.json(await completeCheckPrintDetails(db, id, transaction.bankAccountId));
+    } catch (e) { fail(res, e); }
+  });
   app.post("/api/checks/:id/void", isAuthenticated, admin, voidHandler);
   app.post("/api/bill-payments/:id/void-check", isAuthenticated, admin, voidHandler);
 }
