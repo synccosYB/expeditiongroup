@@ -194,3 +194,9 @@ test("saved signature stays above the MICR band and is omitted from void copies"
   }
   assert.equal(signatureCount, 1);
 });
+
+test("existing expense requests do not require a second category or vendor, and cannot also select a bill", () => {
+  const request = { bankAccountId: 1, number: "123", amount: "100", date: "2026-10-16", expenseId: 42 };
+  assert.equal(checkRequestSchema.parse(request).expenseId, 42);
+  assert.equal(checkRequestSchema.safeParse({ ...request, billId: 1 }).success, false);
+});

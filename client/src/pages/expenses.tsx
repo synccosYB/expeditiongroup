@@ -1127,6 +1127,7 @@ export default function Expenses() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {expense.status !== "void" && !expense.billId && expense.paymentType !== "pay_bill" && (expense.paymentType === "check" || (expense.status !== "paid" && !expense.bankTransactionId && !expense.bankAccountId)) && <DropdownMenuItem onSelect={() => setLocation(`/write-check?expense=${expense.id}`)} data-testid={`button-write-check-expense-${expense.id}`}><FileText className="h-4 w-4 mr-2" />Write check</DropdownMenuItem>}
                         <DropdownMenuItem onSelect={() => handleOpenDialog(expense)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Edit

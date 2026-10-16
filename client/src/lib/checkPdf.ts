@@ -35,7 +35,7 @@ export async function buildCheckPdf(check: CheckDetails, logoPng?: string, micrF
     text(check.companyName, 30, y + 30, 350, 12, 1);
     text(`Check ${check.number}  |  ${check.date}`, 360, y + 30, 220, 10, 1);
     text(`Payee: ${check.payee}`, 30, y + 60, 540, 11, 2);
-    text(check.billNumber ? `Bill: ${check.billNumber}` : "Standalone check", 30, y + 98, 340, 10, 1);
+    text(check.billNumber ? `Bill: ${check.billNumber}` : check.expenseId ? `Expense: #${check.expenseId}` : "Standalone check", 30, y + 98, 340, 10, 1);
     text(`Payment: $${check.amount}`, 420, y + 98, 160, 11, 1);
     text(`Memo: ${check.memo || check.billNumber}`, 30, y + 128, 540, 10, 2);
     text(check.status === "void" ? "VOID - original amount shown for reference" : "Check payment - retain this voucher", 30, y + 205, 530, 9, 1);
