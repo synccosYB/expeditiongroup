@@ -51,13 +51,16 @@ export function registerAutomationRoutes(app: Express) {
     try {
       const candidate = { ...req.body, enabled: false };
       if (!validateAutomationRule(candidate)) return res.status(400).json({ message: "Invalid rule" });
-      const [created] = await db.insert(automationRules).values({
-        id: candidate.id, version: candidate.version, name: candidate.name,
-        enabled: false, triggerType: candidate.trigger,
-        conditions: [...candidate.conditions], actions: [...candidate.actions],
-        requiresApproval: candidate.requiresApproval,
-      }).returning();
-      await db.insert(automationAudit).values({ actorId: req.session.userId, action: "rule.created", targetType: "rule", targetId: created.id, details: { version: created.version } });
+      const [created] = await db.transaction(async (tx) => {
+        const rows = await tx.insert(automationRules).values({
+          id: candidate.id, version: candidate.version, name: candidate.name,
+          enabled: false, triggerType: candidate.trigger,
+          conditions: [...candidate.conditions], actions: [...candidate.actions],
+          requiresApproval: candidate.requiresApproval,
+        }).returning();
+        await tx.insert(automationAudit).values({ actorId: req.session.userId, action: "rule.created", targetType: "rule", targetId: rows[0].id, details: { version: rows[0].version } });
+        return rows;
+      });
       res.status(201).json(created);
     } catch { res.status(409).json({ message: "Rule version already exists or is invalid" }); }
   });
