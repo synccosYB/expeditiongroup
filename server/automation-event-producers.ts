@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { projects, tasks, automationOutbox,  } from "@shared/schema";
+import { projects, tasks, automationOutbox } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -62,5 +62,18 @@ export async function updateTaskWithCompletionEvent(
       });
     }
     return updated;
+  });
+}
+
+/** Create a task and its event together, so a failed outbox write rolls back the task. */
+export async function createTaskWithEvent(input: typeof tasks.$inferInsert, actorId: string) {
+  return db.transaction(async (tx) => {
+    const [task] = await tx.insert(tasks).values(input).returning();
+    await tx.insert(automationOutbox).values({
+      id: randomUUID(), eventType: "task.created", entityId: String(task.id),
+      projectId: String(task.projectId), actorKind: "user", actorId,
+      occurredAt: new Date(), schemaVersion: 1,
+    });
+    return task;
   });
 }
