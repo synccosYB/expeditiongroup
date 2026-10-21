@@ -25,7 +25,7 @@ export async function planPendingAutomationEvents(limit = 25) {
     await db.transaction(async tx => {
       const [locked] = await tx.select().from(automationOutbox)
         .where(and(eq(automationOutbox.id, row.id), eq(automationOutbox.status, "pending")))
-        .for("update");
+        .for("update", { skipLocked: true });
       if (!locked) return;
       const event: AutomationEvent = {
         id: locked.id, type: locked.eventType as AutomationEvent["type"],
