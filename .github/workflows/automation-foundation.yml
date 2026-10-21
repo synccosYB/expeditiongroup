@@ -8,6 +8,10 @@ on:
       - 'shared/schema.ts'
       - 'server/automation-event-producers.ts'
       - 'server/automation-worker.ts'
+      - 'server/automation-scheduler.ts'
+      - 'server/index.ts'
+      - 'client/src/pages/automation-center.tsx'
+      - 'client/src/App.tsx'
       - 'server/automation-routes.ts'
       - 'server/routes.ts'
       - 'server/__tests__/automation-events.test.ts'
@@ -16,6 +20,7 @@ on:
       - 'migrations/automation_outbox_foundation.sql'
       - 'migrations/automation_execution_queue.sql'
       - 'migrations/automation_project_settings.sql'
+      - 'migrations/automation_notifications.sql'
       - '.github/workflows/automation-foundation.yml'
   push:
     branches:
