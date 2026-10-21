@@ -1,3 +1,4 @@
+import { registerAutomationRoutes } from "./automation-routes";
 import { createProjectWithEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
@@ -114,6 +115,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+  registerAutomationRoutes(app);
   registerCheckwriterRoutes(app);
 
   db.execute(sql`
