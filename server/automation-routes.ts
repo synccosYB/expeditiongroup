@@ -121,6 +121,24 @@ export function registerAutomationRoutes(app: Express) {
     }
   });
 
+  app.post("/api/automation/executions/:id/cancel", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const [cancelled] = await db.transaction(async (tx) => {
+        const rows = await tx.update(automationExecutions)
+          .set({ status: "cancelled" })
+          .where(and(eq(automationExecutions.id, req.params.id), eq(automationExecutions.status, "awaiting_approval")))
+          .returning();
+        if (rows[0]) await tx.insert(automationAudit).values({
+          actorId: req.session.userId, action: "execution.cancelled",
+          targetType: "execution", targetId: rows[0].id,
+        });
+        return rows;
+      });
+      if (!cancelled) return res.status(409).json({ message: "Execution cannot be cancelled in its current state" });
+      res.json(cancelled);
+    } catch { res.status(500).json({ message: "Unable to cancel execution" }); }
+  });
+
   app.post("/api/automation/executions/:id/approve", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const [updated] = await db.update(automationExecutions).set({
