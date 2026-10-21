@@ -18,6 +18,8 @@ export default function AutomationCenter() {
   const [delayMinutes, setDelayMinutes] = useState(60);
   const [checklistItems, setChecklistItems] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [conditionField, setConditionField] = useState("");
+  const [conditionValue, setConditionValue] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const load = async () => {
@@ -33,7 +35,7 @@ export default function AutomationCenter() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: crypto.randomUUID(), version: 1, name, enabled: false,
-          trigger, conditions: [], requiresApproval,
+          trigger, conditions: conditionField && conditionValue.trim() ? [{ field: conditionField, operator: "equals", value: conditionValue.trim() }] : [], requiresApproval,
           actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : action === "schedule_reminder" ? { title, recipientEmail, delayMinutes } : action === "create_checklist" ? { title, items: checklistItems.split(/\r?\n/).map(x=>x.trim()).filter(Boolean) } : { title }) }],
         }),
       });
@@ -90,8 +92,9 @@ export default function AutomationCenter() {
       </div>
       {action === "create_checklist" && <label className="text-sm block">Checklist items (one per line)<textarea className="block w-full rounded border p-2 bg-background" value={checklistItems} onChange={e=>setChecklistItems(e.target.value)} /></label>}
       {action === "schedule_reminder" && <div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Recipient email<input type="email" className="block w-full rounded border p-2 bg-background" value={recipientEmail} onChange={e=>setRecipientEmail(e.target.value)} /></label><label className="text-sm">Delay (minutes)<input type="number" min={1} max={525600} className="block w-full rounded border p-2 bg-background" value={delayMinutes} onChange={e=>setDelayMinutes(Number(e.target.value))} /></label></div>}
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={requiresApproval} onChange={e=>setRequiresApproval(e.target.checked)}/>Require approval</label>
-      <button disabled={busy || !name.trim() || !title.trim()} onClick={create} className="rounded bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">Save disabled draft</button>
+<div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Condition (optional)<select className="block w-full rounded border p-2 bg-background" value={conditionField} onChange={e=>setConditionField(e.target.value)}><option value="">Always when triggered</option><option value="projectId">Project ID</option><option value="clientId">Client ID</option><option value="actor.kind">Actor type</option><option value="changes.status">New status</option><option value="changes.previousStatus">Previous status</option></select></label>{conditionField && <label className="text-sm">Equals<input className="block w-full rounded border p-2 bg-background" value={conditionValue} onChange={e=>setConditionValue(e.target.value)} placeholder="Exact match" /></label>}</div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={requiresApproval} onChange={e=>setRequiresApproval(e.target.checked)}/>Require approval</label>
+      <button disabled={busy || !name.trim() || !title.trim() || (Boolean(conditionField) && !conditionValue.trim())} onClick={create} className="rounded bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">Save disabled draft</button>
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Rules ({rules.length})</h2>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Trigger</th><th>Version</th><th>Status</th><th>Control</th></tr></thead><tbody>{rules.map(r=><tr className="border-b" key={r.id+":"+r.version}><td className="p-2">{r.name}</td><td>{r.triggerType}</td><td>{r.version}</td><td>{r.enabled ? "Enabled" : "Disabled"}</td><td><button disabled={busy} onClick={()=>toggle(r)} className="rounded border px-2 py-1">{r.enabled ? "Disable" : "Enable"}</button></td></tr>)}</tbody></table></div>
