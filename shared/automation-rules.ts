@@ -59,7 +59,7 @@ export function validateAutomationRule(value: unknown): value is AutomationRule 
     }
     if (action.type === "notify_internal" && (typeof action.message !== "string" || !action.message.trim())) return false;
     if (action.type === "create_checklist" && (!Array.isArray(action.items) || action.items.length > 100 || !action.items.every((item: unknown) => typeof item === "string" && item.trim()))) return false;
-    if (action.type === "schedule_reminder" && (typeof action.recipientEmail !== "string" || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(action.recipientEmail) || !Number.isSafeInteger(action.delayMinutes) || action.delayMinutes < 1 || action.delayMinutes > 525600)) return false;
+    if (action.type === "schedule_reminder" && (typeof action.recipientEmail !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(action.recipientEmail) || !Number.isSafeInteger(action.delayMinutes) || action.delayMinutes < 1 || action.delayMinutes > 525600)) return false;
     if (action.assigneeId !== undefined && typeof action.assigneeId !== "string") return false;
   }
   return true;
