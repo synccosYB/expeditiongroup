@@ -103,13 +103,16 @@ export function registerAutomationRoutes(app: Express) {
     if (!Number.isSafeInteger(projectId) || projectId <= 0 || typeof req.body?.enabled !== "boolean")
       return res.status(400).json({ message: "Invalid project settings" });
     try {
-      const [setting] = await db.insert(automationProjectSettings).values({
-        projectId, enabled: req.body.enabled, updatedBy: req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId,
-      }).onConflictDoUpdate({
-        target: automationProjectSettings.projectId,
-        set: { enabled: req.body.enabled, updatedBy: req.session.userId, updatedAt: new Date() },
-      }).returning();
-      await db.insert(automationAudit).values({ actorId: req.session.userId, action: setting.enabled ? "project.enabled" : "project.disabled", targetType: "project", targetId: String(projectId) });
+      const [setting] = await db.transaction(async (tx) => {
+        const rows = await tx.insert(automationProjectSettings).values({
+          projectId, enabled: req.body.enabled, updatedBy: req.session.userId,
+        }).onConflictDoUpdate({
+          target: automationProjectSettings.projectId,
+          set: { enabled: req.body.enabled, updatedBy: req.session.userId, updatedAt: new Date() },
+        }).returning();
+        await tx.insert(automationAudit).values({ actorId: req.session.userId, action: rows[0].enabled ? "project.enabled" : "project.disabled", targetType: "project", targetId: String(projectId) });
+        return rows;
+      });
       res.json(setting);
     } catch { res.status(500).json({ message: "Unable to update project settings" }); }
   });
