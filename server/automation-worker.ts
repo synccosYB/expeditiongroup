@@ -7,6 +7,7 @@ import {
   documentRequests, projects, tasks,
 } from "@shared/schema";
 import { isAutomationEvent, type AutomationEvent } from "@shared/automation-events";
+import { retryDelaySeconds } from "@shared/automation-execution";
 import { planAutomationActions, validateAutomationRule, type AutomationAction } from "@shared/automation-rules";
 
 /**
@@ -72,6 +73,7 @@ export async function executePendingAutomationActions(limit = 10) {
     .orderBy(automationExecutions.createdAt).limit(Math.min(limit, 50));
   let completed = 0;
   for (const candidate of candidates) {
+    try {
     await db.transaction(async tx => {
       const [execution] = await tx.select().from(automationExecutions)
         .where(and(eq(automationExecutions.id, candidate.id), eq(automationExecutions.status, "pending")))
@@ -164,6 +166,16 @@ export async function executePendingAutomationActions(limit = 10) {
       }).where(eq(automationExecutions.id, execution.id));
       completed++;
     });
+    } catch (error) {
+      const attempts = candidate.attemptCount + 1;
+      const message = error instanceof Error ? error.message.slice(0, 1000) : "Unknown execution error";
+      await db.update(automationExecutions).set({
+        status: attempts >= 5 ? "failed" : "pending",
+        attemptCount: attempts,
+        nextAttemptAt: new Date(Date.now() + retryDelaySeconds(attempts) * 1000),
+        lastError: message,
+      }).where(and(eq(automationExecutions.id, candidate.id), eq(automationExecutions.status, "pending")));
+    }
   }
   return completed;
 }
