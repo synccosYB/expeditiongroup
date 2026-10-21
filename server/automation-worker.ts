@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   automationActionReceipts, automationExecutions, automationOutbox,
-  automationProjectSettings, automationRules,
+  automationProjectSettings, automationRules, checklistInstances, taskReminders,
   documentRequests, projects, tasks,
 } from "@shared/schema";
 import { isAutomationEvent, type AutomationEvent } from "@shared/automation-events";
@@ -126,6 +126,23 @@ export async function executePendingAutomationActions(limit = 10) {
             description: action.title,
           }).returning({ id: documentRequests.id });
           entityType = "document_request"; entityId = String(created.id);
+        } else if (action.type === "create_checklist") {
+          const [created] = await tx.insert(checklistInstances).values({
+            projectId, name: action.title,
+            items: action.items.map((item, index) => ({ id: index + 1, text: item, completed: false })),
+          }).returning({ id: checklistInstances.id });
+          entityType = "checklist"; entityId = String(created.id);
+        } else if (action.type === "schedule_reminder") {
+          const [createdTask] = await tx.insert(tasks).values({
+            projectId, title: action.title, type: "other",
+          }).returning({ id: tasks.id });
+          const [created] = await tx.insert(taskReminders).values({
+            taskId: createdTask.id, channel: "email",
+            recipientEmail: action.recipientEmail,
+            scheduledAt: new Date(Date.now() + action.delayMinutes * 60_000),
+            message: action.title, status: "pending",
+          }).returning({ id: taskReminders.id });
+          entityType = "task_reminder"; entityId = String(created.id);
         } else if (action.type === "notify_internal") {
           // Never silently pretend an external message was delivered.
           throw new Error("Internal notification delivery is not configured");
