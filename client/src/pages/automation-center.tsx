@@ -14,6 +14,9 @@ export default function AutomationCenter() {
   const [trigger, setTrigger] = useState("project.created");
   const [action, setAction] = useState("create_task");
   const [title, setTitle] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [delayMinutes, setDelayMinutes] = useState(60);
+  const [checklistItems, setChecklistItems] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,7 +34,7 @@ export default function AutomationCenter() {
         body: JSON.stringify({
           id: crypto.randomUUID(), version: 1, name, enabled: false,
           trigger, conditions: [], requiresApproval,
-          actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : { title }) }],
+          actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : action === "schedule_reminder" ? { title, recipientEmail, delayMinutes } : action === "create_checklist" ? { title, items: checklistItems.split("\\n").map(x=>x.trim()).filter(Boolean) } : { title }) }],
         }),
       });
       if (!response.ok) throw new Error((await response.json()).message ?? "Unable to create rule");
@@ -73,9 +76,11 @@ export default function AutomationCenter() {
       <div className="grid gap-3 md:grid-cols-2">
         <label className="text-sm">Rule name<input className="w-full rounded border p-2 bg-background" value={name} onChange={e=>setName(e.target.value)} /></label>
         <label className="text-sm">Trigger<select className="w-full rounded border p-2 bg-background" value={trigger} onChange={e=>setTrigger(e.target.value)}>{triggers.map(t=><option key={t}>{t}</option>)}</select></label>
-        <label className="text-sm">Action<select className="w-full rounded border p-2 bg-background" value={action} onChange={e=>setAction(e.target.value)}><option value="create_task">Create task</option><option value="create_document_request">Request document</option><option value="notify_internal">Internal notification (not configured)</option></select></label>
+        <label className="text-sm">Action<select className="w-full rounded border p-2 bg-background" value={action} onChange={e=>setAction(e.target.value)}><option value="create_task">Create task</option><option value="create_document_request">Request document</option><option value="create_checklist">Create checklist</option><option value="schedule_reminder">Schedule email reminder</option><option value="notify_internal">Internal notification</option></select></label>
         <label className="text-sm">Action text<input className="w-full rounded border p-2 bg-background" value={title} onChange={e=>setTitle(e.target.value)} /></label>
       </div>
+      {action === "create_checklist" && <label className="text-sm block">Checklist items (one per line)<textarea className="block w-full rounded border p-2 bg-background" value={checklistItems} onChange={e=>setChecklistItems(e.target.value)} /></label>}
+      {action === "schedule_reminder" && <div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Recipient email<input type="email" className="block w-full rounded border p-2 bg-background" value={recipientEmail} onChange={e=>setRecipientEmail(e.target.value)} /></label><label className="text-sm">Delay (minutes)<input type="number" min={1} max={525600} className="block w-full rounded border p-2 bg-background" value={delayMinutes} onChange={e=>setDelayMinutes(Number(e.target.value))} /></label></div>}
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={requiresApproval} onChange={e=>setRequiresApproval(e.target.checked)}/>Require approval</label>
       <button disabled={busy || !name.trim() || !title.trim()} onClick={create} className="rounded bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">Save disabled draft</button>
     </section>
