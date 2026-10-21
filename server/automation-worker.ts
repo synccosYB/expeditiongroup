@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
   automationActionReceipts, automationExecutions, automationOutbox,
-  automationProjectSettings, automationRules, checklistInstances,
+  automationProjectSettings, automationRules,
   documentRequests, projects, tasks,
 } from "@shared/schema";
 import { isAutomationEvent, type AutomationEvent } from "@shared/automation-events";
