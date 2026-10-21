@@ -4,11 +4,13 @@ on:
     paths:
       - 'shared/automation-events.ts'
       - 'shared/automation-rules.ts'
+      - 'shared/automation-execution.ts'
       - 'shared/schema.ts'
       - 'server/automation-event-producers.ts'
       - 'server/routes.ts'
       - 'server/__tests__/automation-events.test.ts'
       - 'server/__tests__/automation-rules.test.ts'
+      - 'server/__tests__/automation-execution.test.ts'
       - 'migrations/automation_outbox_foundation.sql'
       - 'migrations/automation_execution_queue.sql'
       - '.github/workflows/automation-foundation.yml'
@@ -26,7 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Automation event tests
-        run: node --import tsx --test server/__tests__/automation-events.test.ts server/__tests__/automation-rules.test.ts
+        run: node --import tsx --test server/__tests__/automation-events.test.ts server/__tests__/automation-rules.test.ts server/__tests__/automation-execution.test.ts
       - name: Production build
         run: npm run build
       - name: TypeScript check
