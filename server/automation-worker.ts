@@ -165,7 +165,7 @@ export async function executePendingAutomationActions(limit = 10) {
         } else if (action.type === "notify_internal") {
           const [created] = await tx.insert(automationNotifications).values({
             id: randomUUID(), executionId: execution.id, actionIndex: i,
-            projectId: Number.isSafeInteger(projectId) && projectId > 0 ? projectId : null, message: action.message,
+            projectId: Number.isSafeInteger(projectId) && projectId > 0 ? projectId : undefined, message: action.message,
           }).returning({ id: automationNotifications.id });
           entityType = "automation_notification"; entityId = created.id;
         } else {
