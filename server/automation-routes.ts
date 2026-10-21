@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { automationExecutions, automationProjectSettings, automationRules, automationNotifications } from "@shared/schema";
+import { automationExecutions, automationProjectSettings, automationRules, automationNotifications, automationAudit } from "@shared/schema";
 import { validateAutomationRule } from "@shared/automation-rules";
 import { planPendingAutomationEvents, executePendingAutomationActions } from "./automation-worker";
 import { isAuthenticated } from "./auth";
@@ -19,6 +19,12 @@ export function registerAutomationRoutes(app: Express) {
       res.sendStatus(500);
     }
   };
+
+  app.get("/api/automation/audit", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      res.json(await db.select().from(automationAudit).orderBy(desc(automationAudit.createdAt)).limit(200));
+    } catch { res.status(500).json({ message: "Unable to load audit trail" }); }
+  });
 
   app.get("/api/automation/notifications", isAuthenticated, requireAdmin, async (_req, res) => {
     try {
@@ -51,6 +57,7 @@ export function registerAutomationRoutes(app: Express) {
         conditions: [...candidate.conditions], actions: [...candidate.actions],
         requiresApproval: candidate.requiresApproval,
       }).returning();
+      await db.insert(automationAudit).values({ actorId: req.session.userId, action: "rule.created", targetType: "rule", targetId: created.id, details: { version: created.version } });
       res.status(201).json(created);
     } catch { res.status(409).json({ message: "Rule version already exists or is invalid" }); }
   });
@@ -65,6 +72,7 @@ export function registerAutomationRoutes(app: Express) {
         .where(and(eq(automationRules.id, req.params.id), eq(automationRules.version, version)))
         .returning();
       if (!updated) return res.sendStatus(404);
+      await db.insert(automationAudit).values({ actorId: req.session.userId, action: updated.enabled ? "rule.enabled" : "rule.disabled", targetType: "rule", targetId: updated.id, details: { version: updated.version } });
       res.json(updated);
     } catch { res.status(500).json({ message: "Unable to update rule" }); }
   });
@@ -95,6 +103,7 @@ export function registerAutomationRoutes(app: Express) {
         target: automationProjectSettings.projectId,
         set: { enabled: req.body.enabled, updatedBy: req.session.userId, updatedAt: new Date() },
       }).returning();
+      await db.insert(automationAudit).values({ actorId: req.session.userId, action: setting.enabled ? "project.enabled" : "project.disabled", targetType: "project", targetId: String(projectId) });
       res.json(setting);
     } catch { res.status(500).json({ message: "Unable to update project settings" }); }
   });
@@ -119,6 +128,7 @@ export function registerAutomationRoutes(app: Express) {
       }).where(and(eq(automationExecutions.id, req.params.id),
         eq(automationExecutions.status, "awaiting_approval"))).returning();
       if (!updated) return res.sendStatus(404);
+      await db.insert(automationAudit).values({ actorId: req.session.userId, action: "execution.approved", targetType: "execution", targetId: updated.id });
       res.json(updated);
     } catch { res.status(500).json({ message: "Unable to approve execution" }); }
   });
