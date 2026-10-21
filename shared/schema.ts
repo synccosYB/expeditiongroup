@@ -1693,3 +1693,42 @@ export const automationOutbox = pgTable("automation_outbox", {
 }, (table) => [
   index("automation_outbox_entity_idx").on(table.eventType, table.entityId, table.occurredAt),
 ]);
+
+
+/** Versioned, disabled-by-default automation definitions. */
+export const automationRules = pgTable("automation_rules", {
+  id: varchar("id", { length: 128 }).notNull(),
+  version: integer("version").notNull(),
+  name: text("name").notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  triggerType: varchar("trigger_type", { length: 100 }).notNull(),
+  conditions: jsonb("conditions").notNull().$type<unknown[]>(),
+  actions: jsonb("actions").notNull().$type<unknown[]>(),
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const automationExecutions = pgTable("automation_executions", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  eventId: varchar("event_id", { length: 128 }).notNull().references(() => automationOutbox.id),
+  ruleId: varchar("rule_id", { length: 128 }).notNull(),
+  ruleVersion: integer("rule_version").notNull(),
+  status: varchar("status", { length: 24 }).notNull().default("pending"),
+  actionPlan: jsonb("action_plan").notNull().$type<unknown[]>(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  approvedBy: varchar("approved_by", { length: 128 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const automationActionReceipts = pgTable("automation_action_receipts", {
+  executionId: varchar("execution_id", { length: 128 }).notNull().references(() => automationExecutions.id),
+  actionIndex: integer("action_index").notNull(),
+  resultEntityType: varchar("result_entity_type", { length: 80 }),
+  resultEntityId: varchar("result_entity_id", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
