@@ -26,3 +26,12 @@ test("rule matching is opt-in and deterministic", () => {
 test("rejects unrecognized actions", () => {
   assert.equal(validateAutomationRule({ ...rule, actions: [{ type: "unsupported" }] }), false);
 });
+
+test("reminder addresses accept valid emails and reject whitespace", () => {
+  const reminder = (recipientEmail: string) => ({
+    ...rule, actions: [{ type: "schedule_reminder", title: "Follow up", recipientEmail, delayMinutes: 60 }],
+  });
+  assert.equal(validateAutomationRule(reminder("billing@example.com")), true);
+  assert.equal(validateAutomationRule(reminder("billing @example.com")), false);
+  assert.equal(validateAutomationRule(reminder("billing@examplecom")), false);
+});
