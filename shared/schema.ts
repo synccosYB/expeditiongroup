@@ -1752,3 +1752,13 @@ export const automationNotifications = pgTable("automation_notifications", {
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("automation_notifications_execution_action_unique").on(table.executionId, table.actionIndex)]);
+
+export const automationAudit = pgTable("automation_audit", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  actorId: varchar("actor_id", { length: 128 }).notNull(),
+  action: varchar("action", { length: 80 }).notNull(),
+  targetType: varchar("target_type", { length: 80 }).notNull(),
+  targetId: varchar("target_id", { length: 128 }).notNull(),
+  details: jsonb("details").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
