@@ -8,6 +8,8 @@ export type AutomationCondition =
 export type AutomationAction =
   | { type: "create_task"; title: string; assigneeId?: string }
   | { type: "create_document_request"; title: string }
+  | { type: "create_checklist"; title: string; items: string[] }
+  | { type: "schedule_reminder"; title: string; recipientEmail: string; delayMinutes: number }
   | { type: "notify_internal"; message: string };
 
 export interface AutomationRule {
@@ -33,7 +35,7 @@ export interface AutomationMatch {
 
 const allowedEvents: ReadonlySet<string> = new Set(automationEventTypes);
 const allowedFields = new Set(["projectId", "clientId", "actor.kind", "changes.status", "changes.previousStatus"]);
-const allowedActions = new Set(["create_task", "create_document_request", "notify_internal"]);
+const allowedActions = new Set(["create_task", "create_document_request", "create_checklist", "schedule_reminder", "notify_internal"]);
 
 export function validateAutomationRule(value: unknown): value is AutomationRule {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -52,10 +54,12 @@ export function validateAutomationRule(value: unknown): value is AutomationRule 
   }
   for (const action of r.actions) {
     if (!action || typeof action !== "object" || !allowedActions.has(action.type)) return false;
-    if (action.type === "create_task" || action.type === "create_document_request") {
+    if (["create_task", "create_document_request", "create_checklist", "schedule_reminder"].includes(action.type)) {
       if (typeof action.title !== "string" || !action.title.trim()) return false;
     }
     if (action.type === "notify_internal" && (typeof action.message !== "string" || !action.message.trim())) return false;
+    if (action.type === "create_checklist" && (!Array.isArray(action.items) || action.items.length > 100 || !action.items.every((item: unknown) => typeof item === "string" && item.trim()))) return false;
+    if (action.type === "schedule_reminder" && (typeof action.recipientEmail !== "string" || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(action.recipientEmail) || !Number.isSafeInteger(action.delayMinutes) || action.delayMinutes < 1 || action.delayMinutes > 525600)) return false;
     if (action.assigneeId !== undefined && typeof action.assigneeId !== "string") return false;
   }
   return true;
