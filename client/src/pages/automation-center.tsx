@@ -1,0 +1,109 @@
+import { useEffect, useState } from "react";
+
+type Rule = { id: string; version: number; name: string; enabled: boolean; triggerType: string; requiresApproval: boolean };
+type Notification = { id: string; projectId: number | null; message: string; isRead: boolean; createdAt: string };
+type Execution = { id: string; status: string; ruleId: string; eventId: string; createdAt: string; lastError?: string | null };
+const triggers = ["client.created", "intake.converted", "project.created", "project.status_changed", "task.created", "task.completed", "document.uploaded", "document.reviewed", "document_request.completed", "milestone.completed", "proposal.accepted", "invoice.status_changed", "bill.status_changed", "payment.recorded"];
+export default function AutomationCenter() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [executions, setExecutions] = useState<Execution[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [projectEnabled, setProjectEnabled] = useState<boolean | null>(null);
+  const [name, setName] = useState("");
+  const [trigger, setTrigger] = useState("project.created");
+  const [action, setAction] = useState("create_task");
+  const [title, setTitle] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [delayMinutes, setDelayMinutes] = useState(60);
+  const [checklistItems, setChecklistItems] = useState("");
+  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [conditionField, setConditionField] = useState("");
+  const [conditionValue, setConditionValue] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = async () => {
+    const [r, e, n] = await Promise.all([fetch("/api/automation/rules"), fetch("/api/automation/executions"), fetch("/api/automation/notifications")]);
+    if (!r.ok || !e.ok || !n.ok) throw new Error("Unable to load automation records");
+    setRules(await r.json()); setExecutions(await e.json()); setNotifications(await n.json());
+  };
+  useEffect(() => { load().catch(e => setError(e.message)); }, []);
+  const create = async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/automation/rules", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: crypto.randomUUID(), version: 1, name, enabled: false,
+          trigger, conditions: conditionField && conditionValue.trim() ? [{ field: conditionField, operator: "equals", value: conditionValue.trim() }] : [], requiresApproval,
+          actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : action === "schedule_reminder" ? { title, recipientEmail, delayMinutes } : action === "create_checklist" ? { title, items: checklistItems.split(/\r?\n/).map(x=>x.trim()).filter(Boolean) } : { title }) }],
+        }),
+      });
+      if (!response.ok) throw new Error((await response.json()).message ?? "Unable to create rule");
+      setName(""); setTitle(""); await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to create rule"); }
+    finally { setBusy(false); }
+  };
+  const toggle = async (rule: Rule) => {
+    setBusy(true); setError("");
+    try {
+      const r = await fetch(`/api/automation/rules/${encodeURIComponent(rule.id)}/${rule.version}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !rule.enabled }) });
+      if (!r.ok) throw new Error("Unable to change rule status");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to change rule status"); }
+    finally { setBusy(false); }
+  };
+  const executionAction = async (id: string, actionName: "retry" | "cancel") => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/automation/executions/${encodeURIComponent(id)}/${actionName}`, { method: "POST" });
+      if (!response.ok) throw new Error(`Unable to ${actionName} execution`);
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Execution update failed"); }
+    finally { setBusy(false); }
+  };
+  const approve = async (id: string) => {
+    setBusy(true); setError("");
+    try {
+      const r = await fetch(`/api/automation/executions/${encodeURIComponent(id)}/approve`, { method: "POST" });
+      if (!r.ok) throw new Error("Approval failed");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Approval failed"); }
+    finally { setBusy(false); }
+  };
+  return <div className="space-y-5">
+    <div><h1 className="text-2xl font-semibold">Automation Center</h1><p className="text-sm text-muted-foreground">Create draft rules, review execution history, and approve pending work. Rules start disabled.</p></div>
+    {error && <div role="alert" className="rounded border border-destructive p-3 text-sm text-destructive">{error}</div>}
+    <section className="rounded-lg border p-4 space-y-3">
+      <h2 className="font-semibold">Project-specific automation</h2>
+      <div className="flex flex-wrap gap-2 items-end">
+        <label className="text-sm">Project ID<input className="block rounded border p-2 bg-background" inputMode="numeric" value={projectId} onChange={e=>{setProjectId(e.target.value);setProjectEnabled(null);}} /></label>
+        <button className="rounded border px-3 py-2 text-sm" onClick={async()=>{const r=await fetch(`/api/automation/projects/${encodeURIComponent(projectId)}`);if(r.ok){const x=await r.json();setProjectEnabled(x.enabled);}else setError("Unable to load project settings");}}>Load settings</button>
+        {projectEnabled !== null && <button className="rounded border px-3 py-2 text-sm" onClick={async()=>{const r=await fetch(`/api/automation/projects/${encodeURIComponent(projectId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:!projectEnabled})});if(r.ok){const x=await r.json();setProjectEnabled(x.enabled);}else setError("Unable to update project settings");}}>{projectEnabled ? "Disable for project" : "Enable for project"}</button>}
+      </div>
+    </section>
+    <section className="rounded-lg border p-4 space-y-3">
+      <h2 className="font-semibold">New draft rule</h2>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="text-sm">Rule name<input className="w-full rounded border p-2 bg-background" value={name} onChange={e=>setName(e.target.value)} /></label>
+        <label className="text-sm">Trigger<select className="w-full rounded border p-2 bg-background" value={trigger} onChange={e=>setTrigger(e.target.value)}>{triggers.map(t=><option key={t}>{t}</option>)}</select></label>
+        <label className="text-sm">Action<select className="w-full rounded border p-2 bg-background" value={action} onChange={e=>setAction(e.target.value)}><option value="create_task">Create task</option><option value="create_document_request">Request document</option><option value="create_checklist">Create checklist</option><option value="schedule_reminder">Schedule email reminder</option><option value="notify_internal">Internal notification</option></select></label>
+        <label className="text-sm">Action text<input className="w-full rounded border p-2 bg-background" value={title} onChange={e=>setTitle(e.target.value)} /></label>
+      </div>
+      {action === "create_checklist" && <label className="text-sm block">Checklist items (one per line)<textarea className="block w-full rounded border p-2 bg-background" value={checklistItems} onChange={e=>setChecklistItems(e.target.value)} /></label>}
+      {action === "schedule_reminder" && <div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Recipient email<input type="email" className="block w-full rounded border p-2 bg-background" value={recipientEmail} onChange={e=>setRecipientEmail(e.target.value)} /></label><label className="text-sm">Delay (minutes)<input type="number" min={1} max={525600} className="block w-full rounded border p-2 bg-background" value={delayMinutes} onChange={e=>setDelayMinutes(Number(e.target.value))} /></label></div>}
+<div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Condition (optional)<select className="block w-full rounded border p-2 bg-background" value={conditionField} onChange={e=>setConditionField(e.target.value)}><option value="">Always when triggered</option><option value="projectId">Project ID</option><option value="clientId">Client ID</option><option value="actor.kind">Actor type</option><option value="changes.status">New status</option><option value="changes.previousStatus">Previous status</option></select></label>{conditionField && <label className="text-sm">Equals<input className="block w-full rounded border p-2 bg-background" value={conditionValue} onChange={e=>setConditionValue(e.target.value)} placeholder="Exact match" /></label>}</div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={requiresApproval} onChange={e=>setRequiresApproval(e.target.checked)}/>Require approval</label>
+      <button disabled={busy || !name.trim() || !title.trim() || (Boolean(conditionField) && !conditionValue.trim())} onClick={create} className="rounded bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">Save disabled draft</button>
+    </section>
+    <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Rules ({rules.length})</h2>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Trigger</th><th>Version</th><th>Status</th><th>Control</th></tr></thead><tbody>{rules.map(r=><tr className="border-b" key={r.id+":"+r.version}><td className="p-2">{r.name}</td><td>{r.triggerType}</td><td>{r.version}</td><td>{r.enabled ? "Enabled" : "Disabled"}</td><td><button disabled={busy} onClick={()=>toggle(r)} className="rounded border px-2 py-1">{r.enabled ? "Disable" : "Enable"}</button></td></tr>)}</tbody></table></div>
+    </section>
+    <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Internal notifications ({notifications.filter(n=>!n.isRead).length} unread)</h2>
+      <div className="space-y-2">{notifications.map(n=><div className="flex items-center justify-between gap-3 border-b py-2 text-sm" key={n.id}><div><span className="font-medium">{n.message}</span><span className="ml-2 text-muted-foreground">Project {n.projectId ?? "—"} · {new Date(n.createdAt).toLocaleString()}</span></div>{!n.isRead && <button className="rounded border px-2 py-1" onClick={async()=>{ const r=await fetch(`/api/automation/notifications/${encodeURIComponent(n.id)}/read`,{method:"PATCH"});if(r.ok) await load();else setError("Unable to mark notification read"); }}>Mark read</button>}</div>)}</div>
+    </section>
+    <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Recent executions ({executions.length})</h2>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{executions.map(e=><tr className="border-b" key={e.id}><td className="p-2">{e.ruleId}</td><td>{e.status}{e.lastError ? `: ${e.lastError}` : ""}</td><td>{new Date(e.createdAt).toLocaleString()}</td><td>{e.status==="awaiting_approval" && <><button disabled={busy} onClick={()=>approve(e.id)} className="rounded border px-2 py-1 mr-2">Approve</button><button disabled={busy} onClick={()=>executionAction(e.id,"cancel")} className="rounded border px-2 py-1">Reject</button></>}{e.status==="failed" && <button disabled={busy} onClick={()=>executionAction(e.id,"retry")} className="rounded border px-2 py-1">Retry</button>}</td></tr>)}</tbody></table></div>
+    </section>
+  </div>;
+}

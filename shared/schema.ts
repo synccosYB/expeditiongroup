@@ -1,12 +1,15 @@
 import { sql, relations } from "drizzle-orm";
 import {
   index,
+  primaryKey,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
   varchar,
   text,
   integer,
+  bigint,
   pgEnum,
   boolean,
   check,
@@ -1669,3 +1672,94 @@ export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type InsertJournalEntryLine = z.infer<typeof insertJournalEntryLineSchema>;
 export type JournalEntryLine = typeof journalEntryLines.$inferSelect;
+
+
+/** Durable automation events. Additive; no event producers are enabled yet. */
+export const automationOutbox = pgTable("automation_outbox", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  entityId: varchar("entity_id", { length: 128 }).notNull(),
+  projectId: varchar("project_id", { length: 128 }),
+  clientId: varchar("client_id", { length: 128 }),
+  actorKind: varchar("actor_kind", { length: 16 }).notNull(),
+  actorId: varchar("actor_id", { length: 128 }).notNull(),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  changes: jsonb("changes").$type<Record<string, unknown>>(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("automation_outbox_entity_idx").on(table.eventType, table.entityId, table.occurredAt),
+]);
+
+
+/** Versioned, disabled-by-default automation definitions. */
+export const automationRules = pgTable("automation_rules", {
+  id: varchar("id", { length: 128 }).notNull(),
+  version: integer("version").notNull(),
+  name: text("name").notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  triggerType: varchar("trigger_type", { length: 100 }).notNull(),
+  conditions: jsonb("conditions").notNull().$type<unknown[]>(),
+  actions: jsonb("actions").notNull().$type<unknown[]>(),
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.id, table.version] })]);
+
+export const automationExecutions = pgTable("automation_executions", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  eventId: varchar("event_id", { length: 128 }).notNull().references(() => automationOutbox.id),
+  ruleId: varchar("rule_id", { length: 128 }).notNull(),
+  ruleVersion: integer("rule_version").notNull(),
+  status: varchar("status", { length: 24 }).notNull().default("pending"),
+  actionPlan: jsonb("action_plan").notNull().$type<unknown[]>(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  approvedBy: varchar("approved_by", { length: 128 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => [uniqueIndex("automation_executions_event_rule_unique").on(table.eventId, table.ruleId, table.ruleVersion)]);
+
+export const automationActionReceipts = pgTable("automation_action_receipts", {
+  executionId: varchar("execution_id", { length: 128 }).notNull().references(() => automationExecutions.id),
+  actionIndex: integer("action_index").notNull(),
+  resultEntityType: varchar("result_entity_type", { length: 80 }),
+  resultEntityId: varchar("result_entity_id", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.executionId, table.actionIndex] })]);
+
+
+export const automationProjectSettings = pgTable("automation_project_settings", {
+  projectId: integer("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedBy: varchar("updated_by", { length: 128 }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const automationNotifications = pgTable("automation_notifications", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  executionId: varchar("execution_id", { length: 128 }).notNull().references(() => automationExecutions.id, { onDelete: "cascade" }),
+  actionIndex: integer("action_index").notNull(),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("automation_notifications_execution_action_unique").on(table.executionId, table.actionIndex)]);
+
+export const automationAudit = pgTable("automation_audit", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  actorId: varchar("actor_id", { length: 128 }).notNull(),
+  action: varchar("action", { length: 80 }).notNull(),
+  targetType: varchar("target_type", { length: 80 }).notNull(),
+  targetId: varchar("target_id", { length: 128 }).notNull(),
+  details: jsonb("details").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

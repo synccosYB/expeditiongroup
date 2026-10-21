@@ -1,3 +1,4 @@
+import { startAutomationScheduler } from "./automation-scheduler";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -152,6 +153,7 @@ function runStartupMaintenance() {
       // Open the port first so the deployment health check passes immediately,
       // then run database maintenance in the background.
       runStartupMaintenance();
+      startAutomationScheduler();
     },
   );
 })();

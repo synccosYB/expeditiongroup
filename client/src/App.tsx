@@ -1,4 +1,5 @@
 import WriteCheck from "@/pages/write-check";
+import AutomationCenter from "@/pages/automation-center";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -146,6 +147,7 @@ function AdminRouter() {
       <Route path="/reports/cash-flow" component={CashFlowReport} />
       <Route path="/reports/ar-aging" component={ArAgingReport} />
       <Route path="/reports/ap-aging" component={ApAgingReport} />
+      <Route path="/automations" component={AutomationCenter} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
