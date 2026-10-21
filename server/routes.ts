@@ -1,5 +1,5 @@
 import { registerAutomationRoutes } from "./automation-routes";
-import { createProjectWithEvent, createTaskWithEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
+import { createProjectWithEvent, createTaskWithEvent, updateProjectWithStatusEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -916,7 +916,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = updateProjectSchema.parse(req.body);
-      const project = await storage.updateProject(parseInt(req.params.id), parsed);
+      const project = await updateProjectWithStatusEvent(parseInt(req.params.id), parsed, req.session.userId!);
       if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
