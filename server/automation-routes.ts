@@ -121,6 +121,24 @@ export function registerAutomationRoutes(app: Express) {
     }
   });
 
+  app.post("/api/automation/executions/:id/retry", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const [retried] = await db.transaction(async (tx) => {
+        const rows = await tx.update(automationExecutions)
+          .set({ status: "pending", attemptCount: 0, nextAttemptAt: new Date(), lastError: null })
+          .where(and(eq(automationExecutions.id, req.params.id), eq(automationExecutions.status, "failed")))
+          .returning();
+        if (rows[0]) await tx.insert(automationAudit).values({
+          actorId: req.session.userId, action: "execution.retried",
+          targetType: "execution", targetId: rows[0].id,
+        });
+        return rows;
+      });
+      if (!retried) return res.status(409).json({ message: "Only failed executions can be retried" });
+      res.json(retried);
+    } catch { res.status(500).json({ message: "Unable to retry execution" }); }
+  });
+
   app.post("/api/automation/executions/:id/cancel", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const [cancelled] = await db.transaction(async (tx) => {
