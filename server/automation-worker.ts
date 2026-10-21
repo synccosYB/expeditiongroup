@@ -18,7 +18,7 @@ import { planAutomationActions, validateAutomationRule, type AutomationAction } 
 export async function planPendingAutomationEvents(limit = 25) {
   if (process.env.AUTOMATION_ENGINE_ENABLED !== "true") return 0;
   const events = await db.select().from(automationOutbox)
-    .where(eq(automationOutbox.status, "pending"))
+    .where(and(eq(automationOutbox.status, "pending"), sql`${automationOutbox.availableAt} <= now()`))
     .orderBy(automationOutbox.createdAt).limit(Math.min(limit, 100));
   let processed = 0;
   for (const row of events) {
