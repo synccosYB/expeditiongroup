@@ -1,0 +1,39 @@
+name: Automation Foundation Validation
+on:
+  pull_request:
+    paths:
+      - 'shared/automation-events.ts'
+      - 'shared/schema.ts'
+      - 'server/automation-event-producers.ts'
+      - 'server/routes.ts'
+      - 'server/__tests__/automation-events.test.ts'
+      - 'migrations/automation_outbox_foundation.sql'
+      - '.github/workflows/automation-foundation.yml'
+  push:
+    branches:
+      - 'feat/automation-foundation-m01'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Automation event tests
+        run: node --import tsx --test server/__tests__/automation-events.test.ts
+      - name: Production build
+        run: npm run build
+      - name: TypeScript check
+        shell: bash
+        run: |
+          set +e
+          npm run check > /tmp/automation-typecheck.log 2>&1
+          code=$?
+          cat /tmp/automation-typecheck.log
+          if [ "$code" -ne 0 ]; then
+            echo "::warning::TypeScript check failed. Investigate all errors before merge."
+            exit "$code"
+          fi
