@@ -34,7 +34,7 @@ export default function AutomationCenter() {
         body: JSON.stringify({
           id: crypto.randomUUID(), version: 1, name, enabled: false,
           trigger, conditions: [], requiresApproval,
-          actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : action === "schedule_reminder" ? { title, recipientEmail, delayMinutes } : action === "create_checklist" ? { title, items: checklistItems.split("\\n").map(x=>x.trim()).filter(Boolean) } : { title }) }],
+          actions: [{ type: action, ...(action === "notify_internal" ? { message: title } : action === "schedule_reminder" ? { title, recipientEmail, delayMinutes } : action === "create_checklist" ? { title, items: checklistItems.split(/\r?\n/).map(x=>x.trim()).filter(Boolean) } : { title }) }],
         }),
       });
       if (!response.ok) throw new Error((await response.json()).message ?? "Unable to create rule");
