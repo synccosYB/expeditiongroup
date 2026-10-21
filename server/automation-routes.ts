@@ -70,12 +70,15 @@ export function registerAutomationRoutes(app: Express) {
     if (!Number.isSafeInteger(version) || version < 1 || typeof req.body?.enabled !== "boolean")
       return res.status(400).json({ message: "Invalid rule state" });
     try {
-      const [updated] = await db.update(automationRules)
-        .set({ enabled: req.body.enabled })
-        .where(and(eq(automationRules.id, req.params.id), eq(automationRules.version, version)))
-        .returning();
+      const [updated] = await db.transaction(async (tx) => {
+        const rows = await tx.update(automationRules)
+          .set({ enabled: req.body.enabled })
+          .where(and(eq(automationRules.id, req.params.id), eq(automationRules.version, version)))
+          .returning();
+        if (rows[0]) await tx.insert(automationAudit).values({ actorId: req.session.userId, action: rows[0].enabled ? "rule.enabled" : "rule.disabled", targetType: "rule", targetId: rows[0].id, details: { version: rows[0].version } });
+        return rows;
+      });
       if (!updated) return res.sendStatus(404);
-      await db.insert(automationAudit).values({ actorId: req.session.userId, action: updated.enabled ? "rule.enabled" : "rule.disabled", targetType: "rule", targetId: updated.id, details: { version: updated.version } });
       res.json(updated);
     } catch { res.status(500).json({ message: "Unable to update rule" }); }
   });
