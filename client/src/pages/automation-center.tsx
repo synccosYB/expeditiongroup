@@ -8,6 +8,8 @@ export default function AutomationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [projectEnabled, setProjectEnabled] = useState<boolean | null>(null);
   const [name, setName] = useState("");
   const [trigger, setTrigger] = useState("project.created");
   const [action, setAction] = useState("create_task");
@@ -58,6 +60,14 @@ export default function AutomationCenter() {
   return <div className="space-y-5">
     <div><h1 className="text-2xl font-semibold">Automation Center</h1><p className="text-sm text-muted-foreground">Create draft rules, review execution history, and approve pending work. Rules start disabled.</p></div>
     {error && <div role="alert" className="rounded border border-destructive p-3 text-sm text-destructive">{error}</div>}
+    <section className="rounded-lg border p-4 space-y-3">
+      <h2 className="font-semibold">Project-specific automation</h2>
+      <div className="flex flex-wrap gap-2 items-end">
+        <label className="text-sm">Project ID<input className="block rounded border p-2 bg-background" inputMode="numeric" value={projectId} onChange={e=>{setProjectId(e.target.value);setProjectEnabled(null);}} /></label>
+        <button className="rounded border px-3 py-2 text-sm" onClick={async()=>{const r=await fetch(`/api/automation/projects/${encodeURIComponent(projectId)}`);if(r.ok){const x=await r.json();setProjectEnabled(x.enabled);}else setError("Unable to load project settings");}}>Load settings</button>
+        {projectEnabled !== null && <button className="rounded border px-3 py-2 text-sm" onClick={async()=>{const r=await fetch(`/api/automation/projects/${encodeURIComponent(projectId)}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:!projectEnabled})});if(r.ok){const x=await r.json();setProjectEnabled(x.enabled);}else setError("Unable to update project settings");}}>{projectEnabled ? "Disable for project" : "Enable for project"}</button>}
+      </div>
+    </section>
     <section className="rounded-lg border p-4 space-y-3">
       <h2 className="font-semibold">New draft rule</h2>
       <div className="grid gap-3 md:grid-cols-2">
