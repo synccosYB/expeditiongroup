@@ -11,7 +11,8 @@ export function registerAutomationRoutes(app: Express) {
     if (req.user?.role === "admin" || req.user?.role === "super_admin") return next();
     // Auth middleware in this app uses sessions; never trust a client-supplied role.
     const { storage } = await import("./storage");
-    const user = req.session?.userId ? await storage.getUser(req.session.userId) : null;
+    const userId = req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId;
+    const user = userId ? await storage.getUser(userId) : null;
     if (!user || !["admin", "super_admin"].includes(user.role)) return res.sendStatus(403);
     next();
   };
@@ -86,7 +87,7 @@ export function registerAutomationRoutes(app: Express) {
       return res.status(400).json({ message: "Invalid project settings" });
     try {
       const [setting] = await db.insert(automationProjectSettings).values({
-        projectId, enabled: req.body.enabled, updatedBy: req.session.userId,
+        projectId, enabled: req.body.enabled, updatedBy: req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId,
       }).onConflictDoUpdate({
         target: automationProjectSettings.projectId,
         set: { enabled: req.body.enabled, updatedBy: req.session.userId, updatedAt: new Date() },
@@ -111,7 +112,7 @@ export function registerAutomationRoutes(app: Express) {
   app.post("/api/automation/executions/:id/approve", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
       const [updated] = await db.update(automationExecutions).set({
-        status: "pending", approvedBy: req.session.userId, approvedAt: new Date(),
+        status: "pending", approvedBy: req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId, approvedAt: new Date(),
       }).where(and(eq(automationExecutions.id, req.params.id),
         eq(automationExecutions.status, "awaiting_approval"))).returning();
       if (!updated) return res.sendStatus(404);
