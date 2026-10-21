@@ -10,6 +10,7 @@ on:
       - 'server/__tests__/automation-events.test.ts'
       - 'server/__tests__/automation-rules.test.ts'
       - 'migrations/automation_outbox_foundation.sql'
+      - 'migrations/automation_execution_queue.sql'
       - '.github/workflows/automation-foundation.yml'
   push:
     branches:
