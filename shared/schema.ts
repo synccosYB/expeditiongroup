@@ -1669,3 +1669,27 @@ export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type InsertJournalEntryLine = z.infer<typeof insertJournalEntryLineSchema>;
 export type JournalEntryLine = typeof journalEntryLines.$inferSelect;
+
+
+/** Durable automation events. Additive; no event producers are enabled yet. */
+export const automationOutbox = pgTable("automation_outbox", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  entityId: varchar("entity_id", { length: 128 }).notNull(),
+  projectId: varchar("project_id", { length: 128 }),
+  clientId: varchar("client_id", { length: 128 }),
+  actorKind: varchar("actor_kind", { length: 16 }).notNull(),
+  actorId: varchar("actor_id", { length: 128 }).notNull(),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  changes: jsonb("changes").$type<Record<string, unknown>>(),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("automation_outbox_entity_idx").on(table.eventType, table.entityId, table.occurredAt),
+]);
