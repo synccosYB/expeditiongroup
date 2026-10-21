@@ -1,5 +1,5 @@
 import { registerAutomationRoutes } from "./automation-routes";
-import { createProjectWithEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
+import { createProjectWithEvent, createTaskWithEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -1056,7 +1056,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertTaskSchema.parse(req.body);
-      const task = await storage.createTask(parsed);
+      const task = await createTaskWithEvent(parsed, req.session.userId!);
       sendWebhook("task.created", { task }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(task);
     } catch (error) {
