@@ -22,6 +22,7 @@ export async function planPendingAutomationEvents(limit = 25) {
     .orderBy(automationOutbox.createdAt).limit(Math.min(limit, 100));
   let processed = 0;
   for (const row of events) {
+    try {
     await db.transaction(async tx => {
       const [locked] = await tx.select().from(automationOutbox)
         .where(and(eq(automationOutbox.id, row.id), eq(automationOutbox.status, "pending")))
@@ -61,6 +62,14 @@ export async function planPendingAutomationEvents(limit = 25) {
         .where(eq(automationOutbox.id, row.id));
       processed++;
     });
+    } catch (error) {
+      const attempts = row.attempts + 1;
+      await db.update(automationOutbox).set({
+        status: attempts >= 5 ? "failed" : "pending", attempts,
+        availableAt: new Date(Date.now() + retryDelaySeconds(attempts) * 1000),
+        lastError: error instanceof Error ? error.message.slice(0, 1000) : "Unknown planning error",
+      }).where(and(eq(automationOutbox.id, row.id), eq(automationOutbox.status, "pending")));
+    }
   }
   return processed;
 }
