@@ -82,8 +82,13 @@ export async function executePendingAutomationActions(limit = 10) {
       const [rule] = await tx.select().from(automationRules)
         .where(and(eq(automationRules.id, execution.ruleId),
           eq(automationRules.version, execution.ruleVersion)));
-      if (!event || !rule || !rule.enabled || (rule.requiresApproval && !execution.approvedAt)) {
+      if (!event || !rule || !rule.enabled) {
         await tx.update(automationExecutions).set({ status: "cancelled" })
+          .where(eq(automationExecutions.id, execution.id));
+        return;
+      }
+      if (rule.requiresApproval && !execution.approvedAt) {
+        await tx.update(automationExecutions).set({ status: "awaiting_approval" })
           .where(eq(automationExecutions.id, execution.id));
         return;
       }
