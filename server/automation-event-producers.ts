@@ -77,3 +77,26 @@ export async function createTaskWithEvent(input: typeof tasks.$inferInsert, acto
     return task;
   });
 }
+
+/** Emit a project status event only for a persisted transition. */
+export async function updateProjectWithStatusEvent(
+  projectId: number, input: Partial<typeof projects.$inferInsert>, actorId: string,
+) {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(projects)
+      .where(eq(projects.id, projectId)).for("update");
+    if (!before) return undefined;
+    const [updated] = await tx.update(projects).set(input)
+      .where(eq(projects.id, projectId)).returning();
+    if (before.status !== updated.status) {
+      await tx.insert(automationOutbox).values({
+        id: randomUUID(), eventType: "project.status_changed",
+        entityId: String(updated.id), projectId: String(updated.id),
+        clientId: String(updated.clientId), actorKind: "user", actorId,
+        occurredAt: new Date(), schemaVersion: 1,
+        changes: { previousStatus: before.status, status: updated.status },
+      });
+    }
+    return updated;
+  });
+}
