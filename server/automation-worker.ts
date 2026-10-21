@@ -86,7 +86,7 @@ export async function executePendingAutomationActions(limit = 10) {
     await db.transaction(async tx => {
       const [execution] = await tx.select().from(automationExecutions)
         .where(and(eq(automationExecutions.id, candidate.id), eq(automationExecutions.status, "pending")))
-        .for("update");
+        .for("update", { skipLocked: true });
       if (!execution) return;
       const [event] = await tx.select().from(automationOutbox)
         .where(eq(automationOutbox.id, execution.eventId));
@@ -103,16 +103,19 @@ export async function executePendingAutomationActions(limit = 10) {
           .where(eq(automationExecutions.id, execution.id));
         return;
       }
-      const projectId = Number(event.projectId);
-      if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+      const projectId = event.projectId ? Number(event.projectId) : NaN;
+      const projectRequired = (execution.actionPlan as AutomationAction[]).some(action => action.type !== "notify_internal");
+      if (projectRequired && (!Number.isSafeInteger(projectId) || projectId <= 0)) {
         await tx.update(automationExecutions).set({ status: "failed", lastError: "Project context required" })
           .where(eq(automationExecutions.id, execution.id));
         return;
       }
-      const [project] = await tx.select().from(projects).where(eq(projects.id, projectId));
-      const [settings] = await tx.select().from(automationProjectSettings)
-        .where(eq(automationProjectSettings.projectId, projectId));
-      if (!project || settings?.enabled === false) {
+      const [project] = Number.isSafeInteger(projectId) && projectId > 0
+        ? await tx.select().from(projects).where(eq(projects.id, projectId)) : [];
+      const [settings] = Number.isSafeInteger(projectId) && projectId > 0
+        ? await tx.select().from(automationProjectSettings)
+          .where(eq(automationProjectSettings.projectId, projectId)) : [];
+      if ((projectRequired && !project) || settings?.enabled === false) {
         await tx.update(automationExecutions).set({ status: "cancelled" })
           .where(eq(automationExecutions.id, execution.id));
         return;
@@ -138,7 +141,7 @@ export async function executePendingAutomationActions(limit = 10) {
           entityType = "task"; entityId = String(created.id);
         } else if (action.type === "create_document_request") {
           const [created] = await tx.insert(documentRequests).values({
-            projectId, clientId: project.clientId, documentType: action.title.slice(0, 100),
+            projectId, clientId: project!.clientId, documentType: action.title.slice(0, 100),
             description: action.title,
           }).returning({ id: documentRequests.id });
           entityType = "document_request"; entityId = String(created.id);
@@ -162,7 +165,7 @@ export async function executePendingAutomationActions(limit = 10) {
         } else if (action.type === "notify_internal") {
           const [created] = await tx.insert(automationNotifications).values({
             id: randomUUID(), executionId: execution.id, actionIndex: i,
-            projectId, message: action.message,
+            projectId: Number.isSafeInteger(projectId) && projectId > 0 ? projectId : null, message: action.message,
           }).returning({ id: automationNotifications.id });
           entityType = "automation_notification"; entityId = created.id;
         } else {
