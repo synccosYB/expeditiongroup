@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { projects, tasks, automationOutbox, type InsertProject, type InsertTask } from "@shared/schema";
+import { projects, tasks, automationOutbox,  } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
  * All inserts occur in the same database transaction as the business mutation.
  * This code never executes an automation action or sends an external message.
  */
-export async function createProjectWithEvent(input: InsertProject, actorId: string) {
+export async function createProjectWithEvent(input: typeof projects.$inferInsert, actorId: string) {
   return db.transaction(async (tx) => {
     const [project] = await tx.insert(projects).values(input).returning();
     await tx.insert(automationOutbox).values({
@@ -33,14 +33,14 @@ export async function createProjectWithEvent(input: InsertProject, actorId: stri
  */
 export async function updateTaskWithCompletionEvent(
   taskId: number,
-  input: Partial<InsertTask>,
+  input: Partial<typeof tasks.$inferInsert>,
   actorId: string,
 ) {
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(tasks)
       .where(eq(tasks.id, taskId)).for("update");
     if (!before) return undefined;
-    const updateData: Partial<InsertTask> & { updatedAt: Date } = { ...input, updatedAt: new Date() };
+    const updateData: Partial<typeof tasks.$inferInsert> & { updatedAt: Date } = { ...input, updatedAt: new Date() };
     if (input.status === "done" && !input.completedAt) {
       updateData.completedAt = new Date();
     }
