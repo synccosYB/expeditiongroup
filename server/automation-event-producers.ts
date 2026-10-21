@@ -40,7 +40,7 @@ export async function updateTaskWithCompletionEvent(
     const [before] = await tx.select().from(tasks)
       .where(eq(tasks.id, taskId)).for("update");
     if (!before) return undefined;
-    const updateData: Record<string, unknown> = { ...input, updatedAt: new Date() };
+    const updateData: Partial<InsertTask> & { updatedAt: Date } = { ...input, updatedAt: new Date() };
     if (input.status === "done" && !input.completedAt) {
       updateData.completedAt = new Date();
     }
