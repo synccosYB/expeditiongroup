@@ -48,7 +48,7 @@ export async function planPendingAutomationEvents(limit = 25) {
           id: r.id, version: r.version, name: r.name, enabled: r.enabled,
           trigger: r.triggerType as AutomationEvent["type"], conditions: r.conditions,
           actions: r.actions, requiresApproval: r.requiresApproval,
-        })).filter((rule): rule is AutomationRule => validateAutomationRule(rule));
+        })).flatMap((candidate) => validateAutomationRule(candidate) ? [candidate as AutomationRule] : []);
         for (const match of planAutomationActions(event, rules)) {
           await tx.insert(automationExecutions).values({
             id: randomUUID(), eventId: event.id, ruleId: match.ruleId,
