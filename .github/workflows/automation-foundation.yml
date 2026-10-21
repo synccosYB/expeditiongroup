@@ -7,12 +7,15 @@ on:
       - 'shared/automation-execution.ts'
       - 'shared/schema.ts'
       - 'server/automation-event-producers.ts'
+      - 'server/automation-worker.ts'
+      - 'server/automation-routes.ts'
       - 'server/routes.ts'
       - 'server/__tests__/automation-events.test.ts'
       - 'server/__tests__/automation-rules.test.ts'
       - 'server/__tests__/automation-execution.test.ts'
       - 'migrations/automation_outbox_foundation.sql'
       - 'migrations/automation_execution_queue.sql'
+      - 'migrations/automation_project_settings.sql'
       - '.github/workflows/automation-foundation.yml'
   push:
     branches:
