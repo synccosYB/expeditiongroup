@@ -141,12 +141,15 @@ export function registerAutomationRoutes(app: Express) {
 
   app.post("/api/automation/executions/:id/approve", isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
-      const [updated] = await db.update(automationExecutions).set({
-        status: "pending", approvedBy: req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId, approvedAt: new Date(),
-      }).where(and(eq(automationExecutions.id, req.params.id),
-        eq(automationExecutions.status, "awaiting_approval"))).returning();
+      const [updated] = await db.transaction(async (tx) => {
+        const rows = await tx.update(automationExecutions).set({
+          status: "pending", approvedBy: req.session.userId, approvedAt: new Date(),
+        }).where(and(eq(automationExecutions.id, req.params.id),
+          eq(automationExecutions.status, "awaiting_approval"))).returning();
+        if (rows[0]) await tx.insert(automationAudit).values({ actorId: req.session.userId, action: "execution.approved", targetType: "execution", targetId: rows[0].id });
+        return rows;
+      });
       if (!updated) return res.sendStatus(404);
-      await db.insert(automationAudit).values({ actorId: req.session.userId, action: "execution.approved", targetType: "execution", targetId: updated.id });
       res.json(updated);
     } catch { res.status(500).json({ message: "Unable to approve execution" }); }
   });
