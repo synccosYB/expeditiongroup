@@ -35,6 +35,15 @@ export default function AutomationCenter() {
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to create rule"); }
     finally { setBusy(false); }
   };
+  const toggle = async (rule: Rule) => {
+    setBusy(true); setError("");
+    try {
+      const r = await fetch(`/api/automation/rules/${encodeURIComponent(rule.id)}/${rule.version}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !rule.enabled }) });
+      if (!r.ok) throw new Error("Unable to change rule status");
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to change rule status"); }
+    finally { setBusy(false); }
+  };
   const approve = async (id: string) => {
     setBusy(true); setError("");
     try {
@@ -59,7 +68,7 @@ export default function AutomationCenter() {
       <button disabled={busy || !name.trim() || !title.trim()} onClick={create} className="rounded bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">Save disabled draft</button>
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Rules ({rules.length})</h2>
-      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Trigger</th><th>Version</th><th>Status</th></tr></thead><tbody>{rules.map(r=><tr className="border-b" key={r.id+":"+r.version}><td className="p-2">{r.name}</td><td>{r.triggerType}</td><td>{r.version}</td><td>{r.enabled ? "Enabled" : "Disabled"}</td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Trigger</th><th>Version</th><th>Status</th><th>Control</th></tr></thead><tbody>{rules.map(r=><tr className="border-b" key={r.id+":"+r.version}><td className="p-2">{r.name}</td><td>{r.triggerType}</td><td>{r.version}</td><td>{r.enabled ? "Enabled" : "Disabled"}</td><td><button disabled={busy} onClick={()=>toggle(r)} className="rounded border px-2 py-1">{r.enabled ? "Disable" : "Enable"}</button></td></tr>)}</tbody></table></div>
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Recent executions ({executions.length})</h2>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{executions.map(e=><tr className="border-b" key={e.id}><td className="p-2">{e.ruleId}</td><td>{e.status}{e.lastError ? `: ${e.lastError}` : ""}</td><td>{new Date(e.createdAt).toLocaleString()}</td><td>{e.status==="awaiting_approval" && <button disabled={busy} onClick={()=>approve(e.id)} className="rounded border px-2 py-1">Approve</button>}</td></tr>)}</tbody></table></div>
