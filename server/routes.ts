@@ -1,3 +1,4 @@
+import { createProjectWithEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -894,7 +895,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertProjectSchema.parse(req.body);
-      const project = await storage.createProject(parsed);
+      const project = await createProjectWithEvent(parsed, req.session.userId!);
       sendWebhook("project.created", { project }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(project);
     } catch (error) {
@@ -1095,7 +1096,7 @@ export async function registerRoutes(
 
       const oldTask = "internalNotes" in parsed ? await storage.getTask(taskId) : null;
 
-      const task = await storage.updateTask(taskId, parsed);
+      const task = await updateTaskWithCompletionEvent(taskId, parsed, req.session.userId!);
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
