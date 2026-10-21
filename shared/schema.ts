@@ -1,6 +1,8 @@
 import { sql, relations } from "drizzle-orm";
 import {
   index,
+  primaryKey,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -1706,7 +1708,7 @@ export const automationRules = pgTable("automation_rules", {
   actions: jsonb("actions").notNull().$type<unknown[]>(),
   requiresApproval: boolean("requires_approval").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [primaryKey({ columns: [table.id, table.version] })]);
 
 export const automationExecutions = pgTable("automation_executions", {
   id: varchar("id", { length: 128 }).primaryKey(),
@@ -1723,7 +1725,7 @@ export const automationExecutions = pgTable("automation_executions", {
   lastError: text("last_error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
-});
+}, (table) => [uniqueIndex("automation_executions_event_rule_unique").on(table.eventId, table.ruleId, table.ruleVersion)]);
 
 export const automationActionReceipts = pgTable("automation_action_receipts", {
   executionId: varchar("execution_id", { length: 128 }).notNull().references(() => automationExecutions.id),
@@ -1731,4 +1733,4 @@ export const automationActionReceipts = pgTable("automation_action_receipts", {
   resultEntityType: varchar("result_entity_type", { length: 80 }),
   resultEntityId: varchar("result_entity_id", { length: 128 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [primaryKey({ columns: [table.executionId, table.actionIndex] })]);
