@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import {
-  automationActionReceipts, automationExecutions, automationOutbox,
+  automationActionReceipts, automationExecutions, automationOutbox, automationNotifications,
   automationProjectSettings, automationRules, checklistInstances, taskReminders,
   documentRequests, projects, tasks,
 } from "@shared/schema";
@@ -151,8 +151,11 @@ export async function executePendingAutomationActions(limit = 10) {
           }).returning({ id: taskReminders.id });
           entityType = "task_reminder"; entityId = String(created.id);
         } else if (action.type === "notify_internal") {
-          // Never silently pretend an external message was delivered.
-          throw new Error("Internal notification delivery is not configured");
+          const [created] = await tx.insert(automationNotifications).values({
+            id: randomUUID(), executionId: execution.id, actionIndex: i,
+            projectId, message: action.message,
+          }).returning({ id: automationNotifications.id });
+          entityType = "automation_notification"; entityId = created.id;
         } else {
           throw new Error("Unsupported automation action");
         }
