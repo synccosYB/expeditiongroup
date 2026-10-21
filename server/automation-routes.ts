@@ -8,13 +8,16 @@ import { isAuthenticated } from "./auth";
 
 export function registerAutomationRoutes(app: Express) {
   const requireAdmin = async (req: any, res: any, next: any) => {
-    if (req.user?.role === "admin" || req.user?.role === "super_admin") return next();
-    // Auth middleware in this app uses sessions; never trust a client-supplied role.
-    const { storage } = await import("./storage");
-    const userId = req.user?.claims?.sub ?? req.user?.id ?? req.session?.userId;
-    const user = userId ? await storage.getUser(userId) : null;
-    if (!user || !["admin", "super_admin"].includes(user.role)) return res.sendStatus(403);
-    next();
+    try {
+      const userId = req.session?.userId;
+      if (typeof userId !== "string" || !userId) return res.sendStatus(401);
+      const { storage } = await import("./storage");
+      const user = await storage.getUser(userId);
+      if (!user || !["admin", "super_admin"].includes(user.role)) return res.sendStatus(403);
+      next();
+    } catch {
+      res.sendStatus(500);
+    }
   };
 
   app.get("/api/automation/notifications", isAuthenticated, requireAdmin, async (_req, res) => {
