@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 
 type Rule = { id: string; version: number; name: string; enabled: boolean; triggerType: string; requiresApproval: boolean };
+type Notification = { id: string; projectId: number | null; message: string; isRead: boolean; createdAt: string };
 type Execution = { id: string; status: string; ruleId: string; eventId: string; createdAt: string; lastError?: string | null };
 const triggers = ["client.created", "intake.converted", "project.created", "project.status_changed", "task.created", "task.completed", "document.uploaded", "document.reviewed", "document_request.completed", "milestone.completed", "proposal.accepted", "invoice.status_changed", "bill.status_changed", "payment.recorded"];
 export default function AutomationCenter() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [name, setName] = useState("");
@@ -14,9 +16,9 @@ export default function AutomationCenter() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const load = async () => {
-    const [r, e] = await Promise.all([fetch("/api/automation/rules"), fetch("/api/automation/executions")]);
-    if (!r.ok || !e.ok) throw new Error("Unable to load automation records");
-    setRules(await r.json()); setExecutions(await e.json());
+    const [r, e, n] = await Promise.all([fetch("/api/automation/rules"), fetch("/api/automation/executions"), fetch("/api/automation/notifications")]);
+    if (!r.ok || !e.ok || !n.ok) throw new Error("Unable to load automation records");
+    setRules(await r.json()); setExecutions(await e.json()); setNotifications(await n.json());
   };
   useEffect(() => { load().catch(e => setError(e.message)); }, []);
   const create = async () => {
@@ -69,6 +71,9 @@ export default function AutomationCenter() {
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Rules ({rules.length})</h2>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Trigger</th><th>Version</th><th>Status</th><th>Control</th></tr></thead><tbody>{rules.map(r=><tr className="border-b" key={r.id+":"+r.version}><td className="p-2">{r.name}</td><td>{r.triggerType}</td><td>{r.version}</td><td>{r.enabled ? "Enabled" : "Disabled"}</td><td><button disabled={busy} onClick={()=>toggle(r)} className="rounded border px-2 py-1">{r.enabled ? "Disable" : "Enable"}</button></td></tr>)}</tbody></table></div>
+    </section>
+    <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Internal notifications ({notifications.filter(n=>!n.isRead).length} unread)</h2>
+      <div className="space-y-2">{notifications.map(n=><div className="flex items-center justify-between gap-3 border-b py-2 text-sm" key={n.id}><div><span className="font-medium">{n.message}</span><span className="ml-2 text-muted-foreground">Project {n.projectId ?? "—"} · {new Date(n.createdAt).toLocaleString()}</span></div>{!n.isRead && <button className="rounded border px-2 py-1" onClick={async()=>{ const r=await fetch(`/api/automation/notifications/${encodeURIComponent(n.id)}/read`,{method:"PATCH"});if(r.ok) await load();else setError("Unable to mark notification read"); }}>Mark read</button>}</div>)}</div>
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Recent executions ({executions.length})</h2>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{executions.map(e=><tr className="border-b" key={e.id}><td className="p-2">{e.ruleId}</td><td>{e.status}{e.lastError ? `: ${e.lastError}` : ""}</td><td>{new Date(e.createdAt).toLocaleString()}</td><td>{e.status==="awaiting_approval" && <button disabled={busy} onClick={()=>approve(e.id)} className="rounded border px-2 py-1">Approve</button>}</td></tr>)}</tbody></table></div>
