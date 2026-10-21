@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { projects, tasks, automationOutbox } from "@shared/schema";
+import { clients, projects, tasks, automationOutbox } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 /**
@@ -98,5 +98,18 @@ export async function updateProjectWithStatusEvent(
       });
     }
     return updated;
+  });
+}
+
+/** Client creation and its automation event commit together. */
+export async function createClientWithEvent(input: typeof clients.$inferInsert, actorId: string) {
+  return db.transaction(async (tx) => {
+    const [client] = await tx.insert(clients).values(input).returning();
+    await tx.insert(automationOutbox).values({
+      id: randomUUID(), eventType: "client.created", entityId: String(client.id),
+      clientId: String(client.id), actorKind: "user", actorId,
+      occurredAt: new Date(), schemaVersion: 1,
+    });
+    return client;
   });
 }
