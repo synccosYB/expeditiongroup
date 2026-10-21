@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { automationExecutions, automationProjectSettings, automationRules } from "@shared/schema";
+import { automationExecutions, automationProjectSettings, automationRules, automationNotifications } from "@shared/schema";
 import { validateAutomationRule } from "@shared/automation-rules";
 import { planPendingAutomationEvents, executePendingAutomationActions } from "./automation-worker";
 import { isAuthenticated } from "./auth";
@@ -15,6 +15,22 @@ export function registerAutomationRoutes(app: Express) {
     if (!user || !["admin", "super_admin"].includes(user.role)) return res.sendStatus(403);
     next();
   };
+
+  app.get("/api/automation/notifications", isAuthenticated, requireAdmin, async (_req, res) => {
+    try {
+      res.json(await db.select().from(automationNotifications)
+        .orderBy(desc(automationNotifications.createdAt)).limit(100));
+    } catch { res.status(500).json({ message: "Unable to load notifications" }); }
+  });
+
+  app.patch("/api/automation/notifications/:id/read", isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const [notification] = await db.update(automationNotifications).set({ isRead: true })
+        .where(eq(automationNotifications.id, req.params.id)).returning();
+      if (!notification) return res.sendStatus(404);
+      res.json(notification);
+    } catch { res.status(500).json({ message: "Unable to mark notification read" }); }
+  });
 
   app.get("/api/automation/rules", isAuthenticated, requireAdmin, async (_req, res) => {
     try { res.json(await db.select().from(automationRules).orderBy(desc(automationRules.createdAt))); }
