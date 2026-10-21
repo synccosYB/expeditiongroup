@@ -54,7 +54,7 @@ export function validateAutomationRule(value: unknown): value is AutomationRule 
   }
   for (const action of r.actions) {
     if (!action || typeof action !== "object" || !allowedActions.has(action.type)) return false;
-    if (["create_task", "create_document_request", "create_checklist", "schedule_reminder"].includes(action.type)) {
+    if (action.type === "create_task" || action.type === "create_document_request" || action.type === "create_checklist" || action.type === "schedule_reminder") {
       if (typeof action.title !== "string" || !action.title.trim()) return false;
     }
     if (action.type === "notify_internal" && (typeof action.message !== "string" || !action.message.trim())) return false;
