@@ -51,6 +51,15 @@ export default function AutomationCenter() {
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to change rule status"); }
     finally { setBusy(false); }
   };
+  const executionAction = async (id: string, actionName: "retry" | "cancel") => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/automation/executions/${encodeURIComponent(id)}/${actionName}`, { method: "POST" });
+      if (!response.ok) throw new Error(`Unable to ${actionName} execution`);
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Execution update failed"); }
+    finally { setBusy(false); }
+  };
   const approve = async (id: string) => {
     setBusy(true); setError("");
     try {
@@ -91,7 +100,7 @@ export default function AutomationCenter() {
       <div className="space-y-2">{notifications.map(n=><div className="flex items-center justify-between gap-3 border-b py-2 text-sm" key={n.id}><div><span className="font-medium">{n.message}</span><span className="ml-2 text-muted-foreground">Project {n.projectId ?? "—"} · {new Date(n.createdAt).toLocaleString()}</span></div>{!n.isRead && <button className="rounded border px-2 py-1" onClick={async()=>{ const r=await fetch(`/api/automation/notifications/${encodeURIComponent(n.id)}/read`,{method:"PATCH"});if(r.ok) await load();else setError("Unable to mark notification read"); }}>Mark read</button>}</div>)}</div>
     </section>
     <section className="rounded-lg border p-4"><h2 className="font-semibold mb-2">Recent executions ({executions.length})</h2>
-      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{executions.map(e=><tr className="border-b" key={e.id}><td className="p-2">{e.ruleId}</td><td>{e.status}{e.lastError ? `: ${e.lastError}` : ""}</td><td>{new Date(e.createdAt).toLocaleString()}</td><td>{e.status==="awaiting_approval" && <button disabled={busy} onClick={()=>approve(e.id)} className="rounded border px-2 py-1">Approve</button>}</td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-2">Rule</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{executions.map(e=><tr className="border-b" key={e.id}><td className="p-2">{e.ruleId}</td><td>{e.status}{e.lastError ? `: ${e.lastError}` : ""}</td><td>{new Date(e.createdAt).toLocaleString()}</td><td>{e.status==="awaiting_approval" && <><button disabled={busy} onClick={()=>approve(e.id)} className="rounded border px-2 py-1 mr-2">Approve</button><button disabled={busy} onClick={()=>executionAction(e.id,"cancel")} className="rounded border px-2 py-1">Reject</button></>}{e.status==="failed" && <button disabled={busy} onClick={()=>executionAction(e.id,"retry")} className="rounded border px-2 py-1">Retry</button>}</td></tr>)}</tbody></table></div>
     </section>
   </div>;
 }
