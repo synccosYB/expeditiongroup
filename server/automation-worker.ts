@@ -8,7 +8,7 @@ import {
 } from "@shared/schema";
 import { isAutomationEvent, type AutomationEvent } from "@shared/automation-events";
 import { retryDelaySeconds } from "@shared/automation-execution";
-import { planAutomationActions, validateAutomationRule, type AutomationAction } from "@shared/automation-rules";
+import { planAutomationActions, validateAutomationRule, type AutomationAction, type AutomationRule } from "@shared/automation-rules";
 
 /**
  * Explicitly invoked processing; never started at server startup.
@@ -48,7 +48,7 @@ export async function planPendingAutomationEvents(limit = 25) {
           id: r.id, version: r.version, name: r.name, enabled: r.enabled,
           trigger: r.triggerType as AutomationEvent["type"], conditions: r.conditions,
           actions: r.actions, requiresApproval: r.requiresApproval,
-        })).filter(validateAutomationRule);
+        })).filter((rule): rule is AutomationRule => validateAutomationRule(rule));
         for (const match of planAutomationActions(event, rules)) {
           await tx.insert(automationExecutions).values({
             id: randomUUID(), eventId: event.id, ruleId: match.ruleId,
