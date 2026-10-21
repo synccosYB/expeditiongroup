@@ -35,6 +35,30 @@ export function registerAutomationRoutes(app: Express) {
     } catch { res.status(409).json({ message: "Rule version already exists or is invalid" }); }
   });
 
+  app.patch("/api/automation/rules/:id/:version", isAuthenticated, requireAdmin, async (req: any, res) => {
+    const version = Number(req.params.version);
+    if (!Number.isSafeInteger(version) || version < 1 || typeof req.body?.enabled !== "boolean")
+      return res.status(400).json({ message: "Invalid rule state" });
+    try {
+      const [updated] = await db.update(automationRules)
+        .set({ enabled: req.body.enabled })
+        .where(and(eq(automationRules.id, req.params.id), eq(automationRules.version, version)))
+        .returning();
+      if (!updated) return res.sendStatus(404);
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Unable to update rule" }); }
+  });
+
+  app.get("/api/automation/projects/:id", isAuthenticated, requireAdmin, async (req: any, res) => {
+    const projectId = Number(req.params.id);
+    if (!Number.isSafeInteger(projectId) || projectId <= 0) return res.sendStatus(400);
+    try {
+      const [settings] = await db.select().from(automationProjectSettings)
+        .where(eq(automationProjectSettings.projectId, projectId));
+      res.json(settings ?? { projectId, enabled: true });
+    } catch { res.status(500).json({ message: "Unable to load project settings" }); }
+  });
+
   app.get("/api/automation/executions", isAuthenticated, requireAdmin, async (_req, res) => {
     try { res.json(await db.select().from(automationExecutions).orderBy(desc(automationExecutions.createdAt)).limit(100)); }
     catch { res.status(500).json({ message: "Unable to load executions" }); }
