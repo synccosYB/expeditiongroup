@@ -1742,3 +1742,13 @@ export const automationProjectSettings = pgTable("automation_project_settings", 
   updatedBy: varchar("updated_by", { length: 128 }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const automationNotifications = pgTable("automation_notifications", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  executionId: varchar("execution_id", { length: 128 }).notNull().references(() => automationExecutions.id, { onDelete: "cascade" }),
+  actionIndex: integer("action_index").notNull(),
+  projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("automation_notifications_execution_action_unique").on(table.executionId, table.actionIndex)]);
