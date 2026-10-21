@@ -9,6 +9,7 @@ import {
   varchar,
   text,
   integer,
+  bigint,
   pgEnum,
   boolean,
   check,
