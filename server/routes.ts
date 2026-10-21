@@ -1,5 +1,5 @@
 import { registerAutomationRoutes } from "./automation-routes";
-import { createProjectWithEvent, createTaskWithEvent, updateProjectWithStatusEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
+import { createClientWithEvent, createProjectWithEvent, createTaskWithEvent, updateProjectWithStatusEvent, updateTaskWithCompletionEvent } from "./automation-event-producers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -708,7 +708,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertClientSchema.parse(req.body);
-      const client = await storage.createClient(parsed);
+      const client = await createClientWithEvent(parsed, req.session.userId!);
       res.status(201).json(client);
     } catch (error) {
       if (error instanceof ZodError) {
