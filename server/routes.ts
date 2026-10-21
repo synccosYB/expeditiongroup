@@ -708,7 +708,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertClientSchema.parse(req.body);
-      const client = await createClientWithEvent(parsed, req.session.userId!);
+      const client = await createClientWithEvent(parsed as typeof clients.$inferInsert, req.session.userId!);
       res.status(201).json(client);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -897,7 +897,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertProjectSchema.parse(req.body);
-      const project = await createProjectWithEvent(parsed, req.session.userId!);
+      const project = await createProjectWithEvent(parsed as typeof projects.$inferInsert, req.session.userId!);
       sendWebhook("project.created", { project }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(project);
     } catch (error) {
@@ -1056,7 +1056,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       const parsed = insertTaskSchema.parse(req.body);
-      const task = await createTaskWithEvent(parsed, req.session.userId!);
+      const task = await createTaskWithEvent(parsed as typeof tasks.$inferInsert, req.session.userId!);
       sendWebhook("task.created", { task }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(task);
     } catch (error) {
