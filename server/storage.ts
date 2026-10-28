@@ -3163,13 +3163,23 @@ export class DatabaseStorage implements IStorage {
     return { ...newBill, items: createdItems };
   }
 
-  async updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined> {
-    const [updated] = await db
-      .update(bills)
-      .set({ ...bill, updatedAt: new Date() })
-      .where(eq(bills.id, id))
-      .returning();
-    return updated;
+  async updateBill(id: number, input: Partial<InsertBill>): Promise<Bill | undefined> {
+    const bill: Partial<typeof bills.$inferInsert> = input;
+    return db.transaction(async tx => {
+      const [existing] = await tx.select().from(bills).where(eq(bills.id, id)).for("update");
+      if (!existing) return undefined;
+      const credited = Number(existing.amountCredited || "0");
+      const values: Partial<typeof bills.$inferInsert> = { ...bill, updatedAt: new Date() };
+      if (credited > 0) {
+        const total = Number(bill.total ?? existing.total), paid = Number(bill.amountPaid ?? existing.amountPaid ?? "0");
+        const due = Math.round((total - paid - credited) * 100) / 100;
+        if (due < 0 || (bill.vendorId && bill.vendorId !== existing.vendorId) || bill.status === "void" || bill.status === "draft") throw new Error("Reverse vendor credits before changing this bill");
+        values.amountDue = due.toFixed(2);
+        values.status = due === 0 ? "paid" : "partial";
+      }
+      const [updated] = await tx.update(bills).set(values).where(eq(bills.id, id)).returning();
+      return updated;
+    });
   }
 
   async deleteBill(id: number): Promise<boolean> {

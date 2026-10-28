@@ -1,0 +1,29 @@
+name: Vendor credit validation
+on:
+  pull_request:
+    paths:
+      - '**/*vendor-credit*'
+      - 'server/vendor-bill-payment-service.ts'
+      - 'server/vendor-bill-expense-service.ts'
+      - 'server/routes.ts'
+      - 'server/reports.ts'
+      - 'server/storage.ts'
+      - 'server/checkwriter-service.ts'
+      - 'shared/schema.ts'
+      - 'client/src/pages/bills.tsx'
+      - 'client/src/pages/bill-detail.tsx'
+      - 'migrations/**'
+      - '.github/workflows/vendor-credits.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:vendor-credits
+      - run: npm run test:checks
+      - run: npm run build

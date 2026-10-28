@@ -71,6 +71,7 @@ const bookkeepingMenuItems = [
   { title: "Expenses", url: "/expenses", icon: Receipt },
   { title: "Vendors", url: "/vendors", icon: Building2 },
   { title: "Bills", url: "/bills", icon: FileText },
+  { title: "Vendor Credits", url: "/vendor-credits", icon: Receipt },
   { title: "Rebill Center", url: "/rebill-center", icon: RefreshCw },
   { title: "Journal Entries", url: "/journal-entries", icon: BookText },
   { title: "Reports", url: "/reports", icon: BarChart3 },
