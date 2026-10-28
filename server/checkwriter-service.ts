@@ -35,7 +35,7 @@ export async function issueCheck(database: Database, input: CheckRequest, actor:
       throw new CheckError("This expense already has payment details; review them before issuing another payment");
     }
     let cents: number;
-    try { cents = bill ? validateCheckPayment(input.amount, bill.total, bill.amountPaid || "0") : moneyToCents(input.amount); }
+    try { cents = bill ? validateCheckPayment(input.amount, bill.total, ((moneyToCents(bill.amountPaid || "0") + moneyToCents(bill.amountCredited || "0")) / 100).toFixed(2)) : moneyToCents(input.amount); }
     catch (e) { throw new CheckError((e as Error).message); }
     if (cents <= 0) throw new CheckError("Enter a positive check amount");
     const existing = await tx.select({ id: bankTransactions.id }).from(bankTransactions).where(and(eq(bankTransactions.bankAccountId, bank.id), eq(bankTransactions.checkNumber, input.number)));
@@ -75,7 +75,7 @@ export async function issueCheck(database: Database, input: CheckRequest, actor:
     let payment;
     if (bill) {
       [payment] = await tx.insert(billPayments).values({ billId: bill.id, bankAccountId: bank.id, bankTransactionId: transaction.id, paymentDate: transaction.transactionDate, amount, paymentMethod: "check", reference: input.number, checkDetails: details }).returning();
-      const paid = moneyToCents(bill.amountPaid || "0") + cents, due = moneyToCents(bill.total) - paid;
+      const paid = moneyToCents(bill.amountPaid || "0") + cents, due = moneyToCents(bill.total) - paid - moneyToCents(bill.amountCredited || "0");
       await tx.update(bills).set({ amountPaid: (paid / 100).toFixed(2), amountDue: (due / 100).toFixed(2), status: due === 0 ? "paid" : "partial" }).where(eq(bills.id, bill.id));
     } else if (expense) {
       await tx.update(expenses).set({ bankAccountId: bank.id, bankTransactionId: transaction.id, paymentType: "check", status: "paid" }).where(eq(expenses.id, expense.id));
@@ -108,9 +108,9 @@ export async function voidCheck(database: Database, transactionId: number, bankA
       if (payment) {
         if (moneyToCents(payment.amount) !== moneyToCents(transaction.amount)) throw new CheckError("Check and bill payment amounts differ; review them before voiding");
         if (!bill) throw new CheckError("Linked bill no longer exists");
-        const paid = moneyToCents(bill.amountPaid || "0") - moneyToCents(payment.amount), due = moneyToCents(bill.total) - paid;
+        const paid = moneyToCents(bill.amountPaid || "0") - moneyToCents(payment.amount), due = moneyToCents(bill.total) - paid - moneyToCents(bill.amountCredited || "0");
         if (paid < 0) throw new CheckError("Bill balance needs review before voiding");
-        await tx.update(bills).set({ amountPaid: (paid / 100).toFixed(2), amountDue: (due / 100).toFixed(2), status: paid === 0 ? "pending" : due === 0 ? "paid" : "partial" }).where(eq(bills.id, bill.id));
+        await tx.update(bills).set({ amountPaid: (paid / 100).toFixed(2), amountDue: (due / 100).toFixed(2), status: due === 0 ? "paid" : paid + moneyToCents(bill.amountCredited || "0") === 0 ? "pending" : "partial" }).where(eq(bills.id, bill.id));
       } else if (details.expenseId) {
         await tx.update(expenses).set({ status: "pending", bankAccountId: null, bankTransactionId: null, paymentType: details.expensePaymentType || "expense" }).where(eq(expenses.id, details.expenseId));
       } else {

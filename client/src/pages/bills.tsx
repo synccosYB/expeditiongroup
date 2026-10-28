@@ -285,10 +285,10 @@ export default function Bills() {
     if (payingBill) {
       const total = parseFloat(payingBill.total || "0");
       const paid = parseFloat(payingBill.amountPaid || "0");
-      const balance = total - paid;
+      const balance = total - paid - Number(payingBill.amountCredited || "0");
       setPaymentAmount(balance > 0 ? balance.toFixed(2) : "");
     }
-  }, [payingBill, payingBill?.amountPaid, payingBill?.total]);
+  }, [payingBill, payingBill?.amountPaid, payingBill?.amountCredited, payingBill?.total]);
 
   const [viewingPaymentsBill, setViewingPaymentsBill] = useState<BillWithRelations | null>(null);
   const [editingPayment, setEditingPayment] = useState<BillPayment | null>(null);
@@ -686,7 +686,7 @@ export default function Bills() {
   const calculateBalance = (bill: BillWithRelations) => {
     const total = parseFloat(bill?.total || "0");
     const paid = parseFloat(bill?.amountPaid || "0");
-    return total - paid;
+    return total - paid - Number(bill?.amountCredited || "0");
   };
 
   const activeVendors = useMemo(() => vendors?.filter(v => v.isActive), [vendors]);
@@ -1238,6 +1238,7 @@ export default function Bills() {
                     </span>
                   </div>
                 )}
+                {Number(payingBill?.amountCredited || 0) > 0 && <div className="flex items-center justify-between text-sm"><span>Vendor Credits</span><span>-{formatCurrency(payingBill?.amountCredited || "0")}</span></div>}
                 <div className="flex items-center justify-between text-sm font-semibold border-t pt-1">
                   <span>Remaining Balance</span>
                   <span data-testid="text-remaining-balance">{formatCurrency(calculateBalance(payingBill!).toString())}</span>

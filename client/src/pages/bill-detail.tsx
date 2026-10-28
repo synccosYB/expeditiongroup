@@ -96,6 +96,7 @@ export default function BillDetail() {
           <Badge variant={statusInfo.variant} className="text-sm">
             {statusInfo.label}
           </Badge>
+          <Button variant="outline" size="sm" asChild><Link href={`/vendor-credits?vendorId=${bill.vendorId}`}>Vendor Credits</Link></Button>
           <BillCheckwriter bill={bill} accounts={bankAccounts || []} />
           <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
             <Printer className="h-4 w-4 mr-2" />
@@ -194,6 +195,7 @@ export default function BillDetail() {
                   <span>-{formatCurrency.format(amountPaid)}</span>
                 </div>
               )}
+              {Number(bill.amountCredited || 0) > 0 && <div className="flex justify-between text-sm text-muted-foreground"><span>Vendor Credits</span><span>-{formatCurrency.format(Number(bill.amountCredited))}</span></div>}
               {balanceDue !== total && (
                 <div className="flex justify-between text-base font-semibold">
                   <span>Balance Due</span>

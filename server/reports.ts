@@ -1,3 +1,4 @@
+import { vendorCreditLedger, availableCreditAsOf } from "./vendor-credit-reporting";
 import type { Express, Request } from "express";
 import { db } from "./db";
 import { storage } from "./storage";
@@ -10,6 +11,7 @@ import {
   bills,
   billItems,
   billPayments,
+  vendorCredits, vendorCreditApplications, vendorRefunds,
   clients,
   deposits,
   expenses,
@@ -345,10 +347,19 @@ async function buildLedger(opts: {
     }
   }
 
+  // Credit recognition reduces both AP and the original expense. Applications only
+  // allocate that existing credit to a bill and must not post it a second time.
+  const vendorCreditRows = await db.select().from(vendorCredits);
+  const vendorRefundRows = await db.select().from(vendorRefunds);
+  if (sys.ap) for (const line of vendorCreditLedger(vendorCreditRows, vendorRefundRows, sys.ap.id)) push(line);
+
   // 7) Direct expenses (no bill): Debit expense.accountId. Cash side via bank transaction.
   const expenseRows = await db.select().from(expenses);
   for (const e of expenseRows) {
-    if (e.billId) continue; // covered by bill
+    if (e.billId) {
+      if (e.paymentType === "pay_bill" && e.status !== "void" && sys.ap) push({ accountId: sys.ap.id, date: e.expenseDate, debit: num(e.amount), source: "bill_payment", sourceId: e.id, ref: e.reference || `EXP-${e.id}`, memo: "Bill payment from Expenses" });
+      continue;
+    } // covered by bill
     if (e.status === "void") continue;
     const amt = num(e.amount);
     const accId = e.accountId || sys.defaultExpense?.id;
@@ -455,7 +466,7 @@ async function buildLedger(opts: {
     const linkedToDeposit = depositRows.some((d) => d.bankTransactionId === t.id);
     const linkedToBillPmt = billPaymentRows.some((bp) => bp.bankTransactionId === t.id);
     const linkedToExpense = expenseRows.some((e) => e.bankTransactionId === t.id);
-    if (linkedToDeposit || linkedToBillPmt || linkedToExpense) continue;
+    if (linkedToDeposit || linkedToBillPmt || linkedToExpense || vendorRefundRows.some(r => r.bankTransactionId === t.id)) continue;
 
     const otherAccId = t.accountId
       || (isInflow ? sys.defaultOtherIncome?.id : sys.defaultOtherExpense?.id);
@@ -1069,11 +1080,22 @@ export function registerReportRoutes(app: Express) {
       const allBills = await db.select().from(bills);
       const allVendors = await db.select().from(vendors);
       const allBillPayments = await db.select().from(billPayments);
+      const creditRows = await db.select().from(vendorCredits);
+      const applications = await db.select().from(vendorCreditApplications);
+      const refunds = await db.select().from(vendorRefunds);
 
       const paidByBill = new Map<number, number>();
       for (const bp of allBillPayments) {
         if (bp.paymentDate > asOfEnd) continue;
         paidByBill.set(bp.billId, (paidByBill.get(bp.billId) || 0) + num(bp.amount));
+      }
+
+      const billExpensePayments = await db.select().from(expenses);
+      for (const expense of billExpensePayments) {
+        if (expense.paymentType === "pay_bill" && expense.billId && expense.status !== "void" && expense.expenseDate <= asOfEnd) paidByBill.set(expense.billId, (paidByBill.get(expense.billId) || 0) + num(expense.amount));
+      }
+      for (const application of applications) {
+        if (application.applicationDate <= asOfEnd) paidByBill.set(application.billId, (paidByBill.get(application.billId) || 0) + num(application.amount));
       }
 
       type Bucket = "current" | "d1_30" | "d31_60" | "d61_90" | "d90plus";
@@ -1119,6 +1141,16 @@ export function registerReportRoutes(app: Express) {
         cur.buckets[bucket] += balance;
         cur.total += balance;
         byVendor.set(b.vendorId, cur);
+      }
+      for (const credit of creditRows) {
+        if (credit.creditDate > asOfEnd) continue;
+        const available = availableCreditAsOf(credit, applications, refunds, asOfEnd);
+        if (available <= 0.005) continue;
+        const cur = byVendor.get(credit.vendorId) || { vendorId: credit.vendorId, vendorName: allVendors.find(v => v.id === credit.vendorId)?.name || "Unknown", bills: [], buckets: { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90plus: 0 }, total: 0 };
+        cur.credits = [...(cur.credits || []), { id: credit.id, reference: credit.reference, available }];
+        cur.buckets.current -= available;
+        cur.total -= available;
+        byVendor.set(credit.vendorId, cur);
       }
       const rows = Array.from(byVendor.values()).sort((a, b) =>
         a.vendorName.localeCompare(b.vendorName),

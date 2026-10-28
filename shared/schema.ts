@@ -811,6 +811,7 @@ export const bills = pgTable("bills", {
   tax: varchar("tax", { length: 20 }),
   total: varchar("total", { length: 20 }).notNull(),
   amountPaid: varchar("amount_paid", { length: 20 }).default("0"),
+  amountCredited: varchar("amount_credited", { length: 20 }).notNull().default("0"),
   amountDue: varchar("amount_due", { length: 20 }).notNull(),
   notes: text("notes"),
   documentUrl: text("document_url"),
@@ -850,6 +851,41 @@ export const billPayments = pgTable("bill_payments", {
   paymentMethod: varchar("payment_method", { length: 50 }),
   reference: varchar("reference", { length: 100 }),
   notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Vendor credits are non-cash adjustments. Applications and refunds consume the balance.
+export const vendorCredits = pgTable("vendor_credits", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  vendorId: integer("vendor_id").notNull().references(() => vendors.id),
+  accountId: integer("account_id").notNull().references(() => accounts.id),
+  creditDate: timestamp("credit_date").notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  reference: varchar("reference", { length: 100 }),
+  memo: text("memo"),
+  requestId: varchar("request_id", { length: 36 }).notNull().unique(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const vendorCreditApplications = pgTable("vendor_credit_applications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  creditId: integer("credit_id").notNull().references(() => vendorCredits.id),
+  billId: integer("bill_id").notNull().references(() => bills.id),
+  applicationDate: timestamp("application_date").notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  requestId: varchar("request_id", { length: 36 }).notNull().unique(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const vendorRefunds = pgTable("vendor_refunds", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  creditId: integer("credit_id").notNull().references(() => vendorCredits.id),
+  bankTransactionId: integer("bank_transaction_id").notNull().unique().references(() => bankTransactions.id),
+  refundDate: timestamp("refund_date").notNull(),
+  amount: varchar("amount", { length: 20 }).notNull(),
+  reference: varchar("reference", { length: 100 }),
+  requestId: varchar("request_id", { length: 36 }).notNull().unique(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1555,7 +1591,7 @@ export const insertBankTransactionSchema = createInsertSchema(bankTransactions).
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true, updatedAt: true, rebilledAt: true }).extend({
   expenseDate: requiredDateCoercion,
 });
-export const insertBillSchema = createInsertSchema(bills).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+export const insertBillSchema = createInsertSchema(bills).omit({ id: true, createdAt: true, updatedAt: true, amountCredited: true }).extend({
   billDate: requiredDateCoercion,
   dueDate: dateCoercion,
 });

@@ -1,3 +1,4 @@
+import VendorCredits from "@/pages/vendor-credits";
 import WriteCheck from "@/pages/write-check";
 import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -134,6 +135,7 @@ function AdminRouter() {
       <Route path="/undeposited-funds" component={UndepositedFunds} />
       <Route path="/deposits" component={Deposits} />
       <Route path="/expenses" component={Expenses} />
+      <Route path="/vendor-credits" component={VendorCredits} />
       <Route path="/bills" component={Bills} />
       <Route path="/bills/:id" component={BillDetail} />
       <Route path="/rebill-center" component={RebillCenter} />

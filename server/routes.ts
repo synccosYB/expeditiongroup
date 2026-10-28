@@ -1,3 +1,7 @@
+import { mutateBillExpense } from "./vendor-bill-expense-service";
+import { mutateBillPayment } from "./vendor-bill-payment-service";
+import { VendorCreditError } from "./vendor-credit-service";
+import { registerVendorCreditRoutes } from "./vendor-credits";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -19,7 +23,7 @@ import {
 } from "./accountGuard";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
-import { clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users, billingCatalogItems } from "@shared/schema";
+import { vendorRefunds, vendorCreditApplications, clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users, billingCatalogItems } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -114,6 +118,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
   registerCheckwriterRoutes(app);
+  registerVendorCreditRoutes(app);
 
   db.execute(sql`
     ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS is_rebilled BOOLEAN DEFAULT false;
@@ -5833,7 +5838,11 @@ export async function registerRoutes(
       }
       const parsed = updateBankTransactionSchema.parse(req.body);
       const existingTx = await storage.getBankTransaction(parseInt(req.params.id));
+      const [linkedRefund] = await db.select().from(vendorRefunds).where(eq(vendorRefunds.bankTransactionId, parseInt(req.params.id)));
+      if (linkedRefund && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) return res.status(409).json({ message: "Reverse this refund from Vendor Credits before replacing it" });
       const linkedCheckPayments = await db.select({ checkDetails: billPayments.checkDetails }).from(billPayments).where(eq(billPayments.bankTransactionId, parseInt(req.params.id)));
+      const linkedBillExpenses = await db.select().from(expenses).where(eq(expenses.bankTransactionId, parseInt(req.params.id)));
+      if ((linkedCheckPayments.length || linkedBillExpenses.some(e => e.paymentType === "pay_bill")) && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) return res.status(409).json({ message: "Edit this bill payment from its original Bills or Expenses screen" });
       if ((existingTx?.checkDetails || linkedCheckPayments.some(p => p.checkDetails)) && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) {
         return res.status(409).json({ message: "Printed check details cannot be edited in the bank register" });
       }
@@ -5890,6 +5899,8 @@ export async function registerRoutes(
 
       const transactionId = parseInt(req.params.id);
 
+      const [linkedRefund] = await db.select().from(vendorRefunds).where(eq(vendorRefunds.bankTransactionId, transactionId));
+      if (linkedRefund) return res.status(409).json({ message: "Reverse this refund from Vendor Credits" });
       const printedTransaction = await storage.getBankTransaction(transactionId);
       if (printedTransaction?.checkDetails) return res.status(409).json({ message: "Use Void check to preserve check history" });
 
@@ -5900,30 +5911,9 @@ export async function registerRoutes(
 
       if (associatedBillPayments.some(payment => payment.checkDetails)) return res.status(409).json({ message: "Use Void check to preserve check history" });
 
-      for (const payment of associatedBillPayments) {
-        const bill = await storage.getBill(payment.billId);
-        if (bill) {
-          const paymentAmount = parseFloat(payment.amount);
-          const previousPaid = parseFloat(bill.amountPaid || "0");
-          const newPaid = Math.max(0, previousPaid - paymentAmount);
-          const total = parseFloat(bill.total || "0");
-
-          let newStatus: "pending" | "partial" | "paid" = "pending";
-          if (newPaid >= total) {
-            newStatus = "paid";
-          } else if (newPaid > 0) {
-            newStatus = "partial";
-          }
-
-          await storage.updateBill(payment.billId, {
-            amountPaid: newPaid.toFixed(2),
-            amountDue: (total - newPaid).toFixed(2),
-            status: newStatus,
-          });
-        }
-
-        await storage.deleteBillPayment(payment.id);
-      }
+      if (associatedBillPayments.length) return res.status(409).json({ message: "Delete this bill payment from Bills so its credit and cash balances stay synchronized" });
+      const linkedBillExpenses = await db.select().from(expenses).where(eq(expenses.bankTransactionId, transactionId));
+      if (linkedBillExpenses.some(e => e.paymentType === "pay_bill")) return res.status(409).json({ message: "Delete this bill payment from Expenses" });
 
       const txToDelete = await storage.getBankTransaction(transactionId);
       const affectedAccountIds: number[] = [];
@@ -6018,6 +6008,7 @@ export async function registerRoutes(
       }
       
       const parsed = insertExpenseSchema.parse(data);
+      if (data.paymentType === "pay_bill") return res.status(201).json(await mutateBillExpense(db, "create", null, parsed));
       
       // Create bank transaction if a bank account is selected
       let bankTransactionId: number | null = null;
@@ -6050,33 +6041,9 @@ export async function registerRoutes(
         : parsed;
       const expense = await storage.createExpense(expenseData);
       
-      // Update bill status if this is a bill payment
-      if (parsed.paymentType === "pay_bill" && parsed.billId) {
-        const bill = await storage.getBill(parsed.billId);
-        if (bill) {
-          const paymentAmount = parseFloat(parsed.amount);
-          const currentAmountPaid = parseFloat(bill.amountPaid || "0");
-          const newAmountPaid = currentAmountPaid + paymentAmount;
-          const totalDue = parseFloat(bill.total);
-          const newAmountDue = Math.max(0, totalDue - newAmountPaid);
-          
-          let newStatus: "pending" | "partial" | "paid" = "pending";
-          if (newAmountDue <= 0) {
-            newStatus = "paid";
-          } else if (newAmountPaid > 0) {
-            newStatus = "partial";
-          }
-          
-          await storage.updateBill(parsed.billId, {
-            amountPaid: newAmountPaid.toFixed(2),
-            amountDue: newAmountDue.toFixed(2),
-            status: newStatus,
-          });
-        }
-      }
-      
       res.status(201).json(expense);
     } catch (error) {
+      if (error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
@@ -6108,6 +6075,7 @@ export async function registerRoutes(
       const currentExpense = await storage.getExpense(parseInt(req.params.id));
       
       const parsed = updateExpenseSchema.parse(data);
+      if (currentExpense?.paymentType === "pay_bill" || data.paymentType === "pay_bill") return res.json(await mutateBillExpense(db, "update", parseInt(req.params.id), parsed));
       
       // Handle bank transaction updates
       const updateData: any = { ...parsed };
@@ -6211,58 +6179,9 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Expense not found" });
       }
       
-      // Handle bill status updates when bill payment changes
-      if (currentExpense) {
-        const previousBillId = currentExpense.paymentType === "pay_bill" ? currentExpense.billId : null;
-        const newBillId = parsed.paymentType === "pay_bill" ? parsed.billId : null;
-        const previousAmount = parseFloat(currentExpense.amount);
-        const newAmount = parseFloat(parsed.amount || expense.amount);
-        
-        // Helper function to recalculate bill status
-        const updateBillStatus = async (billId: number, amountDelta: number) => {
-          const bill = await storage.getBill(billId);
-          if (bill) {
-            const currentAmountPaid = parseFloat(bill.amountPaid || "0");
-            const newAmountPaid = Math.max(0, currentAmountPaid + amountDelta);
-            const totalDue = parseFloat(bill.total);
-            const newAmountDue = Math.max(0, totalDue - newAmountPaid);
-            
-            let newStatus: "pending" | "partial" | "paid" = "pending";
-            if (newAmountDue <= 0) {
-              newStatus = "paid";
-            } else if (newAmountPaid > 0) {
-              newStatus = "partial";
-            }
-            
-            await storage.updateBill(billId, {
-              amountPaid: newAmountPaid.toFixed(2),
-              amountDue: newAmountDue.toFixed(2),
-              status: newStatus,
-            });
-          }
-        };
-        
-        // Case 1: Expense was linked to a bill, now linked to a different bill
-        if (previousBillId && newBillId && previousBillId !== newBillId) {
-          await updateBillStatus(previousBillId, -previousAmount);
-          await updateBillStatus(newBillId, newAmount);
-        }
-        // Case 2: Expense was linked to a bill, now not linked to any bill
-        else if (previousBillId && !newBillId) {
-          await updateBillStatus(previousBillId, -previousAmount);
-        }
-        // Case 3: Expense was not linked to a bill, now linked to a bill
-        else if (!previousBillId && newBillId) {
-          await updateBillStatus(newBillId, newAmount);
-        }
-        // Case 4: Same bill, but amount changed
-        else if (previousBillId && newBillId && previousBillId === newBillId && previousAmount !== newAmount) {
-          await updateBillStatus(newBillId, newAmount - previousAmount);
-        }
-      }
-      
       res.json(expense);
     } catch (error) {
+      if (error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
@@ -6280,6 +6199,7 @@ export async function registerRoutes(
       
       // Get expense before deletion to handle bill status and bank transaction cleanup
       const expense = await storage.getExpense(parseInt(req.params.id));
+      if (expense?.paymentType === "pay_bill") return res.json(await mutateBillExpense(db, "delete", expense.id));
       
       if (expense?.bankTransactionId && (await storage.getBankTransaction(expense.bankTransactionId))?.checkDetails) return res.status(409).json({ message: "Use Void check to preserve the expense and check history" });
 
@@ -6295,33 +6215,9 @@ export async function registerRoutes(
         await recalculateAccountBalance(expense.bankAccountId);
       }
       
-      // Revert bill status if this was a bill payment
-      if (expense && expense.paymentType === "pay_bill" && expense.billId) {
-        const bill = await storage.getBill(expense.billId);
-        if (bill) {
-          const paymentAmount = parseFloat(expense.amount);
-          const currentAmountPaid = parseFloat(bill.amountPaid || "0");
-          const newAmountPaid = Math.max(0, currentAmountPaid - paymentAmount);
-          const totalDue = parseFloat(bill.total);
-          const newAmountDue = Math.max(0, totalDue - newAmountPaid);
-          
-          let newStatus: "pending" | "partial" | "paid" = "pending";
-          if (newAmountDue <= 0) {
-            newStatus = "paid";
-          } else if (newAmountPaid > 0) {
-            newStatus = "partial";
-          }
-          
-          await storage.updateBill(expense.billId, {
-            amountPaid: newAmountPaid.toFixed(2),
-            amountDue: newAmountDue.toFixed(2),
-            status: newStatus,
-          });
-        }
-      }
-      
       res.json({ message: "Expense deleted successfully" });
     } catch (error) {
+      if (error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
       console.error("Error deleting expense:", error);
       res.status(500).json({ message: "Failed to delete expense" });
     }
@@ -6602,6 +6498,8 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+      const [application] = await db.select().from(vendorCreditApplications).where(eq(vendorCreditApplications.billId, parseInt(req.params.id))).limit(1);
+      if (application) return res.status(409).json({ message: "Reverse applied vendor credits before editing this bill" });
       const parsed = updateBillSchema.parse(req.body);
       const bill = await storage.updateBill(parseInt(req.params.id), parsed);
       if (!bill) {
@@ -6625,6 +6523,8 @@ export async function registerRoutes(
       }
       const billId = parseInt(req.params.id);
 
+      const [application] = await db.select().from(vendorCreditApplications).where(eq(vendorCreditApplications.billId, billId)).limit(1);
+      if (application) return res.status(409).json({ message: "Reverse applied vendor credits before deleting this bill" });
       const associatedPayments = await db
         .select()
         .from(billPayments)
@@ -6661,248 +6561,39 @@ export async function registerRoutes(
   app.post("/api/bills/:id/payments", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin" && user?.role !== "super_admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-      
-      const billId = parseInt(req.params.id);
-      const bill = await storage.getBill(billId);
-      if (!bill) {
-        return res.status(404).json({ message: "Bill not found" });
-      }
-      
-      // Parse and validate input data up front
-      const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
-      const parsedBankAccountId = parseInt(bankAccountId);
-      const parsedAmount = amount?.toString() || "0";
-      const parsedPaymentDate = new Date(paymentDate + (paymentDate && !paymentDate.includes('T') ? 'T12:00:00' : ''));
-      
-      if (isNaN(parsedBankAccountId)) {
-        return res.status(400).json({ message: "Bank account is required" });
-      }
-      if (!parsedAmount || parseFloat(parsedAmount) <= 0) {
-        return res.status(400).json({ message: "Valid payment amount is required" });
-      }
-      if (isNaN(parsedPaymentDate.getTime())) {
-        return res.status(400).json({ message: "Valid payment date is required" });
-      }
-      
-      // Get the bank account to update balance and get account details
-      const bankAccount = await storage.getBankAccount(parsedBankAccountId);
-      if (!bankAccount) {
-        return res.status(400).json({ message: "Bank account not found" });
-      }
-      
-      // Create bank transaction for this payment
-      // For credit cards, this is a charge; for checking/savings, it's a withdrawal
-      const transactionType = bankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
-      
-      const bankTransaction = await storage.createBankTransaction({
-        bankAccountId: parsedBankAccountId,
-        transactionDate: parsedPaymentDate,
-        transactionType,
-        payee: bill.vendor?.name || "Bill Payment",
-        vendorId: bill.vendorId,
-        description: `Bill Payment - ${bill.billNumber || `Bill #${billId}`}`,
-        reference: reference || undefined,
-        amount: parsedAmount,
-      });
-      
-      await recalculateAccountBalance(parsedBankAccountId);
-      
-      // Create the bill payment record
-      const parsed = insertBillPaymentSchema.parse({ 
-        billId,
-        bankAccountId: parsedBankAccountId,
-        bankTransactionId: bankTransaction.id,
-        paymentDate: parsedPaymentDate,
-        amount: parsedAmount,
-        paymentMethod,
-        reference,
-      });
-      const payment = await storage.createBillPayment(parsed);
-      
-      // Update bill's amountPaid and status
-      const previousPaid = parseFloat(bill.amountPaid || "0");
-      const newPaid = previousPaid + parseFloat(parsedAmount);
-      const total = parseFloat(bill.total || "0");
-      
-      let newStatus: "pending" | "partial" | "paid" = "pending";
-      if (newPaid >= total) {
-        newStatus = "paid";
-      } else if (newPaid > 0) {
-        newStatus = "partial";
-      }
-      
-      await storage.updateBill(billId, {
-        amountPaid: newPaid.toFixed(2),
-        amountDue: (total - newPaid).toFixed(2),
-        status: newStatus,
-      });
-      
-      res.status(201).json(payment);
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      res.status(201).json(await mutateBillPayment(db, "create", id, req.body));
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: "Invalid input", errors: error.errors });
-      }
-      console.error("Error creating bill payment:", error);
-      res.status(500).json({ message: "Failed to create bill payment" });
+      if (error instanceof ZodError || error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
+      console.error("Bill payment operation failed", error);
+      res.status(500).json({ message: "Unable to complete bill payment" });
     }
   });
 
   app.patch("/api/bill-payments/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin" && user?.role !== "super_admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const paymentId = parseInt(req.params.id);
-      const existingPayment = await storage.getBillPayment(paymentId);
-      if (!existingPayment) {
-        return res.status(404).json({ message: "Bill payment not found" });
-      }
-
-      const { amount, bankAccountId, paymentDate, paymentMethod, reference } = req.body;
-      const parsedBankAccountId = bankAccountId ? parseInt(bankAccountId) : existingPayment.bankAccountId;
-      const parsedAmount = amount?.toString() || existingPayment.amount;
-      const parsedPaymentDate = paymentDate ? new Date(paymentDate + (!paymentDate.includes('T') ? 'T12:00:00' : '')) : existingPayment.paymentDate;
-
-      // Get the old and new bank accounts
-      const oldBankAccount = await storage.getBankAccount(existingPayment.bankAccountId);
-      const newBankAccount = parsedBankAccountId !== existingPayment.bankAccountId 
-        ? await storage.getBankAccount(parsedBankAccountId)
-        : oldBankAccount;
-
-      if (!newBankAccount) {
-        return res.status(400).json({ message: "Bank account not found" });
-      }
-
-      if (existingPayment.checkDetails) return res.status(409).json({ message: "Printed checks cannot be edited; void and issue a new check" });
-
-      const oldAmount = parseFloat(existingPayment.amount);
-      const newAmount = parseFloat(parsedAmount);
-      
-      if (isNaN(newAmount) || newAmount <= 0) {
-        return res.status(400).json({ message: "Valid payment amount is required" });
-      }
-
-      const accountsToRecalculate = new Set<number>();
-      accountsToRecalculate.add(parsedBankAccountId);
-      if (parsedBankAccountId !== existingPayment.bankAccountId) {
-        accountsToRecalculate.add(existingPayment.bankAccountId);
-      }
-
-      // Update the bank transaction if it exists
-      if (existingPayment.bankTransactionId) {
-        const transactionType = newBankAccount.accountType === "credit_card" ? "payment" : "withdrawal";
-        await storage.updateBankTransaction(existingPayment.bankTransactionId, {
-          bankAccountId: parsedBankAccountId,
-          transactionDate: parsedPaymentDate,
-          transactionType,
-          amount: parsedAmount,
-          reference: reference || undefined,
-        });
-      }
-
-      // Update the payment record
-      const updatedPayment = await storage.updateBillPayment(paymentId, {
-        bankAccountId: parsedBankAccountId,
-        paymentDate: parsedPaymentDate,
-        amount: parsedAmount,
-        paymentMethod: paymentMethod || existingPayment.paymentMethod,
-        reference,
-      });
-
-      // Update bill's amountPaid and status
-      const bill = await storage.getBill(existingPayment.billId);
-      if (bill) {
-        const amountDifference = newAmount - oldAmount;
-        const previousPaid = parseFloat(bill.amountPaid || "0");
-        const newPaid = previousPaid + amountDifference;
-        const total = parseFloat(bill.total || "0");
-
-        let newStatus: "pending" | "partial" | "paid" = "pending";
-        if (newPaid >= total) {
-          newStatus = "paid";
-        } else if (newPaid > 0) {
-          newStatus = "partial";
-        }
-
-        await storage.updateBill(existingPayment.billId, {
-          amountPaid: newPaid.toFixed(2),
-          amountDue: (total - newPaid).toFixed(2),
-          status: newStatus,
-        });
-      }
-
-      for (const accountId of accountsToRecalculate) {
-        await recalculateAccountBalance(accountId);
-      }
-
-      res.json(updatedPayment);
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      res.status(200).json(await mutateBillPayment(db, "update", id, req.body));
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: "Invalid input", errors: error.errors });
-      }
-      console.error("Error updating bill payment:", error);
-      res.status(500).json({ message: "Failed to update bill payment" });
+      if (error instanceof ZodError || error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
+      console.error("Bill payment operation failed", error);
+      res.status(500).json({ message: "Unable to complete bill payment" });
     }
   });
 
   app.delete("/api/bill-payments/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (user?.role !== "admin" && user?.role !== "super_admin") {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      const paymentId = parseInt(req.params.id);
-      const payment = await storage.getBillPayment(paymentId);
-      if (!payment) {
-        return res.status(404).json({ message: "Bill payment not found" });
-      }
-
-      if (payment.checkDetails) return res.status(409).json({ message: "Use Void check to preserve check history" });
-
-      if (payment.bankTransactionId) {
-        await storage.deleteBankTransaction(payment.bankTransactionId);
-      }
-
-      await recalculateAccountBalance(payment.bankAccountId);
-
-      // Update bill's amountPaid and status
-      const bill = await storage.getBill(payment.billId);
-      if (bill) {
-        const paymentAmount = parseFloat(payment.amount);
-        const previousPaid = parseFloat(bill.amountPaid || "0");
-        const newPaid = Math.max(0, previousPaid - paymentAmount);
-        const total = parseFloat(bill.total || "0");
-
-        let newStatus: "pending" | "partial" | "paid" = "pending";
-        if (newPaid >= total) {
-          newStatus = "paid";
-        } else if (newPaid > 0) {
-          newStatus = "partial";
-        }
-
-        await storage.updateBill(payment.billId, {
-          amountPaid: newPaid.toFixed(2),
-          amountDue: (total - newPaid).toFixed(2),
-          status: newStatus,
-        });
-      }
-
-      // Delete the payment record
-      const success = await storage.deleteBillPayment(paymentId);
-      if (!success) {
-        return res.status(404).json({ message: "Bill payment not found" });
-      }
-
-      res.json({ message: "Bill payment deleted successfully" });
+      if (user?.role !== "admin" && user?.role !== "super_admin") return res.status(403).json({ message: "Forbidden" });
+      const id = z.coerce.number().int().positive().parse(req.params.id);
+      res.status(200).json(await mutateBillPayment(db, "delete", id, req.body));
     } catch (error) {
-      console.error("Error deleting bill payment:", error);
-      res.status(500).json({ message: "Failed to delete bill payment" });
+      if (error instanceof ZodError || error instanceof VendorCreditError) return res.status(400).json({ message: error.message });
+      console.error("Bill payment operation failed", error);
+      res.status(500).json({ message: "Unable to complete bill payment" });
     }
   });
 
