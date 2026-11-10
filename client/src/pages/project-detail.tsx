@@ -83,6 +83,7 @@ import { useToast } from "@/hooks/use-toast";
 import { parseLocalDate, formatTimeRange12h, formatDateForInput, parseLocalDateFromISO, formatDateTimeLocal, formatDateTimeLocalFull, formatLocalDate, formatLocalDateTime } from "@/lib/dateUtils";
 import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { buildTaskHierarchy, groupProjectTasks, type ProjectTaskNode, type TaskNode } from "@/lib/task-hierarchy";
 import type { Project, Client, Task, Note, TimeLog, TimeEntry, Associate, User, Folder, Document, ChecklistInstance, ChecklistTemplate, ProjectAssociate, TaskReminder, IntakeApplication } from "@shared/schema";
 import {
   DropdownMenu,
@@ -110,15 +111,14 @@ import { DocumentManager } from "@/components/DocumentManager";
 import { AskAiPanel } from "@/components/ask-ai-panel";
 import { InvoiceGenerationDialog } from "@/components/invoice-generation-dialog";
 
-type TaskWithSubtasks = Task & { 
-  subtasks?: TaskWithSubtasks[];
+type TaskWithRelations = Task & {
   assignee?: User;
   relatedAssociate?: Associate;
 };
 
 type ProjectWithRelations = Project & {
   client: Client;
-  tasks: TaskWithSubtasks[];
+  tasks: TaskWithRelations[];
   notes: (Note & { user: User })[];
   timeLogs: (TimeLog & { user: User })[];
   timeEntries: TimeEntry[];
@@ -670,7 +670,7 @@ function TaskHierarchyItem({
   expandedNotes,
   toggleNotesExpand,
 }: { 
-  task: TaskWithSubtasks; 
+  task: ProjectTaskNode<TaskWithRelations>;
   level?: number;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
@@ -687,7 +687,7 @@ function TaskHierarchyItem({
   toggleNotesExpand: (taskId: number) => void;
 }) {
   const reminderCount = reminderCounts?.get(task.id) ?? 0;
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const hasSubtasks = task.subtasks.length > 0;
   const isExpanded = expandedTasks.has(task.id);
   const notesExpanded = expandedNotes.has(task.id);
   const taskNotes = allNotes?.filter(n => n.taskId === task.id);
@@ -732,12 +732,15 @@ function TaskHierarchyItem({
             {task.status !== "done" && task.status !== "todo" && (
               <StatusBadge status={task.status} type="task" />
             )}
-            {hasSubtasks && (
-              <Badge variant="outline" size="sm">
-                {task.subtasks?.filter(s => s.status === 'done').length}/{task.subtasks?.length} subtasks
+            {task.subtaskCount > 0 && (
+              <Badge variant="outline">
+                {task.completedSubtaskCount}/{task.subtaskCount} subtasks
               </Badge>
             )}
           </div>
+          {task.parentTaskTitle && (
+            <p className="text-xs text-muted-foreground mt-1">Subtask of {task.parentTaskTitle}</p>
+          )}
           {task.description && (
             <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
           )}
@@ -885,7 +888,7 @@ function TaskHierarchyItem({
       </div>
       {hasSubtasks && isExpanded && (
         <div className="space-y-2">
-          {task.subtasks?.map((subtask) => (
+          {task.subtasks.map((subtask) => (
             <TaskHierarchyItem
               key={subtask.id}
               task={subtask}
@@ -1985,70 +1988,13 @@ export default function ProjectDetail() {
     );
   }
 
-  // Build task hierarchy
-  const buildTaskHierarchy = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    const taskMap = new Map<number, TaskWithSubtasks>();
-    const rootTasks: TaskWithSubtasks[] = [];
-
-    tasks.forEach(task => {
-      taskMap.set(task.id, { ...task, subtasks: [] });
-    });
-
-    tasks.forEach(task => {
-      const taskWithSubtasks = taskMap.get(task.id)!;
-      if (task.parentTaskId) {
-        const parent = taskMap.get(task.parentTaskId);
-        if (parent) {
-          parent.subtasks = parent.subtasks || [];
-          parent.subtasks.push(taskWithSubtasks);
-        } else {
-          rootTasks.push(taskWithSubtasks);
-        }
-      } else {
-        rootTasks.push(taskWithSubtasks);
-      }
-    });
-
-    return rootTasks;
-  };
-
-  const hierarchicalTasks = buildTaskHierarchy(project.tasks || []);
-  const parentTasks = project.tasks?.filter(t => !t.parentTaskId) || [];
-
-  // Check if a task has any incomplete subtasks (recursively)
-  const hasIncompleteSubtasks = (task: TaskWithSubtasks): boolean => {
-    if (!task.subtasks || task.subtasks.length === 0) return false;
-    return task.subtasks.some(subtask => 
-      (subtask.status !== 'done' && subtask.status !== 'cancelled') || hasIncompleteSubtasks(subtask)
-    );
-  };
-
-  // Filter tasks: show incomplete tasks OR completed tasks with incomplete subtasks
-  const filterActiveTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    return tasks.filter(task => {
-      const isIncomplete = task.status !== 'done' && task.status !== 'cancelled';
-      const hasActiveSubtasks = hasIncompleteSubtasks(task);
-      return isIncomplete || hasActiveSubtasks;
-    }).map(task => ({
-      ...task,
-      subtasks: task.subtasks ? filterActiveTasks(task.subtasks) : []
-    }));
-  };
-
-  // Filter archived tasks: completed tasks without any incomplete subtasks
-  const filterArchivedTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    return tasks.filter(task => {
-      const isComplete = task.status === 'done' || task.status === 'cancelled';
-      const hasActiveSubtasks = hasIncompleteSubtasks(task);
-      return isComplete && !hasActiveSubtasks;
-    });
-  };
-
-  const activeTasks = filterActiveTasks(hierarchicalTasks);
-  const archivedTasks = filterArchivedTasks(hierarchicalTasks);
+  const projectTasks = project.tasks || [];
+  const hierarchicalTasks = buildTaskHierarchy(projectTasks);
+  const parentTasks = projectTasks.filter(task => !task.parentTaskId);
+  const { activeTasks, archivedTasks, archivedCount } = groupProjectTasks(projectTasks);
 
   // Flatten all tasks (including subtasks) for dropdowns
-  const flattenAllTasks = (tasks: TaskWithSubtasks[], prefix = ""): { id: number; title: string; displayTitle: string }[] => {
+  const flattenAllTasks = (tasks: TaskNode<TaskWithRelations>[], prefix = ""): { id: number; title: string; displayTitle: string }[] => {
     const result: { id: number; title: string; displayTitle: string }[] = [];
     tasks.forEach(task => {
       result.push({ id: task.id, title: task.title, displayTitle: prefix ? `${prefix} > ${task.title}` : task.title });
@@ -2607,7 +2553,7 @@ export default function ProjectDetail() {
                 data-testid="button-toggle-archived-tasks"
               >
                 <Archive className="h-4 w-4 mr-2" />
-                {showArchivedTasks ? "Hide" : "View"} Archived Tasks ({archivedTasks.length})
+                {showArchivedTasks ? "Hide" : "View"} Archived Tasks ({archivedCount})
                 {showArchivedTasks ? <ChevronDown className="h-4 w-4 ml-1" /> : <ChevronRight className="h-4 w-4 ml-1" />}
               </Button>
               {showArchivedTasks && (

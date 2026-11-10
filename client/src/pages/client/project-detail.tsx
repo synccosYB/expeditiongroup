@@ -51,16 +51,16 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Project, Client, Task, Note, User, Document, ClientPortalSettings, Associate, Folder as FolderType } from "@shared/schema";
 import { formatLocalDate } from "@/lib/dateUtils";
+import { groupProjectTasks, type ProjectTaskNode } from "@/lib/task-hierarchy";
 
-type TaskWithSubtasks = Task & {
-  subtasks?: TaskWithSubtasks[];
+type TaskWithRelations = Task & {
   assignee?: User;
   relatedAssociate?: Associate;
 };
 
 type ProjectWithRelations = Project & {
   client: Client;
-  tasks: TaskWithSubtasks[];
+  tasks: TaskWithRelations[];
   notes: (Note & { user: User })[];
 };
 
@@ -70,12 +70,12 @@ function ReadOnlyTaskItem({
   expandedTasks,
   toggleExpand,
 }: {
-  task: TaskWithSubtasks;
+  task: ProjectTaskNode<TaskWithRelations>;
   level?: number;
   expandedTasks: Set<number>;
   toggleExpand: (taskId: number) => void;
 }) {
-  const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+  const hasSubtasks = task.subtasks.length > 0;
   const isExpanded = expandedTasks.has(task.id);
 
   return (
@@ -106,12 +106,15 @@ function ReadOnlyTaskItem({
               {task.priority}
             </Badge>
             <StatusBadge status={task.status} type="task" />
-            {hasSubtasks && (
+            {task.subtaskCount > 0 && (
               <Badge variant="outline">
-                {task.subtasks?.filter(s => s.status === 'done').length}/{task.subtasks?.length} subtasks
+                {task.completedSubtaskCount}/{task.subtaskCount} subtasks
               </Badge>
             )}
           </div>
+          {task.parentTaskTitle && (
+            <p className="text-xs text-muted-foreground mt-1">Subtask of {task.parentTaskTitle}</p>
+          )}
           {task.description && (
             <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
           )}
@@ -139,7 +142,7 @@ function ReadOnlyTaskItem({
       </div>
       {hasSubtasks && isExpanded && (
         <div className="space-y-2">
-          {task.subtasks?.map((subtask) => (
+          {task.subtasks.map((subtask) => (
             <ReadOnlyTaskItem
               key={subtask.id}
               task={subtask}
@@ -241,61 +244,7 @@ export default function ClientProjectDetail() {
     );
   }
 
-  const buildTaskHierarchy = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    const taskMap = new Map<number, TaskWithSubtasks>();
-    const rootTasks: TaskWithSubtasks[] = [];
-
-    tasks.forEach(task => {
-      taskMap.set(task.id, { ...task, subtasks: [] });
-    });
-
-    tasks.forEach(task => {
-      const taskWithSubtasks = taskMap.get(task.id)!;
-      if (task.parentTaskId) {
-        const parent = taskMap.get(task.parentTaskId);
-        if (parent) {
-          parent.subtasks = parent.subtasks || [];
-          parent.subtasks.push(taskWithSubtasks);
-        } else {
-          rootTasks.push(taskWithSubtasks);
-        }
-      } else {
-        rootTasks.push(taskWithSubtasks);
-      }
-    });
-
-    return rootTasks;
-  };
-
-  const hasIncompleteSubtasks = (task: TaskWithSubtasks): boolean => {
-    if (!task.subtasks || task.subtasks.length === 0) return false;
-    return task.subtasks.some(subtask =>
-      (subtask.status !== 'done' && subtask.status !== 'cancelled') || hasIncompleteSubtasks(subtask)
-    );
-  };
-
-  const filterActiveTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    return tasks.filter(task => {
-      const isIncomplete = task.status !== 'done' && task.status !== 'cancelled';
-      const hasActiveSubtasks = hasIncompleteSubtasks(task);
-      return isIncomplete || hasActiveSubtasks;
-    }).map(task => ({
-      ...task,
-      subtasks: task.subtasks ? filterActiveTasks(task.subtasks) : []
-    }));
-  };
-
-  const filterArchivedTasks = (tasks: TaskWithSubtasks[]): TaskWithSubtasks[] => {
-    return tasks.filter(task => {
-      const isComplete = task.status === 'done' || task.status === 'cancelled';
-      const hasActiveSubtasks = hasIncompleteSubtasks(task);
-      return isComplete && !hasActiveSubtasks;
-    });
-  };
-
-  const hierarchicalTasks = buildTaskHierarchy(project.tasks || []);
-  const activeTasks = filterActiveTasks(hierarchicalTasks);
-  const archivedTasks = filterArchivedTasks(hierarchicalTasks);
+  const { activeTasks, archivedTasks, archivedCount } = groupProjectTasks(project.tasks || []);
 
   const tasksByStatus = {
     pending: project.tasks?.filter(t => t.status === "todo" || t.status === "waiting") || [],
@@ -556,7 +505,7 @@ export default function ClientProjectDetail() {
                 data-testid="button-toggle-archived-tasks"
               >
                 <Archive className="h-4 w-4 mr-2" />
-                {showArchivedTasks ? "Hide" : "View"} Archived Tasks ({archivedTasks.length})
+                {showArchivedTasks ? "Hide" : "View"} Archived Tasks ({archivedCount})
                 {showArchivedTasks ? <ChevronDown className="h-4 w-4 ml-1" /> : <ChevronRight className="h-4 w-4 ml-1" />}
               </Button>
               {showArchivedTasks && (
