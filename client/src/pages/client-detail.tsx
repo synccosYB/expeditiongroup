@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,8 @@ import {
   Key,
   Copy,
 } from "lucide-react";
+import { ClientCashPayments, ClientRetainers, billingMoney } from "@/components/client-retainers";
+import type { ClientBilling } from "@shared/client-retainers";
 import { StatusBadge } from "@/components/status-badge";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +80,14 @@ const invoiceStatusConfig: Record<string, { label: string; variant: "default" | 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const clientId = parseInt(id || "0");
+  const billingParams = new URLSearchParams(useSearch());
+  const [activeTab, setActiveTab] = useState(billingParams.get("tab") === "billing" ? "billing" : "jobs");
+  const billing = useQuery<ClientBilling>({
+    queryKey: ["/api/clients", clientId, "billing"],
+    enabled: !!clientId && activeTab === "billing",
+    staleTime: 0,
+  });
+  const billingInvoices = new Map(billing.data?.invoices.map((invoice) => [invoice.id, invoice]));
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
@@ -165,6 +175,7 @@ export default function ClientDetail() {
     onSuccess: () => {
       toast({ title: "Invoice status updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "billing"] });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update invoice", description: error.message, variant: "destructive" });
@@ -178,6 +189,7 @@ export default function ClientDetail() {
     onSuccess: () => {
       toast({ title: "Invoice visibility updated" });
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "billing"] });
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update invoice visibility", description: error.message, variant: "destructive" });
@@ -332,15 +344,15 @@ export default function ClientDetail() {
         </Card>
 
         <div className="lg:col-span-2">
-          <Tabs defaultValue="jobs" className="w-full">
-            <TabsList className="grid w-full grid-cols-5" data-testid="tabs-client-sections">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="flex h-auto w-full flex-wrap justify-start" data-testid="tabs-client-sections">
               <TabsTrigger value="jobs" data-testid="tab-jobs">
                 <FolderKanban className="h-4 w-4 mr-2" />
                 Jobs ({projects?.length || 0})
               </TabsTrigger>
-              <TabsTrigger value="invoices" data-testid="tab-invoices">
+              <TabsTrigger value="billing" data-testid="tab-billing">
                 <FileText className="h-4 w-4 mr-2" />
-                Invoices ({invoices?.length || 0})
+                Billing
               </TabsTrigger>
               <TabsTrigger value="associates" data-testid="tab-associates">
                 <Users className="h-4 w-4 mr-2" />
@@ -440,10 +452,21 @@ export default function ClientDetail() {
               )}
             </TabsContent>
 
-            <TabsContent value="invoices" className="mt-4 space-y-4">
+            <TabsContent value="billing" className="mt-4 space-y-4">
+              {billing.data && <ClientRetainers billing={billing.data} clientId={clientId}
+                initialProjectId={Number(billingParams.get("project")) || billing.data.projects.find((project) =>
+                  project.requests.some((request) => request.id === Number(billingParams.get("request"))))?.id}
+                initialInvoiceId={Number(billingParams.get("invoice")) || undefined} />}
+              {billing.isPending && <p className="text-sm text-muted-foreground">Loading client billing…</p>}
+              {billing.isError && <div className="flex flex-wrap items-center gap-2 text-sm" role="alert">
+                <span>Unable to load client billing.</span>
+                <Button size="sm" variant="outline" onClick={() => billing.refetch()}>Retry</Button>
+              </div>}
+              <h3 className="font-semibold">Invoices</h3>
               {invoices && invoices.filter(Boolean).length > 0 ? (
                 <div className="space-y-3">
                   {invoices.filter(Boolean).map((invoice) => {
+                    const amounts = billingInvoices.get(invoice.id);
                     const statusInfo = invoiceStatusConfig[invoice.status] || { label: invoice.status, variant: "outline" as const };
                     return (
                       <Card key={invoice.id} className="hover-elevate" data-testid={`card-invoice-${invoice.id}`}>
@@ -479,9 +502,13 @@ export default function ClientDetail() {
                               </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                              <p className="font-semibold text-lg">
-                                ${parseFloat(invoice?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                              </p>
+                              <div className="text-right">
+                                <p className="font-semibold text-lg">
+                                  ${parseFloat(invoice?.total || "0").toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </p>
+                                {amounts?.status === "sent" && <p className="text-xs text-muted-foreground">{billingMoney(amounts.balanceCents)} due</p>}
+                                {!!amounts?.retainerAppliedCents && <p className="text-xs text-muted-foreground">{billingMoney(amounts.retainerAppliedCents)} retainer applied</p>}
+                              </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" data-testid={`button-invoice-actions-${invoice.id}`}>
@@ -559,6 +586,7 @@ export default function ClientDetail() {
                   </CardContent>
                 </Card>
               )}
+              {billing.data && <ClientCashPayments billing={billing.data} />}
             </TabsContent>
 
             <TabsContent value="associates" className="mt-4">

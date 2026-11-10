@@ -1,3 +1,4 @@
+import { getBankLedgerAccount, getRetainerAccount, getUndepositedAccount, retainerLedger } from "./client-retainer-ledger";
 import { vendorCreditLedger, availableCreditAsOf } from "./vendor-credit-reporting";
 import type { Express, Request } from "express";
 import { db } from "./db";
@@ -13,6 +14,7 @@ import {
   billPayments,
   vendorCredits, vendorCreditApplications, vendorRefunds,
   clients,
+  clientRetainerApplications,
   deposits,
   expenses,
   invoices,
@@ -79,13 +81,11 @@ async function buildSystemAccounts(
 ): Promise<SystemAccounts> {
   const bankCashByBankId = new Map<number, Account | undefined>();
   for (const b of allBanks) {
-    const acc = b.linkedAccountId
-      ? allAccounts.find((a) => a.id === b.linkedAccountId)
-      : pickAccountByPriority(allAccounts, "asset", "bank") ||
-        pickAccountByPriority(allAccounts, "asset", "cash");
+    const acc = getBankLedgerAccount(allAccounts, b.linkedAccountId)
+      ?? (b.linkedAccountId ? undefined : pickAccountByPriority(allAccounts, "asset"));
     bankCashByBankId.set(b.id, acc);
   }
-  const undeposited =
+  const undeposited = getUndepositedAccount(allAccounts) ||
     allAccounts.find(
       (a) => a.name.toLowerCase().includes("undeposited"),
     ) ||
@@ -133,14 +133,15 @@ function inRange(d: Date, start?: Date, end?: Date) {
  *   payments, expenses paid by check, transfers, raw bank entries). Their other side
  *   uses the categorical accountId on the bank transaction (or a default).
  * - Source documents (invoices, bills) only contribute the AR/AP/Revenue/Expense legs.
- * - Customer payments and Deposits move money between AR -> Undeposited -> Cash without
- *   touching cash directly (the deposit's bank transaction handles cash).
+ * - Customer payments debit Undeposited Funds. Retainer receipts credit a liability;
+ *   invoice payments credit AR. Deposits clear Undeposited Funds against the bank register.
+ * - Applying a retainer debits the liability and credits AR without a cash entry.
  */
 async function buildLedger(opts: {
   endDate?: Date;
   startDate?: Date;
 } = {}): Promise<{ lines: LedgerLine[]; sys: SystemAccounts; allAccounts: Account[] }> {
-  const allAccounts = await db.select().from(accounts);
+  const allAccounts = await db.select().from(accounts).orderBy(asc(accounts.id));
   const allBanks = await db.select().from(bankAccounts);
   const sys = await buildSystemAccounts(allAccounts, allBanks);
 
@@ -227,6 +228,7 @@ async function buildLedger(opts: {
   // 3) Customer payments: Debit Undeposited, Credit AR
   const paymentRows = await db.select().from(payments);
   for (const p of paymentRows) {
+    if (p.retainerRequestId) continue;
     const amt = num(p.amount);
     if (sys.undeposited && sys.ar) {
       push({
@@ -249,6 +251,14 @@ async function buildLedger(opts: {
       });
     }
   }
+
+  const retainerApplications = await db.select({ application: clientRetainerApplications, invoiceNumber: invoices.invoiceNumber })
+    .from(clientRetainerApplications).innerJoin(invoices, eq(invoices.id, clientRetainerApplications.invoiceId));
+  lines.push(...retainerLedger(
+    paymentRows,
+    retainerApplications.map(({ application, invoiceNumber }) => ({ ...application, invoiceNumber })),
+    { liability: getRetainerAccount(allAccounts)?.id, undeposited: sys.undeposited?.id, ar: sys.ar?.id },
+  ));
 
   // 4) Deposits: Credit Undeposited (cash side handled by bank transaction)
   const depositRows = await db.select().from(deposits);
@@ -530,7 +540,8 @@ function aggregateByAccount(
 
 function parseDate(v: any): Date | undefined {
   if (!v) return undefined;
-  const d = new Date(String(v));
+  const value = String(v);
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
   return isNaN(d.getTime()) ? undefined : d;
 }
 
@@ -1004,6 +1015,13 @@ export function registerReportRoutes(app: Express) {
         if (!p.invoiceId) continue;
         if (p.paymentDate > asOfEnd) continue;
         paidByInvoice.set(p.invoiceId, (paidByInvoice.get(p.invoiceId) || 0) + num(p.amount));
+      }
+
+      const retainerApplications = await db.select().from(clientRetainerApplications)
+        .where(lte(clientRetainerApplications.appliedAt, asOfEnd));
+      for (const application of retainerApplications) {
+        if (application.reversedAt && application.reversedAt <= asOfEnd) continue;
+        paidByInvoice.set(application.invoiceId, (paidByInvoice.get(application.invoiceId) || 0) + application.amountCents / 100);
       }
 
       type Bucket = "current" | "d1_30" | "d31_60" | "d61_90" | "d90plus";

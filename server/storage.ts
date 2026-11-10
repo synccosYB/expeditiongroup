@@ -116,13 +116,17 @@ import {
   type Payment,
   type InsertPayment,
   type Deposit,
-  type InsertDeposit,
   type JournalEntry,
   type InsertJournalEntry,
   type JournalEntryLine,
   type InsertJournalEntryLine,
 } from "@shared/schema";
 import { db } from "./db";
+import { clientRetainerApplications } from "@shared/schema";
+import { BillingConflict, getInvoiceAmounts, lockInvoice } from "./client-retainer-service";
+import {
+  editCustomerPayment, nextCustomerPaymentNumber, recordCustomerPayments, removeCustomerPayment, updateInvoiceAndPayment,
+} from "./customer-payments";
 export { db };
 import { eq, desc, asc, and, count, sql, isNull, isNotNull, ne, or, ilike, inArray, gte, lte } from "drizzle-orm";
 
@@ -306,7 +310,7 @@ export interface IStorage {
   getInvoice(id: number): Promise<(Invoice & { project: Project | null; client: Client | null; items: InvoiceItem[] }) | undefined>;
   getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
   createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice & { items: InvoiceItem[] }>;
-  updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  updateInvoice(id: number, invoice: Partial<InsertInvoice>, actor?: string): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
   replaceInvoiceItems(invoiceId: number, items: InsertInvoiceItem[]): Promise<InvoiceItem[]>;
   getNextInvoiceNumber(): Promise<string>;
@@ -480,10 +484,6 @@ export interface IStorage {
   // Deposits (Batch payments to bank account)
   getDeposits(): Promise<(Deposit & { bankAccount: BankAccount; payments: Payment[] })[]>;
   getDeposit(id: number): Promise<(Deposit & { bankAccount: BankAccount; payments: (Payment & { client: Client; invoice?: Invoice })[] }) | undefined>;
-  createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }>;
-  updateDeposit(id: number, data: Partial<InsertDeposit>): Promise<Deposit | undefined>;
-  deleteDeposit(id: number): Promise<boolean>;
-
   // General Journal Entries
   getJournalEntries(): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] })[]>;
   getJournalEntry(id: number): Promise<(JournalEntry & { lines: (JournalEntryLine & { account: Account })[] }) | undefined>;
@@ -1729,18 +1729,22 @@ export class DatabaseStorage implements IStorage {
     return invoice;
   }
 
-  async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
-    const [updated] = await db
-      .update(invoices)
-      .set({ ...invoice, updatedAt: new Date() })
-      .where(eq(invoices.id, id))
-      .returning();
-    return updated;
+  async updateInvoice(id: number, invoice: Partial<InsertInvoice>, actor?: string): Promise<Invoice | undefined> {
+    return updateInvoiceAndPayment(db, id, invoice, actor);
   }
 
   async deleteInvoice(id: number): Promise<boolean> {
-    const result = await db.delete(invoices).where(eq(invoices.id, id));
-    return (result.rowCount ?? 0) > 0;
+    return db.transaction(async (tx) => {
+      if (!await lockInvoice(tx, id)) return false;
+      const [application] = await tx.select({ id: clientRetainerApplications.id }).from(clientRetainerApplications)
+        .where(eq(clientRetainerApplications.invoiceId, id)).limit(1);
+      if (application) throw new BillingConflict("Invoices with retainer history must be kept. Reverse any applications, then cancel the invoice.");
+      await this.clearTimeEntriesBilledByInvoice(id, tx);
+      await this.resetExpensesForInvoice(id, tx);
+      await this.resetBillItemsForInvoice(id, tx);
+      const result = await tx.delete(invoices).where(eq(invoices.id, id));
+      return (result.rowCount ?? 0) > 0;
+    });
   }
 
   async replaceInvoiceItems(invoiceId: number, items: InsertInvoiceItem[]): Promise<InvoiceItem[]> {
@@ -1773,9 +1777,10 @@ export class DatabaseStorage implements IStorage {
 
   async getInvoiceStats(): Promise<{ totalInvoiced: number; totalPaid: number; totalUnpaid: number; totalUnbilled: number }> {
     const allInvoices = await db
-      .select({ total: invoices.total, status: invoices.status })
+      .select({ id: invoices.id, total: invoices.total, status: invoices.status })
       .from(invoices)
       .where(ne(invoices.status, 'cancelled'));
+    const amounts = await getInvoiceAmounts(db, allInvoices.filter((invoice) => invoice.status === "sent"));
     
     let totalInvoiced = 0;
     let totalPaid = 0;
@@ -1786,8 +1791,8 @@ export class DatabaseStorage implements IStorage {
       totalInvoiced += amount;
       if (inv.status === 'paid') {
         totalPaid += amount;
-      } else {
-        totalUnpaid += amount;
+      } else if (inv.status === 'sent') {
+        totalUnpaid += (amounts.get(inv.id)?.balanceCents ?? 0) / 100;
       }
     }
     
@@ -2060,12 +2065,12 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async clearTimeEntriesBilledByInvoice(invoiceId: number): Promise<void> {
-    await db
+  async clearTimeEntriesBilledByInvoice(invoiceId: number, writer: Pick<typeof db, "update"> = db): Promise<void> {
+    await writer
       .update(timeLogs)
       .set({ invoiceId: null })
       .where(eq(timeLogs.invoiceId, invoiceId));
-    await db
+    await writer
       .update(timeEntries)
       .set({ invoiceId: null })
       .where(eq(timeEntries.invoiceId, invoiceId));
@@ -3088,8 +3093,8 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async resetExpensesForInvoice(invoiceId: number): Promise<boolean> {
-    const result = await db
+  async resetExpensesForInvoice(invoiceId: number, writer: Pick<typeof db, "update"> = db): Promise<boolean> {
+    const result = await writer
       .update(expenses)
       .set({ isRebilled: false, rebilledInvoiceId: null, rebilledAt: null, updatedAt: new Date() })
       .where(eq(expenses.rebilledInvoiceId, invoiceId));
@@ -3242,8 +3247,8 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async resetBillItemsForInvoice(invoiceId: number): Promise<boolean> {
-    const result = await db
+  async resetBillItemsForInvoice(invoiceId: number, writer: Pick<typeof db, "update"> = db): Promise<boolean> {
+    const result = await writer
       .update(billItems)
       .set({ isRebilled: false, rebilledInvoiceId: null, rebilledAt: null })
       .where(eq(billItems.rebilledInvoiceId, invoiceId));
@@ -3379,6 +3384,7 @@ export class DatabaseStorage implements IStorage {
       .from(payments)
       .leftJoin(clients, eq(payments.clientId, clients.id))
       .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
+      .where(isNull(payments.retainerVoidedAt))
       .orderBy(desc(payments.paymentDate));
     
     return result.map(r => ({
@@ -3411,7 +3417,7 @@ export class DatabaseStorage implements IStorage {
       .from(payments)
       .leftJoin(clients, eq(payments.clientId, clients.id))
       .leftJoin(invoices, eq(payments.invoiceId, invoices.id))
-      .where(eq(payments.isDeposited, false))
+      .where(and(eq(payments.isDeposited, false), isNull(payments.retainerVoidedAt)))
       .orderBy(desc(payments.paymentDate));
     
     return result.map(r => ({
@@ -3444,47 +3450,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    const [newPayment] = await db.insert(payments).values(payment).returning();
-    return newPayment;
+    const [created] = await recordCustomerPayments(db, [payment]);
+    return created;
   }
 
   async updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined> {
-    const [updated] = await db
-      .update(payments)
-      .set({ ...payment, updatedAt: new Date() })
-      .where(eq(payments.id, id))
-      .returning();
-    return updated;
+    return editCustomerPayment(db, id, payment);
   }
 
   async deletePayment(id: number): Promise<boolean> {
-    const result = await db.delete(payments).where(eq(payments.id, id));
-    return (result.rowCount ?? 0) > 0;
+    return removeCustomerPayment(db, id);
   }
 
   async getNextPaymentNumber(): Promise<string> {
-    const currentYear = new Date().getFullYear();
-    const [lastPayment] = await db
-      .select({ paymentNumber: payments.paymentNumber })
-      .from(payments)
-      .where(sql`${payments.paymentNumber} LIKE ${`PMT-${currentYear}-%`}`)
-      .orderBy(desc(payments.paymentNumber))
-      .limit(1);
-    
-    if (!lastPayment) {
-      return `PMT-${currentYear}-0001`;
-    }
-    
-    const lastNumber = parseInt(lastPayment.paymentNumber.split('-')[2] || '0');
-    const nextNumber = (lastNumber + 1).toString().padStart(4, '0');
-    return `PMT-${currentYear}-${nextNumber}`;
+    return nextCustomerPaymentNumber(db);
   }
 
   async getUndepositedFundsTotal(): Promise<number> {
     const result = await db
       .select({ total: sql<string>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL(12,2))), 0)` })
       .from(payments)
-      .where(eq(payments.isDeposited, false));
+      .where(and(eq(payments.isDeposited, false), isNull(payments.retainerVoidedAt)));
     
     return parseFloat(result[0]?.total || '0');
   }
@@ -3540,58 +3526,6 @@ export class DatabaseStorage implements IStorage {
         invoice: p.invoices || undefined,
       })),
     };
-  }
-
-  async createDeposit(deposit: InsertDeposit, paymentIds: number[]): Promise<Deposit & { payments: Payment[] }> {
-    const [newDeposit] = await db.insert(deposits).values(deposit).returning();
-    
-    // Update payments to mark them as deposited
-    await db
-      .update(payments)
-      .set({ 
-        isDeposited: true, 
-        depositId: newDeposit.id, 
-        depositedAt: new Date(),
-        updatedAt: new Date() 
-      })
-      .where(inArray(payments.id, paymentIds));
-    
-    // Fetch the updated payments
-    const depositPayments = await db
-      .select()
-      .from(payments)
-      .where(inArray(payments.id, paymentIds));
-    
-    return {
-      ...newDeposit,
-      payments: depositPayments,
-    };
-  }
-
-  async updateDeposit(id: number, data: Partial<InsertDeposit>): Promise<Deposit | undefined> {
-    const [updated] = await db
-      .update(deposits)
-      .set(data)
-      .where(eq(deposits.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteDeposit(id: number): Promise<boolean> {
-    // First, unmark the payments as deposited
-    await db
-      .update(payments)
-      .set({ 
-        isDeposited: false, 
-        depositId: null, 
-        depositedAt: null,
-        updatedAt: new Date() 
-      })
-      .where(eq(payments.depositId, id));
-    
-    // Then delete the deposit
-    const result = await db.delete(deposits).where(eq(deposits.id, id));
-    return (result.rowCount ?? 0) > 0;
   }
 
   // General Journal Entries

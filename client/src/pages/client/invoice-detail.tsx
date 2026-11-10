@@ -33,6 +33,7 @@ import {
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { InvoiceSummaryRows, InvoiceDetailAppendix } from "@/components/invoice-compact-items";
+import { billingDate, centsToDollars, type InvoiceBalance } from "@shared/client-retainers";
 import type { Invoice, Project, Client, InvoiceItem, Payment } from "@shared/schema";
 import { format } from "date-fns";
 import { parseLocalDateFromISO, formatLocalDate } from "@/lib/dateUtils";
@@ -69,15 +70,12 @@ export default function ClientInvoiceDetail() {
     enabled: !!invoiceId,
   });
 
-  const { data: balanceData } = useQuery<{ total: number; totalPaid: number; remainingBalance: number }>({
+  const { data: balanceData } = useQuery<InvoiceBalance>({
     queryKey: ["/api/client/invoices", invoiceId, "balance"],
-    queryFn: async () => {
-      const res = await fetch(`/api/client/invoices/${invoiceId}/balance`, { credentials: "include" });
-      if (!res.ok) return { total: 0, totalPaid: 0, remainingBalance: 0 };
-      return res.json();
-    },
     enabled: !!invoiceId,
   });
+  const retainerApplications = balanceData?.retainerApplications ?? [];
+  const hasSettlements = !!invoicePayments?.length || retainerApplications.length > 0;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -269,10 +267,14 @@ export default function ClientInvoiceDetail() {
               </div>
               {balanceData && balanceData.totalPaid > 0 && (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Paid</span>
-                    <span className="text-green-600">${balanceData.totalPaid.toFixed(2)}</span>
-                  </div>
+                  {balanceData.cashPaid > 0 && <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Cash payments</span>
+                    <span className="text-green-600">${balanceData.cashPaid.toFixed(2)}</span>
+                  </div>}
+                  {balanceData.retainerApplied > 0 && <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Retainer applied</span>
+                    <span className="text-green-600">${balanceData.retainerApplied.toFixed(2)}</span>
+                  </div>}
                   <div className="flex justify-between font-medium">
                     <span>{balanceData.remainingBalance <= 0 ? "Paid in Full" : "Balance Due"}</span>
                     <span className="text-lg" data-testid="text-summary-balance">${balanceData.remainingBalance.toFixed(2)}</span>
@@ -317,9 +319,9 @@ export default function ClientInvoiceDetail() {
                     ${parseFloat(invoice?.total || "0").toFixed(2)}
                   </TableCell>
                 </TableRow>
-                {invoicePayments && invoicePayments.length > 0 && (
+                {hasSettlements && (
                   <>
-                    {invoicePayments.map((pmt) => (
+                    {invoicePayments?.map((pmt) => (
                       <TableRow key={pmt.id} data-testid={`row-payment-${pmt.id}`}>
                         <TableCell colSpan={3} className="text-right text-sm text-muted-foreground">
                           Payment {pmt.paymentDate ? format(parseLocalDateFromISO(pmt.paymentDate)!, "MMM d, yyyy") : ""}
@@ -328,6 +330,14 @@ export default function ClientInvoiceDetail() {
                         <TableCell className="text-right text-sm text-green-600">
                           -${parseFloat(pmt.amount).toFixed(2)}
                         </TableCell>
+                      </TableRow>
+                    ))}
+                    {retainerApplications.map((application) => (
+                      <TableRow key={application.id} data-testid={`row-retainer-${application.id}`}>
+                        <TableCell colSpan={3} className="text-right text-sm text-muted-foreground">
+                          Retainer applied {formatLocalDate(billingDate(new Date(application.appliedAt)))}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-green-600">-${centsToDollars(application.amountCents)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow>
@@ -340,7 +350,7 @@ export default function ClientInvoiceDetail() {
                     </TableRow>
                   </>
                 )}
-                {invoice.status === "paid" && (!invoicePayments || invoicePayments.length === 0) && (
+                {invoice.status === "paid" && !hasSettlements && (
                   <TableRow>
                     <TableCell colSpan={3} className="text-right text-lg font-bold text-green-600">
                       Paid in Full
@@ -466,16 +476,22 @@ export default function ClientInvoiceDetail() {
                 <span>Total</span>
                 <span>${total.toFixed(2)}</span>
               </div>
-              {invoicePayments && invoicePayments.length > 0 && (
+              {hasSettlements && (
                 <>
                   <Separator />
-                  {invoicePayments.map((pmt) => (
+                  {invoicePayments?.map((pmt) => (
                     <div key={pmt.id} className="flex justify-between gap-4 text-sm">
                       <span className="text-muted-foreground">
                         Payment {pmt.paymentDate ? formatLocalDate(parseLocalDateFromISO(pmt.paymentDate)!) : ""}
                         {pmt.paymentMethod ? ` (${pmt.paymentMethod.replace("_", " ")})` : ""}
                       </span>
                       <span className="text-green-600">-${parseFloat(pmt.amount).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {retainerApplications.map((application) => (
+                    <div key={application.id} className="flex justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">Retainer applied {formatLocalDate(billingDate(new Date(application.appliedAt)))}</span>
+                      <span className="text-green-600">-${centsToDollars(application.amountCents)}</span>
                     </div>
                   ))}
                   <Separator />
@@ -487,7 +503,7 @@ export default function ClientInvoiceDetail() {
                   </div>
                 </>
               )}
-              {invoice.status === "paid" && (!invoicePayments || invoicePayments.length === 0) && (
+              {invoice.status === "paid" && !hasSettlements && (
                 <>
                   <Separator />
                   <div className="flex justify-between gap-4 text-lg font-semibold text-green-600">

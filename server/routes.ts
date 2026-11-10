@@ -2,6 +2,10 @@ import { mutateBillExpense } from "./vendor-bill-expense-service";
 import { mutateBillPayment } from "./vendor-bill-payment-service";
 import { VendorCreditError } from "./vendor-credit-service";
 import { registerVendorCreditRoutes } from "./vendor-credits";
+import { registerClientRetainerRoutes } from "./client-retainers";
+import { BillingConflict, getInvoiceBalance, getInvoiceAmounts, storedCents } from "./client-retainer-service";
+import { backfillPaidInvoice, postCustomerDeposit, recordCustomerPayments, removeCustomerDeposit } from "./customer-payments";
+import { clientRetainersAccountCode } from "@shared/client-retainers";
 import { readProjectDocument } from "./ai-document-context";
 import { invoiceUpdateSchema } from "./invoice-validation";
 import { registerCheckwriterRoutes } from "./checkwriter";
@@ -23,7 +27,7 @@ import {
 } from "./accountGuard";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { eq, sql, isNotNull, gte, lte, and } from "drizzle-orm";
-import { vendorRefunds, vendorCreditApplications, clients, projects, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users, billingCatalogItems } from "@shared/schema";
+import { vendorRefunds, vendorCreditApplications, accounts, clients, projects, payments, intakeApplications, billPayments, bills, expenses, deposits, bankTransactions, bankAccounts, documents, tasks, notes, invoices, auditLogs, dailyActivityLogs, timeLogs, timeEntries, users, billingCatalogItems } from "@shared/schema";
 import {
   insertClientSchema,
   insertProjectSchema,
@@ -62,6 +66,8 @@ import {
   insertBankReconciliationSchema,
   insertPaymentSchema,
   insertDepositSchema,
+  type InsertPayment,
+  type InsertDeposit,
   insertJournalEntrySchema,
 } from "@shared/schema";
 
@@ -112,6 +118,13 @@ async function recalculateAccountBalance(bankAccountId: number): Promise<void> {
   });
 }
 
+async function isRetainerDeposit(transactionId: number) {
+  const [deposit] = await db.select({ id: deposits.id }).from(deposits)
+    .innerJoin(payments, eq(payments.depositId, deposits.id))
+    .where(and(eq(deposits.bankTransactionId, transactionId), isNotNull(payments.retainerRequestId))).limit(1);
+  return Boolean(deposit);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -119,6 +132,7 @@ export async function registerRoutes(
   setupAuth(app);
   registerCheckwriterRoutes(app);
   registerVendorCreditRoutes(app);
+  registerClientRetainerRoutes(app);
 
   db.execute(sql`
     ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS is_rebilled BOOLEAN DEFAULT false;
@@ -928,6 +942,8 @@ export async function registerRoutes(
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if ((error as { constraint?: string }).constraint === "client_retainers_project_owner_fk")
+        return res.status(409).json({ message: "A project with a retainer cannot be moved to another client." });
       console.error("Error updating project:", error);
       res.status(500).json({ message: "Failed to update project" });
     }
@@ -961,6 +977,8 @@ export async function registerRoutes(
       sendWebhook("project.deleted", { projectId }, { id: req.session.userId!, email: user?.email });
       res.status(204).send();
     } catch (error) {
+      if ((error as { constraint?: string }).constraint?.startsWith("client_retainer_"))
+        return res.status(409).json({ message: "Archive this project to preserve its retainer history." });
       console.error("Error deleting project:", error);
       res.status(500).json({ message: "Failed to delete project" });
     }
@@ -1018,6 +1036,8 @@ export async function registerRoutes(
       sendWebhook("project.deleted", { projectId, permanent: true }, { id: req.session.userId!, email: user?.email });
       res.status(204).send();
     } catch (error) {
+      if ((error as { constraint?: string }).constraint?.startsWith("client_retainer_"))
+        return res.status(409).json({ message: "Archive this project to preserve its retainer history." });
       console.error("Error permanently deleting project:", error);
       res.status(500).json({ message: "Failed to permanently delete project" });
     }
@@ -1581,7 +1601,10 @@ export async function registerRoutes(
       }
       const allInvoices = await storage.getInvoicesByClientId(user.clientId);
       const visibleInvoices = allInvoices.filter(inv => inv.isVisibleToClient);
-      res.json(visibleInvoices);
+      const amounts = await getInvoiceAmounts(db, visibleInvoices.filter((invoice) => invoice.status === "sent"));
+      res.json(visibleInvoices.map((invoice) => ({
+        ...invoice, remainingBalance: (amounts.get(invoice.id)?.balanceCents ?? 0) / 100,
+      })));
     } catch (error) {
       console.error("Error fetching client invoices:", error);
       res.status(500).json({ message: "Failed to fetch invoices" });
@@ -1618,6 +1641,10 @@ export async function registerRoutes(
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showInvoices) {
+        return res.status(403).json({ message: "Invoice access is not enabled" });
+      }
       const invoiceId = parseInt(req.params.id);
       if (isNaN(invoiceId)) {
         return res.status(400).json({ message: "Invalid invoice ID" });
@@ -1640,6 +1667,10 @@ export async function registerRoutes(
       if (!user?.clientId) {
         return res.status(403).json({ message: "No client access" });
       }
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      if (!settings?.showInvoices) {
+        return res.status(403).json({ message: "Invoice access is not enabled" });
+      }
       const invoiceId = parseInt(req.params.id);
       if (isNaN(invoiceId)) {
         return res.status(400).json({ message: "Invalid invoice ID" });
@@ -1648,11 +1679,7 @@ export async function registerRoutes(
       if (!invoice || invoice.clientId !== user.clientId || !invoice.isVisibleToClient) {
         return res.status(404).json({ message: "Invoice not found" });
       }
-      const payments = await storage.getPaymentsByInvoiceId(invoiceId);
-      const total = parseFloat(invoice.total);
-      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      const remainingBalance = Math.max(0, total - totalPaid);
-      res.json({ total, totalPaid, remainingBalance });
+      res.json(await getInvoiceBalance(db, invoice));
     } catch (error) {
       console.error("Error fetching client invoice balance:", error);
       res.status(500).json({ message: "Failed to fetch invoice balance" });
@@ -3231,11 +3258,12 @@ export async function registerRoutes(
         allTasks = allTasks.concat(tasks);
       }
 
-      const invoices = await storage.getInvoicesByClientId(user.clientId);
-      // Filter invoices to only those linked to visible projects
-      const visibleInvoices = invoices.filter(inv => 
-        !inv.projectId || visibleProjectIds.includes(inv.projectId)
+      const settings = await storage.getClientPortalSettings(user.clientId);
+      const invoices = settings?.showInvoices ? await storage.getInvoicesByClientId(user.clientId) : [];
+      const visibleInvoices = invoices.filter(inv =>
+        inv.isVisibleToClient && (!inv.projectId || visibleProjectIds.includes(inv.projectId))
       );
+      const invoiceBalances = await getInvoiceAmounts(db, visibleInvoices.filter((invoice) => invoice.status === "sent"));
 
       const activeProjects = visibleProjects.filter(p => 
         p.status !== "completed" && p.status !== "cancelled" && p.status !== "archived"
@@ -3244,10 +3272,9 @@ export async function registerRoutes(
       const pendingTasks = allTasks.filter(t => t.status !== "done").length;
       const completedTasks = allTasks.filter(t => t.status === "done").length;
       
-      const unpaidInvoices = visibleInvoices.filter(i => i.status === "sent").length;
-      const totalOutstanding = visibleInvoices
-        .filter(i => i.status === "sent")
-        .reduce((sum, inv) => sum + parseFloat(inv.total || "0"), 0);
+      const outstanding = Array.from(invoiceBalances.values()).filter((balance) => balance.balanceCents > 0);
+      const unpaidInvoices = outstanding.length;
+      const totalOutstanding = outstanding.reduce((sum, balance) => sum + balance.balanceCents, 0) / 100;
 
       res.json({
         totalProjects: visibleProjects.length,
@@ -4267,7 +4294,7 @@ export async function registerRoutes(
       if (invoiceFields.dueDate === null) updateData.dueDate = null;
       if (invoiceFields.paidAt) updateData.paidAt = new Date(invoiceFields.paidAt);
       
-      const invoice = await storage.updateInvoice(invoiceId, updateData);
+      const invoice = await storage.updateInvoice(invoiceId, updateData, req.session.userId);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -4295,28 +4322,6 @@ export async function registerRoutes(
         }
       }
 
-      if (parsed.status === "paid" || (currentInvoice.status === "paid" && parsed.status === undefined)) {
-        const existingPayments = await storage.getPaymentsByInvoiceId(invoiceId);
-        const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-        const invoiceTotal = parseFloat(invoice.total);
-        const remainingBalance = invoiceTotal - totalPaid;
-        
-        if (remainingBalance > 0.01) {
-          const paymentNumber = await storage.getNextPaymentNumber();
-          const paymentDate = parsed.paidAt ? new Date(parsed.paidAt) : new Date();
-          await storage.createPayment({
-            paymentNumber,
-            clientId: invoice.clientId,
-            invoiceId: invoiceId,
-            paymentDate,
-            amount: remainingBalance.toFixed(2),
-            paymentMethod: "other",
-            memo: `Payment for invoice ${invoice.invoiceNumber}`,
-            createdByUserId: req.session.userId,
-          });
-        }
-      }
-      
       const fullInvoice = await storage.getInvoice(invoiceId);
       const invoiceEventType = parsed.status === "paid" ? "invoice.paid" : "invoice.updated";
       sendWebhook(invoiceEventType, { invoice: fullInvoice, changes: parsed }, { id: req.session.userId!, email: user?.email });
@@ -4325,6 +4330,7 @@ export async function registerRoutes(
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error updating invoice:", error);
       res.status(500).json({ message: "Failed to update invoice" });
     }
@@ -4338,15 +4344,13 @@ export async function registerRoutes(
       }
       
       const invoiceId = parseInt(req.params.id);
-      await storage.clearTimeEntriesBilledByInvoice(invoiceId);
-      await storage.resetExpensesForInvoice(invoiceId);
-      await storage.resetBillItemsForInvoice(invoiceId);
       const deleted = await storage.deleteInvoice(invoiceId);
       if (!deleted) {
         return res.status(404).json({ message: "Invoice not found" });
       }
       res.status(204).send();
     } catch (error) {
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error deleting invoice:", error);
       res.status(500).json({ message: "Failed to delete invoice" });
     }
@@ -5438,7 +5442,7 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const parsed = updateAccountSchema.parse(req.body);
+      const parsed = updateAccountSchema.parse(req.body) as Partial<typeof accounts.$inferInsert>;
       const accountId = parseInt(req.params.id);
       
       // Sanitize account code if provided - trim whitespace
@@ -5456,6 +5460,14 @@ export async function registerRoutes(
         }
       }
       
+      const original = await storage.getAccount(accountId);
+      if (original?.code === clientRetainersAccountCode && (
+        (sanitizedCode !== undefined && sanitizedCode !== original.code)
+        || (parsed.accountType !== undefined && parsed.accountType !== original.accountType)
+        || (parsed.accountSubtype !== undefined && parsed.accountSubtype !== original.accountSubtype)
+        || (parsed.isActive !== undefined && parsed.isActive !== true)
+      )) return res.status(409).json({ message: "The Client Retainers liability account is required for retainer accounting." });
+
       // Use sanitized code if provided
       const updateData = sanitizedCode ? { ...parsed, code: sanitizedCode } : parsed;
       const account = await storage.updateAccount(accountId, updateData);
@@ -5486,7 +5498,12 @@ export async function registerRoutes(
       if (user?.role !== "admin" && user?.role !== "super_admin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const success = await storage.deleteAccount(parseInt(req.params.id));
+      const accountId = parseInt(req.params.id);
+      const account = await storage.getAccount(accountId);
+      if (account?.code === clientRetainersAccountCode) {
+        return res.status(409).json({ message: "The Client Retainers liability account is required for retainer accounting." });
+      }
+      const success = await storage.deleteAccount(accountId);
       if (!success) {
         return res.status(404).json({ message: "Account not found" });
       }
@@ -5838,6 +5855,10 @@ export async function registerRoutes(
       }
       const parsed = updateBankTransactionSchema.parse(req.body);
       const existingTx = await storage.getBankTransaction(parseInt(req.params.id));
+      if (Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))
+        && await isRetainerDeposit(parseInt(req.params.id))) {
+        return res.status(409).json({ message: "Manage this retainer deposit from Deposits." });
+      }
       const [linkedRefund] = await db.select().from(vendorRefunds).where(eq(vendorRefunds.bankTransactionId, parseInt(req.params.id)));
       if (linkedRefund && Object.keys(parsed).some(key => !["isCleared", "isReconciled", "reconciliationId"].includes(key))) return res.status(409).json({ message: "Reverse this refund from Vendor Credits before replacing it" });
       const linkedCheckPayments = await db.select({ checkDetails: billPayments.checkDetails }).from(billPayments).where(eq(billPayments.bankTransactionId, parseInt(req.params.id)));
@@ -5899,6 +5920,8 @@ export async function registerRoutes(
 
       const transactionId = parseInt(req.params.id);
 
+      if (await isRetainerDeposit(transactionId))
+        return res.status(409).json({ message: "Manage this retainer deposit from Deposits." });
       const [linkedRefund] = await db.select().from(vendorRefunds).where(eq(vendorRefunds.bankTransactionId, transactionId));
       if (linkedRefund) return res.status(409).json({ message: "Reverse this refund from Vendor Credits" });
       const printedTransaction = await storage.getBankTransaction(transactionId);
@@ -6840,11 +6863,7 @@ export async function registerRoutes(
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
-      const payments = await storage.getPaymentsByInvoiceId(invoiceId);
-      const total = parseFloat(invoice.total);
-      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      const remainingBalance = Math.max(0, total - totalPaid);
-      res.json({ total, totalPaid, remainingBalance });
+      res.json(await getInvoiceBalance(db, invoice, true));
     } catch (error) {
       console.error("Error fetching invoice balance:", error);
       res.status(500).json({ message: "Failed to fetch invoice balance" });
@@ -6865,29 +6884,24 @@ export async function registerRoutes(
         return res.status(400).json({ message: "At least one invoice allocation is required" });
       }
 
-      for (const alloc of allocations) {
-        const amount = parseFloat(alloc.amount);
-        if (isNaN(amount) || amount <= 0) {
-          return res.status(400).json({ message: `Invalid allocation amount for invoice ${alloc.invoiceId}` });
-        }
-        const invoice = await storage.getInvoice(alloc.invoiceId);
-        if (!invoice) {
-          return res.status(400).json({ message: `Invoice ${alloc.invoiceId} not found` });
-        }
-        const existingPayments = await storage.getPaymentsByInvoiceId(alloc.invoiceId);
-        const alreadyPaid = existingPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
-        const remaining = parseFloat(invoice.total) - alreadyPaid;
-        if (amount > remaining + 0.01) {
-          return res.status(400).json({ message: `Allocation of $${amount.toFixed(2)} exceeds remaining balance of $${remaining.toFixed(2)} for invoice ${invoice.invoiceNumber}` });
-        }
-      }
-
-      const allocTotal = allocations.reduce((sum: number, a: any) => sum + parseFloat(a.amount), 0);
-      if (totalAmount && Math.abs(allocTotal - parseFloat(totalAmount)) > 0.01) {
-        return res.status(400).json({ message: `Allocation total ($${allocTotal.toFixed(2)}) does not match payment amount ($${parseFloat(totalAmount).toFixed(2)})` });
+      const validated = z.array(z.object({
+        invoiceId: z.number().int().positive().max(2_147_483_647),
+        amount: z.string().trim().regex(/^\d{1,9}(\.\d{1,2})?$/).refine((amount) => storedCents(amount) > 0),
+      })).parse(allocations);
+      const allocTotal = validated.reduce((sum, allocation) => sum + storedCents(allocation.amount), 0);
+      if (totalAmount && Math.abs(allocTotal - storedCents(String(totalAmount))) > 1) {
+        return res.status(400).json({ message: "Allocation total does not match the payment amount." });
       }
 
       if (!clientId && recipientName) {
+        for (const allocation of validated) {
+          const invoice = await storage.getInvoice(allocation.invoiceId);
+          if (!invoice || invoice.clientId || invoice.recipientName !== recipientName)
+            return res.status(400).json({ message: "Select invoices for the same one-time recipient." });
+          const balance = await getInvoiceBalance(db, invoice);
+          if (storedCents(allocation.amount) > Math.round(balance.remainingBalance * 100))
+            return res.status(400).json({ message: `Payment exceeds the remaining balance of invoice ${invoice.invoiceNumber}.` });
+        }
         const existingClient = await storage.findClientByName(recipientName);
         if (existingClient) {
           clientId = existingClient.id;
@@ -6903,39 +6917,25 @@ export async function registerRoutes(
         await storage.linkInvoicesByRecipientName(recipientName, clientId);
       }
 
-      const createdPayments = [];
-      for (const alloc of allocations) {
-        const paymentNumber = await storage.getNextPaymentNumber();
-        const parsed = insertPaymentSchema.parse({
-          paymentNumber,
-          paymentDate: new Date(paymentDate + (!paymentDate.includes('T') ? 'T12:00:00' : '')),
-          clientId,
-          invoiceId: alloc.invoiceId,
-          amount: alloc.amount,
-          paymentMethod,
-          reference: reference || null,
-          memo: memo || `Bulk payment - ${allocations.length} invoices`,
-          createdByUserId: req.session.userId,
-        });
-        const payment = await storage.createPayment(parsed);
-        createdPayments.push(payment);
-
-        const invoicePayments = await storage.getPaymentsByInvoiceId(alloc.invoiceId);
-        const invoice = await storage.getInvoice(alloc.invoiceId);
-        if (invoice) {
-          const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
-          const invoiceTotal = parseFloat(invoice.total);
-          if (totalPaid >= invoiceTotal) {
-            await storage.updateInvoice(alloc.invoiceId, { status: 'paid' });
-          }
-        }
-      }
+      const parsed = validated.map((allocation) => insertPaymentSchema.parse({
+        paymentNumber: "",
+        paymentDate: new Date(paymentDate + (!paymentDate.includes('T') ? 'T12:00:00' : '')),
+        clientId,
+        invoiceId: allocation.invoiceId,
+        amount: allocation.amount,
+        paymentMethod,
+        reference: reference || null,
+        memo: memo || `Bulk payment - ${allocations.length} invoices`,
+        createdByUserId: req.session.userId,
+      }) as InsertPayment);
+      const createdPayments = await recordCustomerPayments(db, parsed, true);
       sendWebhook("payment.received", { payments: createdPayments, bulk: true }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(createdPayments);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error creating bulk payment:", error);
       res.status(500).json({ message: "Failed to create bulk payment" });
     }
@@ -6972,19 +6972,7 @@ export async function registerRoutes(
       }
 
       const parsed = insertPaymentSchema.parse({ ...rest, clientId: resolvedClientId, createdByUserId: req.session.userId });
-      const payment = await storage.createPayment(parsed);
-      
-      if (parsed.invoiceId) {
-        const invoicePayments = await storage.getPaymentsByInvoiceId(parsed.invoiceId);
-        const invoice = await storage.getInvoice(parsed.invoiceId);
-        if (invoice) {
-          const totalPaid = invoicePayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-          const invoiceTotal = parseFloat(invoice.total);
-          if (totalPaid >= invoiceTotal) {
-            await storage.updateInvoice(parsed.invoiceId, { status: 'paid' });
-          }
-        }
-      }
+      const payment = await storage.createPayment(parsed as InsertPayment);
       
       sendWebhook("payment.received", { payment }, { id: req.session.userId!, email: user?.email });
       res.status(201).json(payment);
@@ -6992,6 +6980,7 @@ export async function registerRoutes(
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error creating payment:", error);
       res.status(500).json({ message: "Failed to create payment" });
     }
@@ -7013,6 +7002,7 @@ export async function registerRoutes(
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error updating payment:", error);
       res.status(500).json({ message: "Failed to update payment" });
     }
@@ -7025,39 +7015,14 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const payment = await storage.getPayment(parseInt(req.params.id));
-      if (!payment) {
-        return res.status(404).json({ message: "Payment not found" });
-      }
-      
-      if (payment.isDeposited) {
-        return res.status(400).json({ message: "Cannot delete a deposited payment" });
-      }
-      
-      const invoiceId = payment.invoiceId;
-      
       const deleted = await storage.deletePayment(parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Payment not found" });
       }
-      
-      // Recalculate invoice status if this payment was linked to an invoice
-      if (invoiceId) {
-        const invoice = await storage.getInvoice(invoiceId);
-        if (invoice) {
-          const invoicePayments = await storage.getPaymentsByInvoiceId(invoiceId);
-          const totalPaid = invoicePayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-          const invoiceTotal = parseFloat(invoice.total);
-          
-          if (totalPaid < invoiceTotal && invoice.status === 'paid') {
-            // Invoice is no longer fully paid, revert to sent status
-            await storage.updateInvoice(invoiceId, { status: 'sent' });
-          }
-        }
-      }
-      
+
       res.status(204).send();
     } catch (error) {
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error deleting payment:", error);
       res.status(500).json({ message: "Failed to delete payment" });
     }
@@ -7110,26 +7075,13 @@ export async function registerRoutes(
       }
       
       const parsed = insertDepositSchema.parse({ ...depositData, createdByUserId: req.session.userId });
-      const deposit = await storage.createDeposit(parsed, paymentIds);
-      
-      const bankTransaction = await storage.createBankTransaction({
-        bankAccountId: parsed.bankAccountId,
-        transactionDate: parsed.depositDate,
-        transactionType: 'deposit',
-        payee: 'Customer Payments',
-        description: parsed.memo || `Deposit of ${paymentIds.length} payment(s)`,
-        amount: parsed.totalAmount,
-      });
-      
-      await storage.updateDeposit(deposit.id, { bankTransactionId: bankTransaction.id });
-      
-      await recalculateAccountBalance(parsed.bankAccountId);
-      
-      res.status(201).json({ ...deposit, bankTransactionId: bankTransaction.id });
+      const ids = z.array(z.number().int().positive()).parse(paymentIds);
+      res.status(201).json(await postCustomerDeposit(db, parsed as InsertDeposit, ids));
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Invalid input", errors: error.errors });
       }
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error creating deposit:", error);
       res.status(500).json({ message: "Failed to create deposit" });
     }
@@ -7142,35 +7094,13 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      // Get the deposit first to reverse the bank balance
-      const deposit = await storage.getDeposit(parseInt(req.params.id));
-      if (!deposit) {
-        return res.status(404).json({ message: "Deposit not found" });
-      }
-      
-      if (deposit.bankTransactionId) {
-        await storage.deleteBankTransaction(deposit.bankTransactionId);
-      } else {
-        const transactions = await storage.getBankTransactions(deposit.bankAccountId);
-        const depositTransaction = transactions.find(t => 
-          t.transactionType === 'deposit' && 
-          t.amount === deposit.totalAmount &&
-          t.transactionDate && deposit.depositDate &&
-          new Date(t.transactionDate).toDateString() === new Date(deposit.depositDate).toDateString()
-        );
-        if (depositTransaction) {
-          await storage.deleteBankTransaction(depositTransaction.id);
-        }
-      }
-      
-      const deleted = await storage.deleteDeposit(parseInt(req.params.id));
-
-      await recalculateAccountBalance(deposit.bankAccountId);
+      const deleted = await removeCustomerDeposit(db, parseInt(req.params.id));
       if (!deleted) {
         return res.status(404).json({ message: "Deposit not found" });
       }
       res.status(204).send();
     } catch (error) {
+      if (error instanceof BillingConflict) return res.status(error.status).json({ message: error.message });
       console.error("Error deleting deposit:", error);
       res.status(500).json({ message: "Failed to delete deposit" });
     }
@@ -7284,28 +7214,13 @@ export async function registerRoutes(
 
   // Backfill payment records for paid invoices that have no payments
   try {
-    const allInvoices = await storage.getInvoices();
+    const paidInvoices = await db.select({ id: invoices.id, total: invoices.total })
+      .from(invoices).where(and(eq(invoices.status, "paid"), isNotNull(invoices.clientId)));
+    const paidBalances = await getInvoiceAmounts(db, paidInvoices);
     let backfilledCount = 0;
-    for (const invoice of allInvoices) {
-      if (invoice.status === "paid" && invoice.clientId) {
-        const existingPayments = await storage.getPaymentsByInvoiceId(invoice.id);
-        const totalPaid = existingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-        const invoiceTotal = parseFloat(invoice.total);
-        const remainingBalance = invoiceTotal - totalPaid;
-        if (remainingBalance > 0.01) {
-          const paymentNumber = await storage.getNextPaymentNumber();
-          const paymentDate = invoice.paidAt ? new Date(invoice.paidAt) : invoice.createdAt ? new Date(invoice.createdAt) : new Date();
-          await storage.createPayment({
-            paymentNumber,
-            clientId: invoice.clientId,
-            invoiceId: invoice.id,
-            paymentDate,
-            amount: remainingBalance.toFixed(2),
-            paymentMethod: "other",
-            memo: `Payment for invoice ${invoice.invoiceNumber}`,
-          });
-          backfilledCount++;
-        }
+    for (const invoice of paidInvoices) {
+      if (paidBalances.get(invoice.id)!.balanceCents > 0 && await backfillPaidInvoice(db, invoice.id)) {
+        backfilledCount++;
       }
     }
     if (backfilledCount > 0) {

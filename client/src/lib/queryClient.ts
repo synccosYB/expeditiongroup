@@ -7,6 +7,19 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+export function apiErrorMessage(error: Error) {
+  const body = error.message.match(/^\d+: ([\s\S]*)$/)?.[1];
+  if (body) {
+    try {
+      const response = JSON.parse(body);
+      if (typeof response?.message === "string") return response.message;
+    } catch {
+      return body;
+    }
+  }
+  return error.message;
+}
+
 export async function apiRequest(
   method: string,
   url: string,

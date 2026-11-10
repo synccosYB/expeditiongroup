@@ -807,6 +807,7 @@ export default function UndepositedFunds() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{payment.paymentNumber}</span>
                       <Badge variant="outline">{payment.paymentMethod}</Badge>
+                      {payment.retainerRequestId && <Badge variant="secondary">Retainer receipt</Badge>}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {payment.client.name}
@@ -824,14 +825,15 @@ export default function UndepositedFunds() {
                       {formatCurrency(payment.amount)}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setDeleteId(payment.id)}
-                    data-testid={`button-delete-${payment.id}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
+                  {payment.retainerRequestId ? (
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href={`/clients/${payment.clientId}?tab=billing&request=${payment.retainerRequestId}`}>View billing</Link>
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="icon" onClick={() => setDeleteId(payment.id)} data-testid={`button-delete-${payment.id}`}>
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
