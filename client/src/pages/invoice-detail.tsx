@@ -51,10 +51,11 @@ import {
 } from "lucide-react";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
 import { parseLocalDateFromISO, formatLocalDate, formatDateForInput } from "@/lib/dateUtils";
-import { apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
+import { apiErrorMessage, apiRequest, queryClient, invalidateDashboardQueries } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { PrintCompanyHeader, PrintStyles } from "@/components/printable-document";
 import { InvoiceSummaryRows, InvoiceDetailAppendix } from "@/components/invoice-compact-items";
+import { billingDate, centsToDollars, type InvoiceBalance } from "@shared/client-retainers";
 import type { Invoice, InvoiceItem, Project, Client, Payment } from "@shared/schema";
 import { Landmark } from "lucide-react";
 
@@ -144,13 +145,8 @@ export default function InvoiceDetail() {
     enabled: !!invoiceId,
   });
 
-  const { data: balanceData } = useQuery<{ total: number; totalPaid: number; remainingBalance: number }>({
+  const { data: balanceData } = useQuery<InvoiceBalance>({
     queryKey: ["/api/invoices", invoiceId, "balance"],
-    queryFn: async () => {
-      const res = await fetch(`/api/invoices/${invoiceId}/balance`, { credentials: "include" });
-      if (!res.ok) return { total: 0, totalPaid: 0, remainingBalance: 0 };
-      return res.json();
-    },
     enabled: !!invoiceId,
   });
 
@@ -165,8 +161,8 @@ export default function InvoiceDetail() {
       toast({ title: "Invoice deleted successfully" });
       setLocation(invoice?.clientId ? `/clients/${invoice.clientId}` : "/invoices");
     },
-    onError: () => {
-      toast({ title: "Failed to delete invoice", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete invoice", description: apiErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -186,8 +182,8 @@ export default function InvoiceDetail() {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId, "payments"] });
       toast({ title: "Invoice status updated" });
     },
-    onError: () => {
-      toast({ title: "Failed to update invoice status", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Failed to update invoice status", description: apiErrorMessage(error), variant: "destructive" });
     },
   });
 
@@ -217,6 +213,8 @@ export default function InvoiceDetail() {
     );
   }
 
+  const retainerApplications = balanceData?.retainerApplications ?? [];
+  const hasSettlements = !!invoicePayments?.length || retainerApplications.length > 0;
   const statusInfo = invoiceStatusConfig[invoice.status] || { label: invoice.status, variant: "outline" as const };
   const subtotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.amount || "0"), 0) || 0;
   const total = parseFloat(invoice?.total || "0");
@@ -284,6 +282,11 @@ export default function InvoiceDetail() {
             </Button>
           )}
 
+          {invoice.clientId && invoice.projectId && !!balanceData?.retainerAvailableCents && balanceData.remainingBalance > 0 && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/clients/${invoice.clientId}?tab=billing&project=${invoice.projectId}&invoice=${invoice.id}`}>Apply retainer</Link>
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -486,10 +489,10 @@ export default function InvoiceDetail() {
                 <span>Total</span>
                 <span data-testid="text-total-amount">${total.toFixed(2)}</span>
               </div>
-              {invoicePayments && invoicePayments.length > 0 && (
+              {hasSettlements && (
                 <>
                   <Separator />
-                  {invoicePayments.map((pmt) => (
+                  {invoicePayments?.map((pmt) => (
                     <div key={pmt.id} className="space-y-1" data-testid={`row-payment-${pmt.id}`}>
                       <div className="flex justify-between gap-4 text-sm">
                         <span className="text-muted-foreground">
@@ -515,6 +518,12 @@ export default function InvoiceDetail() {
                       )}
                     </div>
                   ))}
+                  {retainerApplications.map((application) => (
+                    <div key={application.id} className="flex justify-between gap-4 text-sm" data-testid={`row-retainer-${application.id}`}>
+                      <span className="text-muted-foreground">Retainer applied {formatLocalDate(billingDate(new Date(application.appliedAt)))}</span>
+                      <span className="text-green-600">-${centsToDollars(application.amountCents)}</span>
+                    </div>
+                  ))}
                   <Separator />
                   <div className="flex justify-between gap-4 text-lg font-semibold">
                     <span>{balanceData && balanceData.remainingBalance <= 0 ? "Paid in Full" : "Balance Due"}</span>
@@ -524,7 +533,7 @@ export default function InvoiceDetail() {
                   </div>
                 </>
               )}
-              {invoice.status === "paid" && (!invoicePayments || invoicePayments.length === 0) && (
+              {invoice.status === "paid" && !hasSettlements && (
                 <>
                   <Separator />
                   <div className="flex justify-between gap-4 text-lg font-semibold text-green-600">

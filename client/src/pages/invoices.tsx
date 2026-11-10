@@ -111,7 +111,7 @@ export default function Invoices() {
   const filteredInvoices = invoices?.filter(Boolean).filter(inv => {
     if (statusFilter === "all") return true;
     if (statusFilter === "unpaid") {
-      return inv.status === "draft" || inv.status === "sent";
+      return inv.status === "sent";
     }
     return inv.status === statusFilter;
   }) || [];

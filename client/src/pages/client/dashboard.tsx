@@ -38,7 +38,7 @@ export default function ClientDashboard() {
     queryKey: ["/api/client/tasks"],
   });
 
-  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<(Invoice & { remainingBalance: number })[]>({
     queryKey: ["/api/client/invoices"],
   });
 
@@ -62,7 +62,7 @@ export default function ClientDashboard() {
   }) || [];
 
   const unpaidInvoices = invoices?.filter(Boolean).filter(i => i.status === "sent") || [];
-  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
+  const totalOutstanding = unpaidInvoices.reduce((sum, inv) => sum + (inv.remainingBalance ?? parseFloat(inv.total || "0")), 0);
 
   const overdueCount = overdueTasks.length;
 

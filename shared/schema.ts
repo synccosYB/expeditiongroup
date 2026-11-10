@@ -10,6 +10,11 @@ import {
   pgEnum,
   boolean,
   check,
+  foreignKey,
+  unique,
+  uniqueIndex,
+  uuid,
+  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -184,7 +189,7 @@ export const projects = pgTable("projects", {
   actualEndDate: timestamp("actual_end_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [unique("projects_id_client_id_key").on(table.id, table.clientId)]);
 
 // Tasks table (with self-reference for subtasks)
 export const tasks = pgTable("tasks", {
@@ -904,7 +909,56 @@ export const deposits = pgTable("deposits", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Payments (individual payments from clients against invoices - goes to Undeposited Funds first)
+export const clientRetainers = pgTable("client_retainers", {
+  projectId: integer("project_id").primaryKey(),
+  clientId: integer("client_id").notNull(),
+  targetCents: integer("target_cents").notNull(),
+  thresholdCents: integer("threshold_cents").notNull(),
+}, (table) => [
+  foreignKey({
+    name: "client_retainers_project_owner_fk",
+    columns: [table.projectId, table.clientId],
+    foreignColumns: [projects.id, projects.clientId],
+  }).onDelete("cascade"),
+  check("client_retainers_amounts_check", sql`${table.targetCents} > 0 AND ${table.thresholdCents} BETWEEN 0 AND ${table.targetCents} - 1`),
+]);
+
+export const clientRetainerRequests = pgTable("client_retainer_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  projectId: integer("project_id").notNull().references(() => clientRetainers.projectId),
+  kind: varchar("kind", { length: 20 }).notNull().$type<"initial" | "replenishment">(),
+  status: varchar("status", { length: 20 }).notNull().default("open").$type<"open" | "paid" | "cancelled">(),
+  amountCents: integer("amount_cents").notNull(),
+  dueDate: date("due_date"),
+  note: text("note"),
+  operationId: uuid("operation_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+}, (table) => [
+  unique("client_retainer_requests_operation_key").on(table.projectId, table.operationId),
+  uniqueIndex("client_retainer_requests_one_open").on(table.projectId).where(sql`${table.status} = 'open'`),
+  check("client_retainer_requests_amount_check", sql`${table.amountCents} > 0`),
+  check("client_retainer_requests_kind_check", sql`${table.kind} IN ('initial', 'replenishment')`),
+  check("client_retainer_requests_status_check", sql`${table.status} IN ('open', 'paid', 'cancelled')`),
+]);
+
+export const clientRetainerApplications = pgTable("client_retainer_applications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  projectId: integer("project_id").notNull().references(() => clientRetainers.projectId),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id),
+  amountCents: integer("amount_cents").notNull(),
+  operationId: uuid("operation_id").notNull(),
+  appliedAt: timestamp("applied_at").notNull().defaultNow(),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  reversedAt: timestamp("reversed_at"),
+  reversedByUserId: varchar("reversed_by_user_id").references(() => users.id),
+}, (table) => [
+  unique("client_retainer_applications_operation_key").on(table.projectId, table.operationId),
+  index("client_retainer_applications_invoice_idx").on(table.invoiceId),
+  check("client_retainer_applications_amount_check", sql`${table.amountCents} > 0`),
+]);
+
+// Cash payments, including funding receipts that go through Undeposited Funds.
 export const payments = pgTable("payments", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   paymentNumber: varchar("payment_number", { length: 50 }).notNull(),
@@ -921,7 +975,18 @@ export const payments = pgTable("payments", {
   createdByUserId: varchar("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+  retainerRequestId: integer("retainer_request_id").references(() => clientRetainerRequests.id),
+  retainerReceiptKey: uuid("retainer_receipt_key"),
+  retainerVoidedAt: timestamp("retainer_voided_at"),
+  retainerVoidedByUserId: varchar("retainer_voided_by_user_id").references(() => users.id),
+}, (table) => [
+  unique("payments_retainer_receipt_key").on(table.retainerRequestId, table.retainerReceiptKey),
+  check("payments_retainer_receipt_check", sql`
+    (${table.retainerRequestId} IS NULL AND ${table.retainerReceiptKey} IS NULL AND ${table.retainerVoidedAt} IS NULL AND ${table.retainerVoidedByUserId} IS NULL)
+    OR (${table.retainerRequestId} IS NOT NULL AND ${table.retainerReceiptKey} IS NOT NULL AND ${table.invoiceId} IS NULL
+      AND (${table.retainerVoidedAt} IS NULL OR (${table.isDeposited} IS FALSE AND ${table.depositId} IS NULL)))
+  `),
+]);
 
 // Bank Reconciliations
 export const bankReconciliations = pgTable("bank_reconciliations", {
@@ -1605,7 +1670,10 @@ export const insertBankReconciliationSchema = createInsertSchema(bankReconciliat
 export const insertDepositSchema = createInsertSchema(deposits).omit({ id: true, createdAt: true }).extend({
   depositDate: requiredDateCoercion,
 });
-export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, depositedAt: true }).extend({
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true, createdAt: true, updatedAt: true, depositedAt: true,
+  retainerRequestId: true, retainerReceiptKey: true, retainerVoidedAt: true, retainerVoidedByUserId: true,
+}).extend({
   paymentDate: requiredDateCoercion,
 });
 export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({ id: true, createdAt: true, updatedAt: true }).extend({
@@ -1697,9 +1765,11 @@ export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;
 export type BillPayment = typeof billPayments.$inferSelect;
 export type InsertBankReconciliation = z.infer<typeof insertBankReconciliationSchema>;
 export type BankReconciliation = typeof bankReconciliations.$inferSelect;
-export type InsertDeposit = z.infer<typeof insertDepositSchema>;
+export type InsertDeposit = Omit<typeof deposits.$inferInsert, "id" | "createdAt">;
 export type Deposit = typeof deposits.$inferSelect;
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertPayment = Omit<typeof payments.$inferInsert,
+  "id" | "createdAt" | "updatedAt" | "depositedAt" | "retainerRequestId" |
+  "retainerReceiptKey" | "retainerVoidedAt" | "retainerVoidedByUserId">;
 export type Payment = typeof payments.$inferSelect;
 export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
 export type JournalEntry = typeof journalEntries.$inferSelect;

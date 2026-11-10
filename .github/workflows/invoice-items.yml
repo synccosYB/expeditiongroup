@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'client/src/components/invoice-*'
+      - '**/*client-retainer*'
+      - 'server/customer-payments.ts'
       - 'client/src/components/billing-items-manager.tsx'
       - 'client/src/components/manual-invoice-dialog.tsx'
       - 'client/src/pages/invoice-detail.tsx'
@@ -26,6 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node --import tsx --test client/src/components/invoice-compact-items.test.ts client/src/lib/printAssets.test.ts
+      - run: npm run test:client-retainers
       - run: npm run build
       - name: TypeScript baseline audit
         shell: bash

@@ -40,7 +40,7 @@ import type { Invoice, Project } from "@shared/schema";
 import { format } from "date-fns";
 import { parseLocalDateFromISO } from "@/lib/dateUtils";
 
-type InvoiceWithProject = Invoice & { project?: Project };
+type InvoiceWithProject = Invoice & { project?: Project; remainingBalance: number };
 
 const INVOICE_STATUSES = [
   { value: "all", label: "All Statuses" },
@@ -78,7 +78,7 @@ export default function ClientInvoices() {
   const unpaidTotal = filteredInvoices
     .filter(Boolean)
     .filter(i => i.status === "sent")
-    .reduce((sum, inv) => sum + parseFloat(inv?.total || "0"), 0);
+    .reduce((sum, inv) => sum + (inv.remainingBalance ?? parseFloat(inv.total || "0")), 0);
 
   const paidTotal = filteredInvoices
     .filter(Boolean)
