@@ -90,9 +90,11 @@ async function buildSystemAccounts(
       (a) => a.name.toLowerCase().includes("undeposited"),
     ) ||
     pickAccountByPriority(allAccounts, "asset", "other_current_asset");
+  const retainerAccount = getRetainerAccount(allAccounts);
+  const payableAccounts = allAccounts.filter((account) => account.id !== retainerAccount?.id);
   return {
     ar: pickAccountByPriority(allAccounts, "asset", "accounts_receivable"),
-    ap: pickAccountByPriority(allAccounts, "liability", "accounts_payable"),
+    ap: pickAccountByPriority(payableAccounts, "liability", "accounts_payable"),
     undeposited,
     retainedEarnings: pickAccountByPriority(
       allAccounts,
