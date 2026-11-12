@@ -36,7 +36,7 @@ import { Plus, ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, MoreHoriz
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiErrorMessage, apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { BankAccount, BankTransaction, Vendor, Account } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +83,18 @@ type TransactionWithRelations = BankTransaction & {
   linkedBillId?: number | null;
   linkedDepositId?: number | null;
 };
+
+function getLinkedRecord(transaction: TransactionWithRelations) {
+  if (transaction.linkedBillId) {
+    return { href: `/bills/${transaction.linkedBillId}`, label: "Open bill" };
+  }
+  if (transaction.linkedExpenseId) {
+    return { href: `/expenses?highlight=${transaction.linkedExpenseId}`, label: "Open expense" };
+  }
+  if (transaction.linkedDepositId) {
+    return { href: `/deposits?highlight=${transaction.linkedDepositId}`, label: "Open deposit" };
+  }
+}
 
 export default function BankRegister() {
   const [, setLocation] = useLocation();
@@ -263,13 +275,19 @@ export default function BankRegister() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/bank-transactions/${id}`);
+    mutationFn: ({ id, linkedBillPaymentId }: TransactionWithRelations) => {
+      const path = linkedBillPaymentId
+        ? `/api/bill-payments/${linkedBillPaymentId}`
+        : `/api/bank-transactions/${id}`;
+      return apiRequest("DELETE", path);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts", accountId, "transactions"] });
+    onSuccess: (_, transaction) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
-      toast({ title: "Transaction deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
+      if (transaction.linkedBillPaymentId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      }
+      toast({ title: transaction.linkedBillPaymentId ? "Bill payment deleted" : "Transaction deleted" });
       setDeletingTransaction(null);
     },
     onError: (error) => {
@@ -285,8 +303,8 @@ export default function BankRegister() {
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to delete transaction",
+        title: "Delete failed",
+        description: apiErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -974,8 +992,9 @@ export default function BankRegister() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredTransactions.map((transaction) => (
-                    <tr
+                  {filteredTransactions.map((transaction) => {
+                    const linkedRecord = getLinkedRecord(transaction);
+                    return <tr
                       key={transaction.id}
                       className={`hover:bg-muted/30 transition-colors duration-500 ${highlightedTxnId === transaction.id ? "bg-primary/10 ring-2 ring-primary/30" : ""}`}
                       data-testid={`transaction-row-${transaction.id}`}
@@ -1055,27 +1074,39 @@ export default function BankRegister() {
                       <td className="p-3">
                         {transaction.checkDetails ? <CheckRecordActions check={{ id: transaction.id, bankAccountId: transaction.bankAccountId, amount: transaction.amount, checkDetails: transaction.checkDetails }} /> : <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost">
+                            <Button size="icon" variant="ghost" aria-label="Transaction actions">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => handleOpenDialog(transaction)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onSelect={() => setDeletingTransaction(transaction)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {linkedRecord && (
+                              <DropdownMenuItem asChild>
+                                <Link href={linkedRecord.href}>
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  {linkedRecord.label}
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {!transaction.linkedBillPaymentId && (
+                              <DropdownMenuItem onSelect={() => handleOpenDialog(transaction)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {(!linkedRecord || transaction.linkedBillPaymentId) && (
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onSelect={() => setDeletingTransaction(transaction)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                {transaction.linkedBillPaymentId ? "Delete bill payment" : "Delete"}
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>}
                       </td>
-                    </tr>
-                  ))}
+                    </tr>;
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1083,21 +1114,34 @@ export default function BankRegister() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={!!deletingTransaction} onOpenChange={() => setDeletingTransaction(null)}>
+      <AlertDialog
+        open={!!deletingTransaction}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeletingTransaction(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deletingTransaction?.linkedBillPaymentId ? "Delete bill payment" : "Delete transaction"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this transaction? This action cannot be undone.
+              {deletingTransaction?.linkedBillPaymentId
+                ? `Delete the ${formatCurrency(deletingTransaction.amount)} payment? This updates the bill and bank register balances.`
+                : "Are you sure you want to delete this transaction? This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletingTransaction && deleteMutation.mutate(deletingTransaction.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingTransaction && !deleteMutation.isPending) deleteMutation.mutate(deletingTransaction);
+              }}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
