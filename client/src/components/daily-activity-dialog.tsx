@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -23,6 +24,7 @@ interface DailyActivityDialogProps {
 }
 
 interface GeneratedActivity {
+  scope: "all" | "mine";
   summary: string;
   details: string;
   hoursWorked: string;
@@ -44,13 +46,27 @@ export function DailyActivityDialog({
   const [summary, setSummary] = useState("");
   const [details, setDetails] = useState("");
   const [hoursWorked, setHoursWorked] = useState("");
+  const [scope, setScope] = useState<"all" | "mine">("all");
+  const [generatedStats, setGeneratedStats] = useState<GeneratedActivity["stats"] | null>(null);
+  const generationId = useRef(0);
+
+  const clearGeneratedActivity = () => {
+    generationId.current++;
+    setSummary("");
+    setDetails("");
+    setHoursWorked("");
+    setGeneratedStats(null);
+  };
 
   useEffect(() => {
+    generationId.current++;
     if (isOpen) {
       setDate(format(new Date(), "yyyy-MM-dd"));
+      setScope("all");
       setSummary("");
       setDetails("");
       setHoursWorked("");
+      setGeneratedStats(null);
     }
   }, [isOpen]);
 
@@ -78,8 +94,9 @@ export function DailyActivityDialog({
   });
 
   const generateMutation = useMutation({
-    mutationFn: async (selectedDate: string): Promise<GeneratedActivity> => {
-      const response = await fetch(`/api/daily-activity-logs/generate?date=${selectedDate}`, {
+    mutationFn: async (selection: { date: string; scope: "all" | "mine"; generationId: number }): Promise<GeneratedActivity> => {
+      const params = new URLSearchParams({ date: selection.date, scope: selection.scope });
+      const response = await fetch(`/api/daily-activity-logs/generate?${params}`, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -87,10 +104,12 @@ export function DailyActivityDialog({
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, selection) => {
+      if (selection.generationId !== generationId.current) return;
       setSummary(data.summary);
       setDetails(data.details);
       setHoursWorked(data.hoursWorked);
+      setGeneratedStats(data.stats);
       
       const { stats } = data;
       const hasActivity = stats.timeEntriesCount > 0 || stats.tasksCompletedCount > 0 || 
@@ -108,7 +127,8 @@ export function DailyActivityDialog({
         });
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, selection) => {
+      if (selection.generationId !== generationId.current) return;
       toast({
         title: "Failed to generate activity",
         description: error.message,
@@ -118,7 +138,7 @@ export function DailyActivityDialog({
   });
 
   const handleGenerate = () => {
-    generateMutation.mutate(date);
+    generateMutation.mutate({ date, scope, generationId: ++generationId.current });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -141,14 +161,14 @@ export function DailyActivityDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Log Daily Activity
           </DialogTitle>
           <DialogDescription>
-            Record your daily work activities and hours.
+            Record daily work activities and hours.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -163,7 +183,7 @@ export function DailyActivityDialog({
                   variant="outline"
                   size="sm"
                   onClick={handleGenerate}
-                  disabled={generateMutation.isPending}
+                  disabled={generateMutation.isPending || !date}
                   data-testid="button-generate-activity"
                 >
                   {generateMutation.isPending ? (
@@ -178,9 +198,37 @@ export function DailyActivityDialog({
                 id="activity-date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  clearGeneratedActivity();
+                }}
+                disabled={generateMutation.isPending}
                 data-testid="input-activity-date"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="activity-scope">Include activity from</Label>
+              <Select value={scope} disabled={generateMutation.isPending} onValueChange={(value: "all" | "mine") => {
+                setScope(value);
+                clearGeneratedActivity();
+              }}>
+                <SelectTrigger id="activity-scope" data-testid="select-activity-scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All users</SelectItem>
+                  <SelectItem value="mine">My activity</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {scope === "all" ? "Includes the same time entries as Time Logs for this date." : "Includes only activity linked to your account."}
+              </p>
+              {generatedStats && (
+                <p className="text-sm" role="status" data-testid="text-generated-activity-total">
+                  {generatedStats.timeEntriesCount} time entries · {(generatedStats.totalMinutes / 60).toFixed(1)} recorded hours
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -232,7 +280,7 @@ export function DailyActivityDialog({
                 data-testid="input-hours-worked"
               />
               <p className="text-xs text-muted-foreground">
-                Total hours worked today (optional)
+                Recorded hours in decimal form (8.5 = 8 hours 30 minutes). Overlapping entries are included.
               </p>
             </div>
           </div>
@@ -248,7 +296,7 @@ export function DailyActivityDialog({
             </Button>
             <Button
               type="submit"
-              disabled={createLogMutation.isPending || !summary.trim()}
+              disabled={createLogMutation.isPending || generateMutation.isPending || !date || !summary.trim()}
               data-testid="button-save-activity"
             >
               {createLogMutation.isPending && (

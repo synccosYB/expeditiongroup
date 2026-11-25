@@ -13,7 +13,8 @@
     "test:vendor-credits": "node --import tsx --test server/__tests__/vendor-credits.test.ts && node script/check-vendor-credit-ui.mjs",
     "db:migrate-vendor-credits": "node --import tsx script/migrate-vendor-credits.ts",
     "db:migrate-client-retainers": "node --import tsx script/migrate-client-retainers.ts",
-    "test:client-retainers": "node --import tsx --test server/__tests__/client-retainers.test.ts"
+    "test:client-retainers": "node --import tsx --test server/__tests__/client-retainers.test.ts",
+    "test:daily-activity": "TZ=America/New_York node --import tsx --test server/__tests__/daily-activity.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

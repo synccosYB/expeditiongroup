@@ -358,12 +358,12 @@ export interface IStorage {
   getAuditLogsByEntity(entityType: string, entityId: string): Promise<(AuditLog & { user?: { firstName: string | null; lastName: string | null } })[]>;
   
   // Date Range Queries for Activity Generation
-  getTimeEntriesForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]>;
-  getTimeLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeLog[]>;
-  getNotesCreatedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Note[]>;
-  getDocumentsProcessedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Document[]>;
-  getTasksCompletedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Task[]>;
-  getAuditLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<AuditLog[]>;
+  getTimeEntriesForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<TimeEntry[]>;
+  getTimeLogsForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<TimeLog[]>;
+  getNotesCreatedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Note[]>;
+  getDocumentsProcessedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Document[]>;
+  getTasksCompletedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Task[]>;
+  getAuditLogsForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<AuditLog[]>;
   
   // Client Portal specific queries
   getClientVisibleProjects(clientId: number): Promise<(Project & { client: Client })[]>;
@@ -2496,60 +2496,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Date Range Queries for Activity Generation
-  async getTimeEntriesForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeEntry[]> {
+  async getTimeEntriesForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<TimeEntry[]> {
     return await db
       .select()
       .from(timeEntries)
       .where(and(
-        eq(timeEntries.userId, userId),
+        userId === undefined ? undefined : eq(timeEntries.userId, userId),
         gte(timeEntries.date, startDate),
         lte(timeEntries.date, endDate)
       ))
       .orderBy(desc(timeEntries.date));
   }
 
-  async getTimeLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<TimeLog[]> {
+  async getTimeLogsForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<TimeLog[]> {
     return await db
       .select()
       .from(timeLogs)
       .where(and(
-        eq(timeLogs.userId, userId),
+        userId === undefined ? undefined : eq(timeLogs.userId, userId),
         gte(timeLogs.date, startDate),
         lte(timeLogs.date, endDate)
       ))
       .orderBy(desc(timeLogs.date));
   }
 
-  async getNotesCreatedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Note[]> {
+  async getNotesCreatedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Note[]> {
     return await db
       .select()
       .from(notes)
       .where(and(
-        eq(notes.userId, userId),
+        userId === undefined ? undefined : eq(notes.userId, userId),
         gte(notes.createdAt, startDate),
         lte(notes.createdAt, endDate)
       ))
       .orderBy(desc(notes.createdAt));
   }
 
-  async getDocumentsProcessedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Document[]> {
+  async getDocumentsProcessedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Document[]> {
     return await db
       .select()
       .from(documents)
       .where(and(
-        eq(documents.uploadedByUserId, userId),
+        userId === undefined ? undefined : eq(documents.uploadedByUserId, userId),
         gte(documents.createdAt, startDate),
         lte(documents.createdAt, endDate)
       ))
       .orderBy(desc(documents.createdAt));
   }
 
-  async getTasksCompletedForDateRange(userId: string, startDate: Date, endDate: Date): Promise<Task[]> {
+  async getTasksCompletedForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<Task[]> {
     return await db
       .select()
       .from(tasks)
       .where(and(
-        eq(tasks.assigneeId, userId),
+        userId === undefined ? undefined : eq(tasks.assigneeId, userId),
         isNotNull(tasks.completedAt),
         gte(tasks.completedAt, startDate),
         lte(tasks.completedAt, endDate)
@@ -2557,12 +2557,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tasks.completedAt));
   }
 
-  async getAuditLogsForDateRange(userId: string, startDate: Date, endDate: Date): Promise<AuditLog[]> {
+  async getAuditLogsForDateRange(userId: string | undefined, startDate: Date, endDate: Date): Promise<AuditLog[]> {
     return await db
       .select()
       .from(auditLogs)
       .where(and(
-        eq(auditLogs.userId, userId),
+        userId === undefined ? undefined : eq(auditLogs.userId, userId),
         gte(auditLogs.createdAt, startDate),
         lte(auditLogs.createdAt, endDate)
       ))
